@@ -7,7 +7,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { AdminWorkOrderItem } from './admin-work-order-item';
 import { PageHeader, Button, Card, EmptyState, Input, LoadFailure, Modal, PageSkeleton, PriorityBadge, Select, WorkOrderStatusBadge } from './ui';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminListFromPath, adminTruckHref, adminWorkOrderHref } from '@/lib/admin-truck-origin';
 import { workOrderListNextText } from '@/lib/admin-work-summary';
 import { formatAdminDate } from '@/lib/admin-format';
 import { adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
@@ -29,6 +29,8 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.toString();
+  // LTR-245 (UX-5-008): a Truck or a Work Order opened from here goes back to this list with the same filters.
+  const listFrom = adminListFromPath('/admin/work-orders', urlQuery);
   const [filters, setFilters] = useState(() => readAdminWorkOrdersFilters(searchParams));
   const [appliedQuery, setAppliedQuery] = useState(urlQuery);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -145,10 +147,10 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
       </form>
     </Modal>
     {isLoading && !data ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
-      <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} canManage={canCreateWorkOrder} onChanged={() => mutate()} />)}</div>
+      <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} fromPath={listFrom} canManage={canCreateWorkOrder} onChanged={() => mutate()} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.truck}</th><th className="whitespace-nowrap p-3">{messages.displayId}</th><th className="p-3">{messages.workOrderNextColumn}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>
-          <tbody>{items.map((item) => <tr key={item.id} className="border-t"><td className="p-3 font-display text-base font-semibold"><Link className="text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/work-orders')}>{item.truck.truckNumber}</Link></td><td className="whitespace-nowrap p-3 text-muted-foreground"><Link className="hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link></td><td className="p-3" data-testid="work-order-row-next-step" data-kind={item.nextStep?.kind}>{workOrderListNextText(item, messages)}</td><td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td><td className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></td><td className="p-3">{item.jobsCompleted}/{item.jobsTotal}</td><td className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</td><td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td></tr>)}</tbody>
+          <tbody>{items.map((item) => <tr key={item.id} className="border-t"><td className="p-3 font-display text-base font-semibold"><Link className="text-primary hover:underline" href={adminTruckHref(item.truck.id, listFrom)}>{item.truck.truckNumber}</Link></td><td className="whitespace-nowrap p-3 text-muted-foreground"><Link className="hover:underline" href={adminWorkOrderHref(item.id, listFrom)}>{item.displayId}</Link></td><td className="p-3" data-testid="work-order-row-next-step" data-kind={item.nextStep?.kind}>{workOrderListNextText(item, messages)}</td><td className="p-3"><WorkOrderStatusBadge status={item.status}>{workOrderStatusLabel(item.status, messages)}</WorkOrderStatusBadge></td><td className="p-3"><PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge></td><td className="p-3">{item.jobsCompleted}/{item.jobsTotal}</td><td className="max-w-48 truncate p-3">{item.mechanics.map((mechanic) => mechanic.mechanicName).join(', ') || '—'}</td><td className="whitespace-nowrap p-3">{formatAdminDate(item.updatedAt, locale)}</td></tr>)}</tbody>
         </table>
       </div>
       {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.loadMore}…` : messages.loadMore}</Button> : null}

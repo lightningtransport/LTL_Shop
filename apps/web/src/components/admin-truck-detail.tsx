@@ -587,7 +587,10 @@ function originCrumb(href: string, messages: AdminMessages) {
   if (path.startsWith('/admin/parts/purchases')) return messages.pcPurchases;
   if (path.startsWith('/admin/parts/outside-repairs')) return messages.pcOutsideRepairs;
   if (path.startsWith('/admin/parts/internal-invoices')) return messages.pcInvoices;
-  return messages.yardOperations;
+  if (path === '/admin/yard-operations') return messages.yardOperations;
+  if (path === '/admin/setup/samsara') return messages.samsaraNav;
+  // LTR-245 (UX-5-006): an unknown origin is Trucks, the item the sidebar highlights.
+  return messages.trucks;
 }
 
 function operationalStatusLabel(status: TruckOperationalStatus, messages: AdminMessages) {

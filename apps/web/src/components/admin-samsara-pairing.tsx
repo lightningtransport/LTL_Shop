@@ -25,6 +25,9 @@ import { apiErrorCode, apiErrorMessage } from '@/lib/api-error-message';
 import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
+/** LTR-245 (UX-5-006): a Truck opened from here goes back to Samsara. */
+const SAMSARA_FROM = '/admin/setup/samsara';
 
 const METHOD_KEY: Record<SamsaraPairingMethod, keyof AdminMessages> = {
   connected: 'samsaraMethodConnected',
@@ -66,7 +69,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
     } catch (failure) {
       if (apiErrorCode(failure) === 'SAMSARA_CHOICE_REQUIRED') {
         showToast('error', messages.samsaraChooseInTruck);
-        router.push(`/admin/trucks/${row.truck.id}?connect=${encodeURIComponent(row.vehicle.id)}`);
+        router.push(`${adminTruckHref(row.truck.id, SAMSARA_FROM)}&connect=${encodeURIComponent(row.vehicle.id)}`);
       } else {
         showToast('error', apiErrorMessage(failure, { locale: messages.locale, apiError: messages.apiError }, messages.truckWriteFailed));
       }
@@ -139,7 +142,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
   ];
 
   const truckCell = (truck: { id: string; truckNumber: string }) => (
-    <Link href={`/admin/trucks/${truck.id}`} className="font-medium text-primary hover:underline">{truck.truckNumber}</Link>
+    <Link href={adminTruckHref(truck.id, SAMSARA_FROM)} className="font-medium text-primary hover:underline">{truck.truckNumber}</Link>
   );
   const vinCell = (vin: string | null) => (vin ? <span className="font-mono text-xs">{vin}</span> : <span className="text-muted-foreground">—</span>);
   const miles = (value: number) => fillPlaceholders(messages.samsaraMiles, { miles: value.toLocaleString(numberLocale) });

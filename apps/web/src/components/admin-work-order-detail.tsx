@@ -150,8 +150,10 @@ export function AdminWorkOrderDetail({
 
   // Stage 8 (F6, mockup): "Work Orders › WO-010", or "Trucks › 601 › WO-010" when opened from the Truck.
   const fromTruck = Boolean(data && from?.startsWith('/admin/trucks/'));
+  // LTR-245 (UX-5-008): opened from a filtered Work Orders list, the crumb goes back to those filters.
+  const fromList = from && from.split(/[?#]/)[0] === '/admin/work-orders' && !from.startsWith('//') ? from : '/admin/work-orders';
   useAdminBreadcrumb(data ? [
-    ...(fromTruck ? [{ label: messages.trucks, href: '/admin/trucks' }, { label: data.truck.truckNumber, href: from! }] : [{ label: messages.workOrders, href: '/admin/work-orders' }]),
+    ...(fromTruck ? [{ label: messages.trucks, href: '/admin/trucks' }, { label: data.truck.truckNumber, href: from! }] : [{ label: messages.workOrders, href: fromList }]),
     { label: data.displayId },
   ] : null);
 

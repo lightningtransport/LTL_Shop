@@ -13,6 +13,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { formatShortDateTime } from '@/lib/work-order-view';
 import { cn } from '@/lib/utils';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 
 type Dialog = { kind: 'tie' | 'add'; group: AdminCustomJobGroupDto } | null;
 
@@ -27,6 +28,8 @@ export function AdminCustomJobsReview({ locale, messages }: { locale: AdminLocal
   const { showToast } = useActionToast();
   const [tab, setTab] = useState<'pending' | 'reviewed'>('pending');
   const { data, error, isLoading, mutate } = useAdminCustomJobs(tab);
+  // LTR-245 (UX-5-007): "Job Catalog › Custom Jobs to review" in the top bar.
+  useAdminBreadcrumb([{ label: messages.jobCatalog, href: '/admin/catalog' }, { label: messages.cjInbox }]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);

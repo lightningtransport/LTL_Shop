@@ -42,3 +42,29 @@ test.describe('Stage 4 Truck ↔ Work Order', () => {
     await expect(page.getByRole('dialog', { name: 'Pause Work Order' })).toBeVisible();
   });
 });
+
+// LTR-245 (UX-5-006, UX-5-008): going back from a Truck or a Work Order keeps the list's filters, and an unknown
+// origin goes back to Trucks (what the sidebar highlights), not to Yard Operations.
+test.describe('LTR-245 going back keeps the filters', () => {
+  test('A Truck opened from a filtered Trucks list goes back to the same filters', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await page.goto('/admin/trucks?status=all');
+    const link = page.locator('a[href^="/admin/trucks/"]').first();
+    await expect(link).toHaveAttribute('href', /from=%2Fadmin%2Ftrucks%3Fstatus%3Dall/);
+    await page.goto(`/admin/trucks/00000000-0000-4000-8000-000000001001?from=${encodeURIComponent('/admin/trucks?status=all')}`);
+    await expect(page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'Trucks' })).toHaveAttribute('href', '/admin/trucks?status=all');
+  });
+
+  test('A Truck with no known origin goes back to Trucks', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await page.goto('/admin/trucks/00000000-0000-4000-8000-000000001001');
+    await expect(page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'Trucks' })).toHaveAttribute('href', '/admin/trucks');
+  });
+
+  test('A Work Order opened from a filtered list goes back to the same filters', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    const list = '/admin/work-orders?status=waiting_paused';
+    await page.goto(`/admin/work-orders/00000000-0000-4000-8000-000000000102?from=${encodeURIComponent(list)}`);
+    await expect(page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'Work Orders' })).toHaveAttribute('href', list);
+  });
+});

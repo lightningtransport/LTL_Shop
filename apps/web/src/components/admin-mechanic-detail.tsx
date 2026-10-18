@@ -17,6 +17,7 @@ import { sendAdminMechanicJobsToQueue, updateAdminMechanic, useAdminMechanic } f
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { formatShortDateTime } from '@/lib/work-order-view';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 
 /**
  * LTR-199 / D31: one person of the Shop — a status header, their pending Jobs (send a queue Job back to its team
@@ -26,6 +27,8 @@ import { formatShortDateTime } from '@/lib/work-order-view';
 export function AdminMechanicDetail({ id, locale, messages }: { id: string; locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
+  // LTR-245 (UX-5-007): "People › Anthony" in the top bar.
+  useAdminBreadcrumb(data ? [{ label: messages.mechanics, href: '/admin/mechanics' }, { label: data.name }] : null);
   const canEditRoster = canWrite && data?.role === UserRole.MECHANIC && !data.removedAt;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;
   if (error instanceof ApiError && error.status === 404) {

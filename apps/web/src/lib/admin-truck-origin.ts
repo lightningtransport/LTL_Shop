@@ -3,7 +3,7 @@ import type { AdminMessages } from './admin-messages';
 /**
  * LTR-110: Truck Detail is reached from Trucks, Yard Operations and Work Orders.
  * Links pass `?from=<admin path>` so the back link matches the origin.
- * Unknown or missing origins keep the historical Yard Operations behavior.
+ * LTR-245 (UX-5-006): unknown or missing origins go back to Trucks, the item the sidebar highlights.
  */
 export type AdminTruckOrigin = {
   href: string;
@@ -12,6 +12,16 @@ export type AdminTruckOrigin = {
 
 export function adminTruckHref(truckId: string, fromPath: string) {
   return `/admin/trucks/${truckId}?from=${encodeURIComponent(fromPath)}`;
+}
+
+/** LTR-245 (UX-5-008): a Work Order link that knows where to go back (a filtered list, the Dashboard…). */
+export function adminWorkOrderHref(workOrderId: string, fromPath: string) {
+  return `/admin/work-orders/${workOrderId}?from=${encodeURIComponent(fromPath)}`;
+}
+
+/** LTR-245 (UX-5-008): a list's own path with its current filters, so a detail opened from it goes back to them. */
+export function adminListFromPath(path: string, query: string) {
+  return query ? `${path}?${query}` : path;
 }
 
 /** PCA2 (UX-5-002): a Truck opened from Parts & costs lands on its Costs tab, and knows where to go back. */
@@ -30,8 +40,9 @@ export function adminTruckOrigin(from: string | null | undefined, messages: Admi
     href: '/admin/yard-operations',
     backLabel: messages.backToYardOperations,
   };
+  const trucks = { href: '/admin/trucks', backLabel: messages.backToTrucks };
   // Only same-app Admin paths; never follow an external or protocol-relative URL.
-  if (!from || !from.startsWith('/admin') || from.startsWith('//')) return yard;
+  if (!from || !from.startsWith('/admin') || from.startsWith('//')) return trucks;
   const path = from.split(/[?#]/)[0];
   if (path === '/admin/trucks') {
     return { href: from, backLabel: messages.backToTrucks };
@@ -53,7 +64,8 @@ export function adminTruckOrigin(from: string | null | undefined, messages: Admi
   if (path === '/admin/parts/outside-repairs') return { href: from, backLabel: messages.pcBackToOutside };
   if (path.startsWith('/admin/parts/internal-invoices/')) return { href: from, backLabel: messages.backToInternalInvoice };
   if (path === '/admin/parts/internal-invoices') return { href: from, backLabel: messages.pcInvoiceBackToList };
-  return yard;
+  if (path === '/admin/setup/samsara') return { href: from, backLabel: messages.backToSamsara };
+  return trucks;
 }
 
 /**
