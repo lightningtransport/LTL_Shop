@@ -206,7 +206,7 @@ function PmOilPriceCard({ locale, messages, canWrite }: { locale: AdminLocale; m
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="oil-price-from">{messages.pcLaborRateFrom}</Label>
+              <Label htmlFor="oil-price-from">{messages.pcOilPriceFrom}</Label>
               <Input id="oil-price-from" type="date" min={today()} value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} />
             </div>
             <Button type="submit" disabled={busy || typeof cents !== 'number'}>{busy ? messages.pcSaving : messages.pcOilPriceSave}</Button>

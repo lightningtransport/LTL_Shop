@@ -173,7 +173,7 @@ test.describe('Shop Admin Phase 2A', () => {
     const mobileNav = dialog.getByRole('navigation', { name: 'Shop Admin mobile navigation' });
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
-    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Labor rate', 'History']) {
+    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Stock', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Labor rate', 'History']) {
       await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     // LTR-122: grouped by job — operation, setup, audit.
@@ -181,7 +181,8 @@ test.describe('Shop Admin Phase 2A', () => {
       await expect(mobileNav.getByText(group, { exact: true })).toBeVisible();
     }
     // LTR-200 / D-PC7: the Manager also has Parts & costs; PCA8: week's work, month's close, then catalogs, and Labor rate under Setup.
-    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Labor rate', 'History']);
+    // D45 / ST-3: Stock sits before the catalogs.
+    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Stock', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Labor rate', 'History']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await switchLanguage(page, 'es');
