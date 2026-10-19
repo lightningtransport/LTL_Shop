@@ -859,16 +859,18 @@ Las filas de prueba se agregan con cada etapa.
 4. **Remove from stock**: pide cuántas salen y por qué (Damaged, Lost u Other). Muestra el resultado antes de guardar y no le cobra a ningún camión.
 5. El **panel de la parte**, que se abre con un clic en la fila, muestra los movimientos con su motivo y deja editar el mínimo.
 
+Las filas están en `apps/api/test-real/rows/parts-stock-care.real.spec.ts` (docs y pruebas primero). Fallan a propósito hasta que LTR-246 agregue las rutas.
+
 | ¿Qué pasa si…? | Debería | Estado | Fila |
 |---|---|---|---|
-| Cuenta el primer día 3 partes con 0 (una sin costo) | Las 2 con costo entran; la tercera pide costo antes de guardar | 🔲 | — |
-| Cuenta 8 una parte que tenía 10 | Salen 2 al promedio; ningún camión paga; motivo Count | 🔲 (hoy: Count, A118) | — |
-| Deja vacía una fila en Count stock | Esa parte no cambia | 🔲 | — |
-| Agrega 2 a $12.50 (sin factura) | Suben 2; el promedio se recalcula | 🔲 | — |
-| Saca 2 por Damaged | Salen 2 al promedio con motivo Damaged en Movements | 🔲 | — |
-| Intenta sacar más de las que hay | No deja; dice cuántas hay | 🔲 | — |
-| Fija el mínimo en 4 con 3 en stock | Sale "Low" en Parts | 🔲 | — |
-| Crea una parte nueva | Sale en Parts con 0 en stock, sin moverse | 🔲 | — |
+| Cuenta el primer día 3 partes con 0 (una sin costo) | Las 2 con costo entran; la tercera pide costo antes de guardar | 🔲 escrita, falla hasta LTR-246 | A135 |
+| Cuenta 8 una parte que tenía 10 | Salen 2 al promedio; ningún camión paga; motivo Count | 🔲 escrita, falla hasta LTR-246 | A136 |
+| Deja vacía una fila en Count stock | Esa parte no cambia | 🔲 escrita, falla hasta LTR-246 | A137 |
+| Agrega 2 a $12.50 (sin factura) | Suben 2; el promedio se recalcula | 🔲 escrita, falla hasta LTR-246 | A138 |
+| Saca 2 por Damaged | Salen 2 al promedio con motivo Damaged en Movements | 🔲 escrita, falla hasta LTR-246 | A139 |
+| Intenta sacar más de las que hay | No deja; dice cuántas hay | 🔲 escrita, falla hasta LTR-246 | A140 |
+| Fija el mínimo en 4 con 3 en stock | Sale "Low" en Parts | 🔲 escrita, falla hasta LTR-246 | A141 |
+| Crea una parte nueva | Sale en Parts con 0 en stock, sin moverse | 🔲 escrita, falla hasta LTR-246 | A142 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 
