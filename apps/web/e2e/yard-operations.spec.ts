@@ -274,7 +274,7 @@ test.describe('Yard Operations Phase 1', () => {
     const cookieUrl = `${new URL(page.url()).origin}/`;
     await page.context().addCookies([{ name: 'ltl_shop_locale', value: 'es', url: cookieUrl }]);
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Operaciones del patio', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Patio', exact: true })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Taller', exact: true })).toBeVisible();
     await openMovementTab(page, /^Dispatch$/);
     await expect(page.getByRole('heading', { name: 'Movimiento del yard' })).toBeVisible();

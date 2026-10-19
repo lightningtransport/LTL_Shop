@@ -170,7 +170,7 @@ test('manager loads an outside shop invoice from the Job: truck and Job come pic
 test('manager sets the shop labor rate from a date; the same date twice is refused', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');
   await page.goto('/admin/parts/labor-rate');
-  await expect(page.getByRole('heading', { name: 'Labor rate', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Shop rates', exact: true })).toBeVisible();
   await expect(page.getByTestId('labor-rate-current')).toContainText('No labor rate yet.');
   await page.getByRole('button', { name: 'Save rate' }).click();
   await expect(page.getByText('Enter the rate per hour.')).toBeVisible();

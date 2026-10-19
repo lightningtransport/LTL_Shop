@@ -1,14 +1,13 @@
-import { cookies } from 'next/headers';
-import { Suspense } from 'react';
-import { AdminHistoryList } from '@/components/admin-history-list';
-import { PageSkeleton } from '@/components/ui';
-import { getAdminMessages } from '@/lib/admin-messages-catalog';
-import { isAdminLocale } from '@/lib/admin-messages';
-import { ADMIN_LOCALE_COOKIE } from '@/lib/admin-session';
+import { redirect } from 'next/navigation';
 
-export default async function AdminHistoryPage() {
-  const cookieLocale = (await cookies()).get(ADMIN_LOCALE_COOKIE)?.value;
-  const locale = isAdminLocale(cookieLocale) ? cookieLocale : 'en';
-  const messages = getAdminMessages(locale);
-  return <Suspense fallback={<PageSkeleton label={messages.historyTitle} />}><AdminHistoryList locale={locale} messages={messages} /></Suspense>;
+/**
+ * LTR-248 (UX-5-004, D47 P34): History became the "Closed" filter of Work Orders (completed and cancelled), so closed
+ * work has one place. Old links keep their search.
+ */
+export default async function AdminHistoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
+  const status = typeof params.status === 'string' && ['completed', 'cancelled'].includes(params.status) ? params.status : 'completed,cancelled';
+  const next = new URLSearchParams({ status });
+  if (typeof params.search === 'string' && params.search) next.set('search', params.search);
+  redirect(`/admin/work-orders?${next.toString()}`);
 }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, History, Library, ListChecks, Menu, Package, Receipt, Satellite, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
+import { Building2, ChevronLeft, Clock, FileText, ChevronRight, ClipboardCheck, ClipboardList, Gauge, Library, ListChecks, Menu, Package, Receipt, Satellite, Store, Truck, UsersRound, Warehouse, Wrench } from 'lucide-react';
 import { AppCapability } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { AdminNavLink } from './admin-nav-link';
@@ -32,10 +32,11 @@ const navigationGroups = [
     items: [
       { message: 'pcPurchases', icon: Receipt, href: '/admin/parts/purchases' },
       { message: 'pcOutsideRepairs', icon: Building2, href: '/admin/parts/outside-repairs' },
-      { message: 'pcInvoices', icon: FileText, href: '/admin/parts/internal-invoices' },
       // D47 / HU-M20 (LTR-246): Parts is the inventory (what the Shop has and what is on the shelf); Stock left the menu.
       { message: 'pcParts', icon: Package, href: '/admin/parts/catalog' },
       { message: 'pcVendors', icon: Store, href: '/admin/parts/vendors' },
+      // LTR-248: the month's close goes last; the week's work (purchases, repairs, parts) comes first.
+      { message: 'pcInvoices', icon: FileText, href: '/admin/parts/internal-invoices' },
     ],
   },
   {
@@ -50,12 +51,6 @@ const navigationGroups = [
       { message: 'samsaraNav', icon: Satellite, href: '/admin/setup/samsara' },
       // D-PC7: money, so the rate is for the Shop Manager and the System Admin only.
       { message: 'pcLaborRate', icon: Clock, href: '/admin/parts/labor-rate', managerOnly: true },
-    ],
-  },
-  {
-    title: 'navGroupAudit',
-    items: [
-      { message: 'history', icon: History, href: '/admin/history' },
     ],
   },
 ] as const;
@@ -176,7 +171,8 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
         {/* LTR-179 (U4): installed on an iPad, the name/role block stays above the home indicator. */}
         <div className="shrink-0 border-t p-3 pb-[calc(0.75rem+var(--app-safe-bottom))]">
           <p className="truncate font-medium">{user.name}</p>
-          <p className="text-xs text-muted-foreground">{user.role === 'admin' ? messages.roleLabelAdmin : messages.roleLabelManager}</p>
+          {/* LTR-248 (UX-5-009): a Shop Admin without manager writes is not shown as the Shop Manager. */}
+          <p className="text-xs text-muted-foreground">{user.role === 'admin' ? messages.roleLabelAdmin : canSeeManagerGroups ? messages.roleLabelManager : messages.roleLabelReadOnly}</p>
         </div>
       </aside>
 

@@ -15,7 +15,8 @@ test.describe('Admin navigation without an API trip per click (P19)', () => {
     await expect(page).toHaveURL(/\/admin$/, { timeout: 15_000 });
     const before = await adminAccessCalls(request);
 
-    for (const path of ['/admin/work-orders', '/admin/trucks', '/admin/history']) {
+    // LTR-248: History became a filter of Work Orders, so the third screen is the Jobs catalog.
+    for (const path of ['/admin/work-orders', '/admin/trucks', '/admin/catalog']) {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toHaveCount(0);
