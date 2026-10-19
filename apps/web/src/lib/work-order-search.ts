@@ -8,6 +8,8 @@ export type WorkOrderSearchFields = {
 };
 
 export const OPEN_WORK_ORDER_STATUSES = 'created,in_progress,waiting_paused';
+/** LTR-248 (UX-5-004): History became this filter of Work Orders. */
+export const CLOSED_WORK_ORDER_STATUSES = 'completed,cancelled';
 export const DASHBOARD_RANGE_KEYS = ['createdBefore', 'completedFrom', 'completedBefore'] as const;
 
 export type AdminWorkOrdersFilters = {
@@ -28,7 +30,9 @@ export const DEFAULT_ADMIN_WORK_ORDER_FILTERS: AdminWorkOrdersFilters = {
 
 export function statusFilterValue(params: { get(name: string): string | null }) {
   const value = params.get('status');
-  return value === OPEN_WORK_ORDER_STATUSES ? 'open' : value ?? 'all';
+  if (value === OPEN_WORK_ORDER_STATUSES) return 'open';
+  if (value === CLOSED_WORK_ORDER_STATUSES) return 'closed';
+  return value ?? 'all';
 }
 
 export function readAdminWorkOrdersFilters(params: { get(name: string): string | null }): AdminWorkOrdersFilters {
@@ -49,6 +53,7 @@ export function buildAdminWorkOrdersQuery(
   const search = normalizeTruckSearch(filters.search);
   if (search) next.set('search', search);
   if (filters.status === 'open') next.set('status', OPEN_WORK_ORDER_STATUSES);
+  else if (filters.status === 'closed') next.set('status', CLOSED_WORK_ORDER_STATUSES);
   else if (filters.status !== 'all' && filters.status) next.set('status', filters.status);
   if (filters.priority !== 'all' && filters.priority) next.set('priority', filters.priority);
   if (filters.sort !== 'updatedAt') next.set('sort', filters.sort);

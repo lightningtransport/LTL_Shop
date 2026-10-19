@@ -23,7 +23,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await expect(page.getByText('Read only')).toHaveCount(0);
 
   await page.goto('/admin/catalog');
-  await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jobs catalog' })).toBeVisible();
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
@@ -137,7 +137,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await loginToAdmin(page, 'system-admin@lightning.local');
 
   await page.goto('/admin/catalog');
-  await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jobs catalog' })).toBeVisible();
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();

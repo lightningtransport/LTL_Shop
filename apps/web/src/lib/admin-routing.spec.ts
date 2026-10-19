@@ -43,7 +43,7 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').currentOperations).toBe('Current shop operations');
     expect(getAdminMessages('es').currentOperations).toBe('Operaciones actuales del Shop');
     expect(getAdminMessages('en').dashboard).toBe('Dashboard');
-    expect(getAdminMessages('es').dashboard).toBe('Operaciones');
+    expect(getAdminMessages('es').dashboard).toBe('Panel');
     expect(getAdminMessages('en').workOrders).toBe('Work Orders');
     expect(getAdminMessages('es').workOrders).toBe('Work Orders');
     expect(getAdminMessages('en').shellControls).toBe('Shop Admin controls');

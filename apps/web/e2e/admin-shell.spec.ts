@@ -141,16 +141,16 @@ test.describe('Shop Admin Phase 2A', () => {
     }
 
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Panel', exact: true })).toBeVisible();
     await expect(page.getByText('Lo que te necesita ahora, en orden. Cada acción se hace aquí.')).toBeVisible();
     await expect(page.getByRole('heading', { name: /^Te necesita/ })).toBeVisible();
     await expect(page.getByTestId('dashboard-group-close')).toContainText('Listos para cerrar');
     await expect(page.getByText(/^En vivo · actualizado /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Fuente:|Generado/i)).toHaveCount(0);
     const esNav = page.getByRole('complementary', { name: 'Navegación de Shop Admin' });
-    await expect(esNav.getByRole('link', { name: 'Operaciones', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Panel', exact: true })).toBeVisible();
     await expect(esNav.getByRole('link', { name: 'Work Orders', exact: true })).toBeVisible();
-    await expect(esNav.getByRole('link', { name: 'Operaciones del patio', exact: true })).toBeVisible();
+    await expect(esNav.getByRole('link', { name: 'Patio', exact: true })).toBeVisible();
     // LTR-170: Admin says Truck in Spanish too (glossary); "unidad" stays in the mechanic app.
     await expect(esNav.getByRole('link', { name: 'Trucks', exact: true })).toBeVisible();
     await expect(esNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
@@ -173,23 +173,23 @@ test.describe('Shop Admin Phase 2A', () => {
     const mobileNav = dialog.getByRole('navigation', { name: 'Shop Admin mobile navigation' });
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav).not.toHaveClass(/grid-cols-2/);
-    for (const name of ['Dashboard', 'Work Orders', 'Yard Operations', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Labor rate', 'History']) {
+    for (const name of ['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'Internal invoices', 'People', 'Jobs', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Shop rates']) {
       await expect(mobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
-    // LTR-122: grouped by job — operation, setup, audit.
-    for (const group of ['Operations', 'Setup', 'Audit']) {
+    // LTR-122: grouped by job — operation, setup (LTR-248: History became the Closed filter of Work Orders).
+    for (const group of ['Operations', 'Setup']) {
       await expect(mobileNav.getByText(group, { exact: true })).toBeVisible();
     }
     // LTR-200 / D-PC7: the Manager also has Parts & costs; PCA8: week's work, month's close, then catalogs, and Labor rate under Setup.
     // D47 / HU-M20: Stock left the menu; Parts is the inventory.
-    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Internal invoices', 'Parts', 'Vendors', 'People', 'Job Catalog', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Labor rate', 'History']);
+    await expect(mobileNav.getByRole('link')).toHaveText(['Dashboard', 'Yard Operations', 'Work Orders', 'Trucks', 'Purchases', 'Outside repairs', 'Parts', 'Vendors', 'Internal invoices', 'People', 'Jobs', 'Shop workflow', 'Inspection checklist', 'Samsara', 'Shop rates']);
 
     await page.getByRole('button', { name: 'Close Shop Admin navigation' }).click();
     await switchLanguage(page, 'es');
-    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Panel', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir navegación de Shop Admin' }).click();
     const esMobileNav = page.getByRole('dialog').getByRole('navigation', { name: 'Navegación móvil de Shop Admin' });
-    for (const name of ['Operaciones', 'Work Orders', 'Operaciones del patio', 'Trucks', 'Personas', 'Catálogo de Jobs', 'Historial']) {
+    for (const name of ['Panel', 'Work Orders', 'Patio', 'Trucks', 'Personas', 'Jobs']) {
       await expect(esMobileNav.getByRole('link', { name, exact: true })).toBeVisible();
     }
     await expect(esMobileNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0);
@@ -516,10 +516,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page).toHaveURL(/\/admin\/mechanics$/);
     await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
-    await openAdminNavLink(page, 'History');
-    await expect(page).toHaveURL(/\/admin\/history$/);
-    await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
+    // LTR-248: History is the Closed filter of Work Orders; its old link lands there.
+    await page.goto('/admin/history');
+    await expect(page).toHaveURL(/\/admin\/work-orders\?status=completed%2Ccancelled$/);
+    await expect(page.getByText('WO-0104').first()).toBeVisible();
     await openAdminNavLink(page, 'Trucks');
     await expect(page).toHaveURL(/\/admin\/trucks$/);
     await expect(page.getByRole('heading', { name: 'Trucks' })).toBeVisible();
@@ -527,9 +527,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0101').first()).toBeVisible();
     await expect(page.getByText('No open Work Order').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /edit|save/i })).toHaveCount(0);
-    await openAdminNavLink(page, 'Job Catalog');
+    await openAdminNavLink(page, 'Jobs');
     await expect(page).toHaveURL(/\/admin\/catalog$/);
-    await expect(page.getByRole('heading', { name: 'Job Catalog' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Jobs catalog' })).toBeVisible();
     await expect(page.getByText('Brakes').first()).toBeVisible();
     await expect(page.getByText('Suspension').first()).toBeVisible();
     await expect(page.getByText('Inactive', { exact: true }).first()).toBeVisible();
@@ -614,7 +614,7 @@ test.describe('Shop Admin Phase 2A', () => {
     expect(adminEsHtml).not.toContain('Current shop operations');
 
     await page.goto('/admin');
-    await expect(page.getByRole('heading', { name: 'Operaciones', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Panel', exact: true })).toBeVisible();
     await switchLanguage(page, 'en');
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     const localeCookie = (await page.context().cookies()).find((cookie) => cookie.name === 'ltl_shop_locale');

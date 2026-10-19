@@ -72,7 +72,8 @@ test.describe('shared UI consistency', () => {
 
   test('filter actions keep their labels on one line', async ({ page }) => {
     await signInAsManager(page);
-    for (const path of ['/admin/trucks', '/admin/mechanics', '/admin/history']) {
+    // LTR-248: History left the menu (it is the Closed filter of Work Orders, whose filter sheet is LTR-236).
+    for (const path of ['/admin/trucks', '/admin/mechanics']) {
       await page.goto(path);
       await page.setViewportSize({ width: 320, height: 568 });
       // LTR-169: lists with extra filters keep Apply in the Filters sheet on phones, like Work Orders and Yard.

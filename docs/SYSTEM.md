@@ -964,6 +964,13 @@ lateral de 340 px en computadora, una columna en el teléfono):
 - Los avisos de éxito son toasts (neutros, con icono, abajo a la derecha);
   un error queda entre el encabezado y el aviso con **Reload**.
 
+**Menú (LTR-248, D47 P34 y P36):**
+- La página History salió del menú y ahora es el filtro **Closed** de Work Orders (`status=completed,cancelled`). `/admin/history` redirige ahí y guarda la búsqueda. El grupo Audit desapareció.
+- Cambian los nombres: "Job Catalog" ahora es **Jobs** (título "Jobs catalog") y "Labor rate" ahora es **Shop rates**.
+- En español, el Dashboard es **Panel** y Yard Operations es **Patio**.
+- Internal invoices pasa al final de Parts & costs.
+- Un Shop Admin sin escritura se ve como "Shop Admin · read only" y no recibe el enlace a `/qc`.
+
 **Listas** (Trucks, Mechanics, Catalog, History): en el teléfono cada fila es
 una tarjeta. Mechanics e History tienen un panel **Filters** con el número de
 filtros activos. Mechanics muestra las capabilities por nombre (Standard, PM,
