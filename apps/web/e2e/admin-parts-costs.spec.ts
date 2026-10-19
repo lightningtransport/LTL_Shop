@@ -105,14 +105,14 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   await form.getByLabel('Lines go to different trucks').check();
   await form.getByLabel('Truck 1').selectOption({ label: 'Truck 606' });
   await expect(form.getByTestId('purchase-destination')).toContainText(/Truck 606: \$49\.\d\d/);
-  await expect(form.getByTestId('purchase-destination')).toContainText(/No truck · shop stock: \$10\.\d\d/);
+  await expect(form.getByTestId('purchase-destination')).toContainText(/No truck: \$10\.\d\d/);
   await expect(form.getByTestId('files-off')).toBeVisible();
   await form.getByRole('button', { name: 'Save purchase' }).click();
 
   await expect(page.getByText('Purchase saved · $59.70')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'FleetPride · 88412200' })).toBeVisible();
   await expect(page.getByTestId('truck-shares')).toContainText('Truck 606');
-  await expect(page.getByTestId('truck-shares')).toContainText('No truck · shop stock');
+  await expect(page.getByTestId('truck-shares')).toContainText('No truck');
 
   await page.getByRole('button', { name: 'Void' }).click();
   const voidDialog = page.getByRole('dialog');
