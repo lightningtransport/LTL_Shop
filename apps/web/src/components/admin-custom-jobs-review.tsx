@@ -5,6 +5,7 @@ import { Link2, Plus, RotateCcw, Check } from 'lucide-react';
 import type { AdminCustomJobGroupDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { AdminBackLink, Badge, Button, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { reviewAdminCustomJobs, undoAdminCustomJobs, useAdminCatalogSearch, useAdminCustomJobs } from '@/lib/admin-data';
@@ -27,6 +28,8 @@ export function AdminCustomJobsReview({ locale, messages }: { locale: AdminLocal
   const { showToast } = useActionToast();
   const [tab, setTab] = useState<'pending' | 'reviewed'>('pending');
   const { data, error, isLoading, mutate } = useAdminCustomJobs(tab);
+  // LTR-245 (UX-5-007): "Job Catalog › Custom Jobs to review" in the top bar.
+  useAdminBreadcrumb([{ label: messages.jobCatalog, href: '/admin/catalog' }, { label: messages.cjInbox }]);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);

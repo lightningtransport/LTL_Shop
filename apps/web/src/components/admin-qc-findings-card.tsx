@@ -8,6 +8,7 @@ import { AdminNavLink } from './admin-nav-link';
 import { Button, InlineAlert, Input, SectionCard, Select } from './ui';
 import { addAdminQcFindingToJob, dismissAdminQcFinding } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
+import { adminTruckHref } from '@/lib/admin-truck-origin';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 
@@ -83,7 +84,7 @@ function FindingRow({ finding, data, messages, canManage, onChanged }: {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild size="sm" variant="outline">
-              <AdminNavLink href={`/admin/trucks/${data.truck.id}#add-work`}>{messages.qcFindingNewJob}</AdminNavLink>
+              <AdminNavLink href={`${adminTruckHref(data.truck.id, `/admin/work-orders/${data.id}`)}#add-work`}>{messages.qcFindingNewJob}</AdminNavLink>
             </Button>
             {openJobs.length ? (
               <>

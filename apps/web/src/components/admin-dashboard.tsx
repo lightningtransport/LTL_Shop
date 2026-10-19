@@ -13,7 +13,7 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { cn } from '@/lib/utils';
 import { formatShortDateTime } from '@/lib/work-order-view';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminTruckHref, adminWorkOrderHref } from '@/lib/admin-truck-origin';
 import { useAuth } from '@/lib/auth-context';
 import { formatVehicleYmm } from '@/lib/format';
 import { adminPriorityLabel } from '@/lib/status-chips';
@@ -186,7 +186,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
           <ul className="divide-y">
             {data.openQcFindings.map((finding) => (
               <li key={finding.id} className="px-4 py-2.5 text-sm">
-                <Link href={`/admin/work-orders/${finding.workOrderId}`} className="tap-inline hover:underline">
+                <Link href={adminWorkOrderHref(finding.workOrderId, '/admin')} className="tap-inline hover:underline">
                   <span className="font-medium">{finding.truckNumber}</span> · “{finding.text}”
                 </Link>
                 <p className="text-xs text-muted-foreground">{finding.kind === 'blocking' ? messages.qcFindingBlocking : messages.qcFindingNote} · {finding.workOrderDisplayId}</p>
@@ -334,7 +334,7 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
         <div className="flex flex-wrap items-baseline gap-x-2">
           <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin')}>{fillPlaceholders(messages.woTitle, { truck: item.truck.truckNumber })}</Link>
           <span className="text-xs text-muted-foreground">
-            {vehicle ? `${vehicle} · ` : ''}<Link className="tap-inline font-mono hover:text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
+            {vehicle ? `${vehicle} · ` : ''}<Link className="tap-inline font-mono hover:text-foreground hover:underline" href={adminWorkOrderHref(item.id, '/admin')}>{item.displayId}</Link>
           </span>
           {item.priority === 'high' || item.priority === 'critical' ? <PriorityBadge priority={item.priority}>{adminPriorityLabel(item.priority, messages)}</PriorityBadge> : null}
         </div>
@@ -414,7 +414,7 @@ function RequestRow({ request, locale, messages, canManage, onChanged }: {
         <p className="text-xs text-muted-foreground">{request.author.name} · {formatShortDateTime(request.createdAt, locale)}</p>
       </div>
       <div className="flex flex-wrap gap-2 sm:justify-end">
-        <Button asChild variant="ghost"><Link href={`/admin/work-orders/${request.workOrderId}`}>{messages.dashboardOpenWorkOrder}</Link></Button>
+        <Button asChild variant="ghost"><Link href={adminWorkOrderHref(request.workOrderId, '/admin')}>{messages.dashboardOpenWorkOrder}</Link></Button>
         {canManage ? (
           <Button type="button" variant="outline" disabled={pending} onClick={() => void markHandled()}>
             <Check aria-hidden="true" />{pending ? messages.saving : messages.markWorkRequestHandled}

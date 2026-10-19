@@ -8,11 +8,14 @@ import { formatAdminDate } from '@/lib/admin-format';
 import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
+import { adminListFromPath, adminWorkOrderHref } from '@/lib/admin-truck-origin';
 
 export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
+  // LTR-245 (UX-5-008): the Work Order's breadcrumb comes back to History with the same filters.
+  const fromPath = adminListFromPath('/admin/history', query);
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [status, setStatus] = useState(searchParams.get('status') ?? 'all');
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminHistory(query);
@@ -71,7 +74,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
               primary: true,
               cell: (item) => (
                 <div>
-                  <Link className="tap-inline font-semibold text-primary hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
+                  <Link className="tap-inline font-semibold text-primary hover:underline" href={adminWorkOrderHref(item.id, fromPath)}>{item.displayId}</Link>
                   <p className="text-sm text-muted-foreground">{messages.truck} {item.truck.truckNumber}</p>
                 </div>
               ),

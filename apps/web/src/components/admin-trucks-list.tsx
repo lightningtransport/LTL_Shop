@@ -9,7 +9,7 @@ import { useActionToast } from './action-toast';
 import { TruckFormDialog } from './admin-truck-admin';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { truckNextStepText } from '@/lib/truck-next-step';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminListFromPath, adminTruckHref, adminWorkOrderHref } from '@/lib/admin-truck-origin';
 import { useAdminTrucks } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
@@ -39,6 +39,8 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
   const { data, error, isLoading, size, setSize, mutate, isValidating } = useAdminTrucks(query);
+  // LTR-245 (UX-5-008): the Truck and the Work Order come back here with the same search and filters.
+  const fromPath = adminListFromPath('/admin/trucks', query);
 
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
@@ -103,7 +105,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
               // TL-2: the vehicle once, year make model, under the number (no Make column).
               cell: (item) => (
                 <div>
-                  <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, '/admin/trucks')}>{item.truck.truckNumber}</Link>
+                  <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, fromPath)}>{item.truck.truckNumber}</Link>
                   <p className="text-sm text-muted-foreground">{formatVehicleYmm(item.truck) || '—'}</p>
                   {item.truck.deactivatedAt || item.samsaraProposedVehicleId ? (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -121,7 +123,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
               testId: 'truck-next-step-cell',
               className: 'md:min-w-[18rem]',
               // TL-1, TL-5: the Work Order and its status on one line, the next step under it.
-              cell: (item) => <WorkCell item={item} messages={messages} />,
+              cell: (item) => <WorkCell item={item} messages={messages} fromPath={fromPath} />,
             },
             ...(showSamsara ? [
               {
@@ -161,7 +163,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   );
 }
 
-function WorkCell({ item, messages }: { item: AdminTruckSummaryDto; messages: AdminMessages }) {
+function WorkCell({ item, messages, fromPath }: { item: AdminTruckSummaryDto; messages: AdminMessages; fromPath: string }) {
   const next = item.nextStep && item.nextStep.kind !== 'create_work_order' ? truckNextStepText(item.nextStep, messages) : null;
   // TL-3: "In Service" only when it says something (no open Work Order and the truck is back on the road).
   const inService = !item.openWorkOrder && item.operationalStatus === TruckOperationalStatus.IN_SERVICE;
@@ -169,7 +171,7 @@ function WorkCell({ item, messages }: { item: AdminTruckSummaryDto; messages: Ad
     <div className="space-y-1">
       {item.openWorkOrder ? (
         <div className="flex flex-wrap items-center gap-2 max-md:justify-end">
-          <Link className="tap-inline font-medium text-primary hover:underline" href={`/admin/work-orders/${item.openWorkOrder.id}`}>{item.openWorkOrder.displayId}</Link>
+          <Link className="tap-inline font-medium text-primary hover:underline" href={adminWorkOrderHref(item.openWorkOrder.id, fromPath)}>{item.openWorkOrder.displayId}</Link>
           <WorkOrderStatusBadge status={item.openWorkOrder.status}>{workOrderStatusLabel(item.openWorkOrder.status, messages)}</WorkOrderStatusBadge>
         </div>
       ) : !next ? (

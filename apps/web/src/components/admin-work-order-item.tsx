@@ -7,7 +7,7 @@ import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
-import { adminTruckHref } from '@/lib/admin-truck-origin';
+import { adminTruckHref, adminWorkOrderHref } from '@/lib/admin-truck-origin';
 import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { truckNextStepText } from '@/lib/truck-next-step';
@@ -40,7 +40,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
           <Link className="tap-inline font-display text-lg font-semibold text-primary hover:underline" href={adminTruckHref(item.truck.id, fromPath)}>{item.truck.truckNumber}</Link>
           <p className="mt-1 text-sm text-muted-foreground">
             {messages.workOrder}{' '}
-            <Link className="tap-inline font-medium text-foreground hover:underline" href={`/admin/work-orders/${item.id}`}>{item.displayId}</Link>
+            <Link className="tap-inline font-medium text-foreground hover:underline" href={adminWorkOrderHref(item.id, fromPath)}>{item.displayId}</Link>
             {' · '}
             {/* LTR-189 (W8): with a Next step below, this line only counts the Jobs. */}
             {nextStepText && item.category.name !== 'PM' && item.nextJobName !== undefined && item.jobsTotal > 0
@@ -103,7 +103,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
           )}
         </div>
       ) : null}
-      {!compact ? <Button asChild variant="outline" size="sm" className="mt-4"><Link href={`/admin/work-orders/${item.id}`}>{messages.details}</Link></Button> : null}
+      {!compact ? <Button asChild variant="outline" size="sm" className="mt-4"><Link href={adminWorkOrderHref(item.id, fromPath)}>{messages.details}</Link></Button> : null}
     </article>
   );
 }

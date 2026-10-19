@@ -1913,6 +1913,8 @@ const messages = {
     samsaraDisconnected: 'Samsara disconnected.',
     samsaraProposalBanner: 'A Samsara vehicle matches the VIN of this truck.',
     samsaraChooseInTruck: 'Some fields differ from Samsara. Choose on the truck which ones stay.',
+    // LTR-245 (UX-5-006): a Truck opened from Samsara pairing goes back there.
+    backToSamsara: 'Back to Samsara',
   },
   es: {
     locale: 'es',
@@ -3809,6 +3811,8 @@ const messages = {
     samsaraDisconnected: 'Samsara desconectado.',
     samsaraProposalBanner: 'Un vehículo de Samsara coincide con el VIN de este camión.',
     samsaraChooseInTruck: 'Algunos datos difieren de Samsara. Elige en el camión cuáles se quedan.',
+    // LTR-245 (UX-5-006): a Truck opened from Samsara pairing goes back there.
+    backToSamsara: 'Volver a Samsara',
   },
 } as const;
 

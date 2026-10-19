@@ -6,6 +6,7 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { CatalogJobRow, CategoryMenu, CategoryStatusNote } from './admin-catalog-manage';
 import { AdminWriteTip } from './admin-write-tip';
+import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { AdminBackLink, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { ApiError } from '@/lib/api';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
@@ -20,6 +21,8 @@ export function AdminCatalogCategoryDetail({ id, messages }: { id: string; local
   const canWrite = useCanShowManagerWrites();
   const router = useRouter();
   const { data, error, isLoading, mutate } = useAdminCatalogCategory(id);
+  // LTR-245 (UX-5-007): "Job Catalog › Brakes" in the top bar.
+  useAdminBreadcrumb(data ? [{ label: messages.jobCatalog, href: '/admin/catalog' }, { label: data.name }] : null);
   if (isLoading) return <PageSkeleton label={messages.catalogTitle} />;
   if (error instanceof ApiError && error.status === 404) {
     return <EmptyState><p>{messages.catalogNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/catalog">{messages.backToCatalog}</Link></Button></EmptyState>;

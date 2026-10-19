@@ -3,12 +3,26 @@ import type { AdminMessages } from './admin-messages';
 /**
  * LTR-110: Truck Detail is reached from Trucks, Yard Operations and Work Orders.
  * Links pass `?from=<admin path>` so the back link matches the origin.
- * Unknown or missing origins keep the historical Yard Operations behavior.
+ * LTR-245 (UX-5-006): unknown or missing origins go to Trucks, the item the menu marks.
  */
 export type AdminTruckOrigin = {
   href: string;
   backLabel: string;
 };
+
+/**
+ * LTR-245 (UX-5-008): a list passes itself with its query as `from`, so going back keeps its filters
+ * (the Yard's pattern). `search` may come with or without the leading "?".
+ */
+export function adminListFromPath(pathname: string, search: string | URLSearchParams | null | undefined) {
+  const query = (search ?? '').toString().replace(/^\?/, '');
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+/** LTR-245: a Work Order link that knows where it was opened from. */
+export function adminWorkOrderHref(workOrderId: string, fromPath: string) {
+  return `/admin/work-orders/${workOrderId}?from=${encodeURIComponent(fromPath)}`;
+}
 
 export function adminTruckHref(truckId: string, fromPath: string) {
   return `/admin/trucks/${truckId}?from=${encodeURIComponent(fromPath)}`;
@@ -26,12 +40,9 @@ export function safeAdminPath(from: string | null | undefined): string | null {
 }
 
 export function adminTruckOrigin(from: string | null | undefined, messages: AdminMessages): AdminTruckOrigin {
-  const yard = {
-    href: '/admin/yard-operations',
-    backLabel: messages.backToYardOperations,
-  };
+  const trucks = { href: '/admin/trucks', backLabel: messages.backToTrucks };
   // Only same-app Admin paths; never follow an external or protocol-relative URL.
-  if (!from || !from.startsWith('/admin') || from.startsWith('//')) return yard;
+  if (!from || !from.startsWith('/admin') || from.startsWith('//')) return trucks;
   const path = from.split(/[?#]/)[0];
   if (path === '/admin/trucks') {
     return { href: from, backLabel: messages.backToTrucks };
@@ -45,7 +56,8 @@ export function adminTruckOrigin(from: string | null | undefined, messages: Admi
   if (path === '/admin') {
     return { href: from, backLabel: messages.backToDashboard };
   }
-  if (path === '/admin/yard-operations') return { ...yard, href: from };
+  if (path === '/admin/yard-operations') return { href: from, backLabel: messages.backToYardOperations };
+  if (path === '/admin/setup/samsara') return { href: from, backLabel: messages.backToSamsara };
   // PCA2: Parts & costs → Truck (Costs tab) → back to the purchase, the outside repair, the invoice or the list.
   if (path.startsWith('/admin/parts/purchases/')) return { href: from, backLabel: messages.backToPurchase };
   if (path === '/admin/parts/purchases') return { href: from, backLabel: messages.pcBackToPurchases };
@@ -53,7 +65,41 @@ export function adminTruckOrigin(from: string | null | undefined, messages: Admi
   if (path === '/admin/parts/outside-repairs') return { href: from, backLabel: messages.pcBackToOutside };
   if (path.startsWith('/admin/parts/internal-invoices/')) return { href: from, backLabel: messages.backToInternalInvoice };
   if (path === '/admin/parts/internal-invoices') return { href: from, backLabel: messages.pcInvoiceBackToList };
-  return yard;
+  return trucks;
+}
+
+/** The Truck breadcrumb's parent ("Trucks › 601"): the screen the Truck was opened from. */
+export function adminTruckOriginCrumb(href: string, messages: AdminMessages) {
+  const path = href.split(/[?#]/)[0];
+  if (path === '/admin/yard-operations') return messages.yardOperations;
+  if (path === '/admin/work-orders') return messages.workOrders;
+  if (path.startsWith('/admin/work-orders/')) return messages.workOrder;
+  if (path === '/admin') return messages.dashboard;
+  if (path === '/admin/setup/samsara') return messages.samsaraNav;
+  // PCA2: opened from Parts & costs.
+  if (path.startsWith('/admin/parts/purchases')) return messages.pcPurchases;
+  if (path.startsWith('/admin/parts/outside-repairs')) return messages.pcOutsideRepairs;
+  if (path.startsWith('/admin/parts/internal-invoices')) return messages.pcInvoices;
+  return messages.trucks;
+}
+
+/**
+ * LTR-245 (UX-5-008): the Work Order breadcrumb's parent when it was not opened from its Truck. The Work Orders list
+ * keeps its filters; the Dashboard, Trucks, History or Parts & costs name themselves; anything else is the plain list.
+ */
+export function adminWorkOrderParentCrumb(from: string | null | undefined, messages: AdminMessages): { label: string; href: string } {
+  const list = { label: messages.workOrders, href: '/admin/work-orders' };
+  const safe = safeAdminPath(from);
+  if (!safe) return list;
+  const path = safe.split(/[?#]/)[0];
+  if (path === '/admin/work-orders') return { label: messages.workOrders, href: safe };
+  if (path === '/admin') return { label: messages.dashboard, href: safe };
+  if (path === '/admin/trucks') return { label: messages.trucks, href: safe };
+  if (path === '/admin/history') return { label: messages.history, href: safe };
+  if (path.startsWith('/admin/parts/purchases')) return { label: messages.pcPurchases, href: safe };
+  if (path.startsWith('/admin/parts/outside-repairs')) return { label: messages.pcOutsideRepairs, href: safe };
+  if (path.startsWith('/admin/parts/internal-invoices')) return { label: messages.pcInvoices, href: safe };
+  return list;
 }
 
 /**
