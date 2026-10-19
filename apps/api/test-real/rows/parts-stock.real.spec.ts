@@ -124,6 +124,23 @@ describe('Manager: el stock del taller (D45, ST-3)', () => {
     same('el mecánico ya no la ve', namedJob(mechanic, 'Tires').parts, []);
   });
 
+  it('A144 | Return to stock devuelve 1 de 2: vuelve al mismo costo y el camión paga solo la que queda; después la otra (D47, LTR-247)', async () => {
+    const recap = await part('Recap partial', { tireSize: '11R22.5', tireType: 'recap' });
+    ok('conteo', await manager.post(`${STOCK}/count`, { partId: recap, counted: 3, unitCostCents: 20000, reason: 'Conteo inicial' }));
+    const { workOrderId } = await plannedWo('968', [{ category: 'Tires & Wheels', job: 'Tires', assignee: USERS.general }]);
+    const tires = namedJob(await adminWo(workOrderId), 'Tires');
+    const issued = ok('sacar 2', await manager.post(`${STOCK}/issue`, { partId: recap, quantity: 2, workOrderJobId: tires.id }));
+    refused('más de las que salieron', await manager.post(`${STOCK}/movements/${issued.id}/return`, { reason: 'Sobraron', quantity: 3 }), 400, 'RETURN_MORE_THAN_ISSUED');
+    ok('devolver 1', await manager.post(`${STOCK}/movements/${issued.id}/return`, { reason: 'Sobró una', quantity: 1 }));
+    same('vuelven a ser 2 a $200', await onHand(recap), ['2.00', 40000, 20000]);
+    same('la WO paga una', (await adminWo(workOrderId)).costs?.partsCents, 20000);
+    const left = namedJob(await adminWo(workOrderId), 'Tires').stockParts.filter((row: Json) => !row.returned);
+    same('el Job tiene 1 sin devolver', left.map((row: Json) => [row.quantity, row.valueCents]), [['1.00', 20000]]);
+    ok('devolver la otra', await manager.post(`${STOCK}/movements/${left[0].movementId}/return`, { reason: 'No hacía falta' }));
+    same('vuelven las 3', (await onHand(recap))[0], '3.00');
+    same('la WO no paga nada', (await adminWo(workOrderId)).costs?.partsCents, 0);
+  });
+
   it('A121 | Una compra cuyo stock ya salió no se anula ni se corrige a menos; devuelto, sí', async () => {
     const vendorId = await vendor('TruckPro');
     const pump = await part('Pump void');

@@ -112,6 +112,28 @@ describe('Manager: el PM descuenta del stock y cobra el cambio de aceite (D45, S
     same('el camión no recibe un stock_issue por ese filtro', (await ledger(workOrderId)).filter((row) => row.sourceType === 'stock_issue').length, 0);
   });
 
+  it('A143 | Antes de completar, el Job de PM dice qué va a pasar con cada parte: sale del estante, ya comprada, sacada a mano o no hay (D47, LTR-247)', async () => {
+    const { truck, workOrderId, partId } = await pmReadyToClose('931');
+    const pmJob = laneJob(await adminWo(workOrderId), 'pm');
+    const preview = async () => ok('vista previa del PM', await manager.get(`/admin/parts-costs/jobs/${pmJob.id}/pm-preview`));
+    same('sin estante: no se cobra', (await preview()).parts.map((row: { partId: string; status: string }) => [row.partId, row.status]), [[partId, 'not_in_stock']]);
+    ok('precio del aceite desde hoy', await manager.post('/admin/parts-costs/pm-oil-prices', { amountCents: 18500, effectiveFrom: today() }));
+    ok('hay 2 a $24', await manager.post(`${STOCK}/count`, { partId, counted: 2, unitCostCents: 2400, reason: 'Conteo inicial' }));
+    const fromShelf = await preview();
+    same('sale del estante a $24', fromShelf.parts.map((row: { status: string; unitCostCents: number | null }) => [row.status, row.unitCostCents]), [['from_stock', 2400]]);
+    same('y el aceite a precio fijo', fromShelf.oilCents, 18500);
+
+    const vendorId = ok('proveedor', await manager.post('/admin/parts-costs/vendors', { name: `Rush ${RUN}` })).id as string;
+    const buy = (body: Record<string, unknown>) => manager.post('/admin/parts-costs/purchases', { vendorId, invoiceDate: today(), taxCents: 0, freightCents: 0, ...body }, { 'Idempotency-Key': randomUUID() });
+    const loose = ok('compra al camión sin Job', await buy({ invoiceNumber: `N-${RUN}`, lines: [{ partId, quantity: 1, unitCostCents: 3000, truckId: truck.id }] }));
+    // Other rows may have bought for the same truck: this one has to be there.
+    same('avisa que una compra al camión sin Job tiene esa parte', (await preview()).truckPurchasesWithoutJob.some((row: { purchaseId: string; partId: string }) => row.purchaseId === loose.id && row.partId === partId), true);
+    ok('compra al camión para el Job de PM', await buy({ invoiceNumber: `J-${RUN}`, lines: [{ partId, quantity: 1, unitCostCents: 3000, truckId: truck.id, workOrderJobId: pmJob.id }] }));
+    same('ya comprada para este Job: no se cobra otra vez', (await preview()).parts.map((row: { status: string }) => row.status), ['bought_for_job']);
+    refused('un Job que no es de PM', await manager.get(`/admin/parts-costs/jobs/${laneJob(await adminWo(workOrderId), 'alignment').id}/pm-preview`), 400, 'PM_JOB_REQUIRED');
+    refused('el mecánico no la ve', await as(USERS.pm).get(`/admin/parts-costs/jobs/${pmJob.id}/pm-preview`), 403);
+  });
+
   it('A134 | Una parte del PM que el Manager ya sacó del estante al Job de PM ("Parts from stock") no sale otra vez al cerrar', async () => {
     const { workOrderId, partId } = await pmReadyToClose('931');
     const pmJob = laneJob(await adminWo(workOrderId), 'pm');

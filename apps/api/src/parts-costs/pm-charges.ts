@@ -1,7 +1,7 @@
 import { formatCents } from '@ltl-shop/shared';
 import type { Prisma } from '@prisma/client';
 import { liveEntries, reverseSource, writeEntries } from './cost-ledger';
-import { balance, issueToJob, lockPart, undoIssue } from './stock-ledger';
+import { balance, issueToJob, lockPart, outValue, undoIssue } from './stock-ledger';
 
 /**
  * D45 / ST-5 (LTR-225, P29): what a PM costs the truck besides labor. Like labor (D34), it is written when the Work
@@ -33,6 +33,60 @@ async function chargedToPmJob(tx: Prisma.TransactionClient, pmJobId: string | nu
     }),
   ]);
   return new Set([...bought, ...issued].map((row) => row.partId!));
+}
+
+export type PmPreviewStatus = 'from_stock' | 'bought_for_job' | 'taken_for_job' | 'not_in_stock';
+
+/**
+ * D47 / LTR-247: what completing this PM will charge, per part the mechanic picked, with the same rule as
+ * `syncWorkOrderPmCharges` (P29, LTR-242): bought for the PM Job or taken from stock by hand → not again; on the
+ * shelf → one unit at the average; not on the shelf → nothing. Also the truck's purchases with no Job that carry a
+ * picked part (the case LTR-242 does not catch: the Manager ties them to the PM Job if they were for it).
+ */
+export async function previewPmCharges(tx: Prisma.TransactionClient, pmJobId: string) {
+  const job = await tx.workOrderJob.findUnique({
+    where: { id: pmJobId },
+    select: {
+      id: true,
+      workOrder: { select: { truckId: true, createdAt: true } },
+      pmService: { select: { parts: { select: { partId: true, part: { select: { displayName: true, partNumber: true } } } } } },
+    },
+  });
+  if (!job) return null;
+  if (!job.pmService) return 'not_pm' as const;
+  const parts = job.pmService.parts;
+  const ids = parts.map((row) => row.partId);
+  const [bought, taken] = await Promise.all([
+    tx.partPurchaseLine.findMany({ where: { workOrderJobId: job.id, partId: { in: ids }, destination: 'truck', quantity: { gt: 0 }, purchase: { voidedAt: null } }, select: { partId: true } }),
+    tx.stockMovement.findMany({ where: { workOrderJobId: job.id, partId: { in: ids }, kind: 'issue', pmServiceId: null, reversals: { none: {} } }, select: { partId: true } }),
+  ]);
+  const boughtIds = new Set(bought.map((row) => row.partId!));
+  const takenIds = new Set(taken.map((row) => row.partId));
+  const rows = [];
+  for (const row of parts) {
+    let status: PmPreviewStatus;
+    let unitCostCents: number | null = null;
+    if (boughtIds.has(row.partId)) status = 'bought_for_job';
+    else if (takenIds.has(row.partId)) status = 'taken_for_job';
+    else {
+      const onHand = await balance(tx, row.partId);
+      if (onHand.hundredths >= 100) { status = 'from_stock'; unitCostCents = outValue(onHand, 100); } else status = 'not_in_stock';
+    }
+    rows.push({ partId: row.partId, displayName: row.part.displayName, partNumber: row.part.partNumber, status, unitCostCents });
+  }
+  const today = new Date(`${dateOnly(new Date())}T00:00:00.000Z`);
+  const price = await tx.pmOilPrice.findFirst({ where: { effectiveFrom: { lte: today } }, orderBy: { effectiveFrom: 'desc' } });
+  // The truck's purchases with no Job that carry a picked part, from a month before the Work Order on.
+  const since = new Date(job.workOrder.createdAt.getTime() - 30 * 24 * 3600 * 1000);
+  const loose = await tx.partPurchaseLine.findMany({
+    where: { partId: { in: ids }, destination: 'truck', truckId: job.workOrder.truckId, workOrderJobId: null, quantity: { gt: 0 }, purchase: { voidedAt: null, invoiceDate: { gte: since } } },
+    select: { partId: true, purchase: { select: { id: true, invoiceNumber: true } } },
+  });
+  return {
+    parts: rows,
+    oilCents: price && price.amountCents > 0 ? price.amountCents : null,
+    truckPurchasesWithoutJob: loose.map((row) => ({ purchaseId: row.purchase.id, invoiceNumber: row.purchase.invoiceNumber, partId: row.partId! })),
+  };
 }
 
 export async function syncWorkOrderPmCharges(tx: Prisma.TransactionClient, workOrderId: string, actorId: string) {

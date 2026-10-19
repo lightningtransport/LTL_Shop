@@ -748,7 +748,8 @@ export const adminStockIssueSchema = z.object({
   workOrderJobId: z.string().uuid(),
 });
 
-export const adminStockReturnSchema = z.object({ reason: z.string().trim().min(1).max(300) });
+/** D47 / LTR-247: `quantity` returns part of what left (1 of 2); without it, all of it. */
+export const adminStockReturnSchema = z.object({ reason: z.string().trim().min(1).max(300), quantity: quantity.optional() });
 
 /** D47 / HU-M20 (LTR-246): why an adjustment moved the shelf. */
 export const STOCK_ADJUST_REASONS = ['count', 'received', 'damaged', 'lost', 'other'] as const;

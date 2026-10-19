@@ -464,6 +464,14 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
     - `POST stock/remove`: **Remove from stock**, con `reason` Damaged, Lost u Other (Other pide nota). Sale al promedio, no cobra a ningún camión y nunca saca más de lo que hay (`NOT_ENOUGH_STOCK`).
     - Cada ajuste guarda `reason_code`: `count`, `received`, `damaged`, `lost` u `other`. Los conteos de antes de esta migración quedaron como `count`.
     - `GET stock?all=true`: todas las partes activas, también las que nunca se movieron (0). Lo Low va primero, después lo que hay en stock.
+  - **D47 / LTR-247: un solo "Parts…" en el menú del Job.** Reemplaza "Add parts invoice", "Parts from stock" y "Tires to put". La hoja tiene:
+    - las llantas de la inspección, solo en el Job que las tiene, con "Confirm tires…";
+    - lo que el Job ya tiene: comprado (con enlace a la compra) o del stock, con **Return…**, que pide cuántas y por qué (`POST stock/movements/:id/return` con `quantity`, A144). Una devolución parcial deshace la salida y vuelve a sacar lo que queda al mismo costo;
+    - **From stock**;
+    - **Buy for this Job**, que abre New purchase con el camión y el Job, y vuelve a la WO;
+    - el total.
+
+    En el Job de PM, `GET jobs/:jobId/pm-preview` (A143) dice por cada parte elegida qué va a pasar al completar: `from_stock` (y a cuánto), `bought_for_job`, `taken_for_job` o `not_in_stock`. Suma el aceite y avisa de compras del camión sin Job que traen esa parte. From stock no ofrece las partes del PM ya elegidas.
   - **Parts from stock** en el menú del Job (Manager y System Admin): saca una parte
     para ese Job (`POST /stock/issue`). El camión carga su costo en esa Work Order
     como una parte más (`truck_cost_entries` kind `part_purchase`, `source_type`

@@ -114,6 +114,8 @@ export function AdminJobTable({
 }) {
   const [dialog, setDialog] = useState<JobDialog | null>(null);
   const [stockJobId, setStockJobId] = useState<string | null>(null);
+  // D45 / ST-1: a parts invoice for this Job, with the truck and the Job already picked; saving comes back here.
+  const partsInvoiceHref = (jobId: string) => `/admin/parts/purchases?new=1&forTruck=${data.truck.id}&jobId=${jobId}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;
   const [tiresJobId, setTiresJobId] = useState<string | null>(null);
   const [pickerJobId, setPickerJobId] = useState<string | null>(null);
   // Stage 8 (mockup): the done and cancelled group starts open.
@@ -195,14 +197,11 @@ export function AdminJobTable({
     if (canSeeCosts && (isExternal || job.wentExternal || job.outsideInvoices?.length)) {
       items.push({ key: 'outside-invoice', label: messages.pcAddOutsideInvoice, icon: Receipt, testId: 'admin-wo-job-outside-invoice', href: outsideInvoiceHref });
     }
-    // D45 / ST-1: a parts invoice for this Job, with the truck and the Job already picked.
+    // D47 / LTR-247: one "Parts…" for everything a Job takes (it replaces "Add parts invoice", "Parts from stock"
+    // and "Tires to put"): the inspection's tires, what it has, from stock, and "Buy for this Job".
     if (canSeeCosts && job.status !== 'cancelled') {
-      const partsInvoiceHref = `/admin/parts/purchases?new=1&forTruck=${data.truck.id}&jobId=${job.id}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;
-      items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref });
-      // D45 / ST-3: take a part off the shelf for this Job (or give one back).
-      if (onStockChanged) items.push({ key: 'parts-stock', label: messages.pcStockFromJob, icon: Boxes, testId: 'admin-wo-job-parts-stock', onSelect: () => setStockJobId(job.id) });
-      // D45 / ST-4: the tires the inspection proposed on this Job.
-      if (onStockChanged && job.tires?.length) items.push({ key: 'tires', label: messages.pcTiresAction, icon: CircleDot, testId: 'admin-wo-job-tires', onSelect: () => setTiresJobId(job.id) });
+      if (onStockChanged) items.push({ key: 'parts', label: messages.pcJobPartsAction, icon: Package, testId: 'admin-wo-job-parts', onSelect: () => setStockJobId(job.id) });
+      else items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref(job.id) });
     }
     if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
@@ -497,10 +496,13 @@ export function AdminJobTable({
       {stockJobId && onStockChanged && data.jobs.some((job) => job.id === stockJobId) ? (
         <JobStockDialog
           job={data.jobs.find((job) => job.id === stockJobId)!}
+          isPm={isPmCategory(data.jobs.find((job) => job.id === stockJobId)!.category.name)}
+          buyHref={partsInvoiceHref(stockJobId)}
           locale={locale}
           messages={messages}
           onClose={() => setStockJobId(null)}
           onChanged={onStockChanged}
+          onTires={() => { setTiresJobId(stockJobId); setStockJobId(null); }}
         />
       ) : null}
       {dialog?.kind === 'helper' && dialogJob && onAddHelper ? (
