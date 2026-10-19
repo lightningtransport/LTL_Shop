@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-19 (D49 propuesta: J27 y HU-M21 "In shop" desde el geofence de Samsara, sin construir); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -62,6 +62,7 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J24 | Manager | se usa algo del taller en un camión | que salga del stock y cueste a ese camión una sola vez | que el costo por camión y la factura a Finanzas digan la verdad |
 | J25 | Manager | una inspección encuentra llantas malas | que el Job ya diga qué llanta va en cada posición (nueva o recap) y si la tengo | cambiarla ese mismo día sin escribir nada dos veces |
 | J26 | Manager | llegan muchas facturas de proveedores | cargarlas rápido, y más adelante que se lean solas y yo solo confirme | dejar de teclear facturas enteras |
+| J27 | Manager | un camión entra o sale del taller | ver en la app que está "In shop" y desde cuándo, sin abrir Samsara | saber qué camiones tengo en el patio para trabajarlos |
 
 Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
@@ -886,6 +887,27 @@ Las filas están en `apps/api/test-real/rows/parts-stock-care.real.spec.ts` y pa
 | Intenta sacar más de las que hay | No deja; dice cuántas hay | ✅ | A140 |
 | Fija el mínimo en 4 con 3 en stock | Sale "Low" en Parts | ✅ | A141 |
 | Crea una parte nueva | Sale en Parts con 0 en stock, sin moverse | ✅ | A142 |
+
+### HU-M21 · Saber qué camiones están en el shop (J27) — 🔲 propuesta (D49, LTR-55)
+
+**Quién:** el Manager. **Por qué:** en Samsara ya hay geofences, pero la app no dice cuándo un camión está en el taller; Yard Presence siempre es `UNKNOWN`.
+
+**Historia:** como Manager, quiero ver en Trucks, en el panel Truck y en el Yard qué camiones están dentro del geofence del shop y desde cuándo, para saber qué tengo en el patio sin abrir Samsara.
+
+**Flujo** (D49):
+1. El shop es el geofence **Home Office** de Samsara (id `12839282`, P37); Setup → Samsara lo muestra.
+2. En cada sync, la app guarda en qué geofence está cada camión y desde cuándo.
+3. **Trucks:** la columna Location dice **In shop · since 9:00 AM** en lugar de la dirección; filtro **In shop**.
+4. **Panel Truck y Yard:** el mismo "In shop" (o "Outside", con la última dirección).
+
+| ¿Qué pasa si…? | Debería | Estado | Fila |
+|---|---|---|---|
+| El camión entra al geofence del shop | En el siguiente sync dice "In shop · since" la hora de la lectura | 🔲 | — |
+| El camión sale | Dice "Outside" con su dirección; la hora de llegada se borra | 🔲 | — |
+| Renombran "Home Office" en Samsara | Sigue valiendo: se compara por id | 🔲 | — |
+| El camión no está conectado a Samsara | "Unknown", como hoy | 🔲 | — |
+| La última lectura tiene más de 24 h | Sigue "In shop" con su hora, en ámbar | 🔲 | — |
+| El camión está en otro geofence (cliente, proveedor) | "Outside"; el nombre de ese geofence se muestra como lugar | 🔲 | — |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

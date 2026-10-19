@@ -8,7 +8,8 @@ Admin Yard Phase 1 cards — **Incoming Trucks**, **Upcoming Departures**, and
 **Work location** — read Lightning `agent-reporting` through Nest. The
 `x-agent-key` stays on the API. It must never appear in `apps/web`, browser
 storage, or any `NEXT_PUBLIC_*` variable. **Presence / in-yard geofence is
-out of scope** and remains `UNKNOWN`.
+out of scope** and remains `UNKNOWN`. D49 (proposed 2026-10-19, LTR-55) will set
+Presence from the Samsara sync (the geofence in `gps.address`), not from this proxy.
 
 ## FE wiring
 
