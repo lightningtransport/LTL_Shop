@@ -27,7 +27,7 @@ async function mockPmHome(page: Page, mustChangePassword: boolean) {
 
 async function loginPm(page: Page) {
   await devLogin(page);
-  await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'PM mechanic' })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('MPM update password sheet', () => {
@@ -69,14 +69,14 @@ test.describe('MPM update password sheet', () => {
     await page.getByRole('button', { name: 'Close profile' }).click();
 
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'PM mechanic' })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Open profile for Dana PM' }).click();
     await expect(page.getByRole('heading', { name: 'Update password' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Close profile' }).click();
 
     await page.evaluate(() => sessionStorage.removeItem('ltl_shop_password_change_resolved'));
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'PM mechanic' })).toBeVisible({ timeout: 15_000 });
     // LTR-179 (U6): the language switch works even with a required password change pending.
     await page.getByRole('button', { name: 'Open profile for Dana PM' }).click();
     await page.getByRole('button', { name: 'Español' }).click();

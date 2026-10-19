@@ -354,7 +354,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
       .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
     ...(viewerId ? { resolvedBlocker: resolvedBlockerOrNull(wo, viewerId) } : {}),
     ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
-    // LTR-164 (#6): "Start Work" until I have worked here once, then "Continue".
+    // LTR-164 (#6): "Start work" until I have worked here once, then "Continue".
     ...(viewerId ? { myLaborStarted: sessions.some((session) => !session.userId || session.userId === viewerId) } : {}),
     // Stage MG-1 (MG5): the viewer's own time here, every day of this Work Order (D-MG2). The total stays for the Manager.
     ...(viewerId ? { myActiveLaborMs: myLaborMs(sessions, viewerId) } : {}),

@@ -59,7 +59,7 @@ export function StandardHome({
   const ready = data.created.filter((wo) => !blockedIds.has(wo.id));
 
   // UX-4-001: one primary action. With the clock running it is that Truck; otherwise the next work, in this
-  // order: a resolved blocker, yesterday's open work, the most urgent in progress, then Ready to Start.
+  // order: a resolved blocker, yesterday's open work, the most urgent in progress, then Ready to start.
   const nextId = clockId && inProgress.some((wo) => wo.id === clockId)
     ? clockId
     : (inProgress.find((wo) => wo.resolvedBlockerAwaitingContinue && workableOf(wo, userId).length)

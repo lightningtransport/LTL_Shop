@@ -4,9 +4,9 @@ import { devLogin } from './support/dev-login';
 test.describe('V2-002 TARGET ownership cutover', () => {
   test('Standard mechanic cannot create, pause, or add a Job', async ({ page }) => {
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('link', { name: /Create New Work Order/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Resume Work/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Resume work/i })).toHaveCount(0);
 
     await page.goto('/mechanic/standard/new', { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/Ask your Shop Manager to create a Work Order/i)).toBeVisible();
@@ -14,10 +14,10 @@ test.describe('V2-002 TARGET ownership cutover', () => {
 
     await page.goto('/work-orders/00000000-0000-4000-8000-000000000106', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Truck T-106' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole('button', { name: 'Report Blocker' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Finish Work' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Report blocker' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Finish work' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Add job/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Resume Work' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Resume work' })).toHaveCount(0);
     await expect(page.getByText(/Need additional work on this Truck/i)).toBeVisible();
   });
 

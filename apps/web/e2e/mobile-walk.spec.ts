@@ -117,12 +117,12 @@ test('mobile walk', async ({ page }, info) => {
 const FIELD: Array<{ email: string; prefix: string; pages: Array<[string, string, string?]> }> = [
   { email: 'alejandro-2@lightning.local', prefix: 'general', pages: [
     ['home', '/mechanic/standard'], ['trucks', '/mechanic/standard/trucks'], ['completed', '/mechanic/standard/completed'],
-    ['new', '/mechanic/standard/new'], ['wo', '/work-orders/{wo}'], ['wo-blocker', '/work-orders/{wo}', 'Report Blocker'], ['truck-history', '/trucks/{truck}/history'],
+    ['new', '/mechanic/standard/new'], ['wo', '/work-orders/{wo}'], ['wo-blocker', '/work-orders/{wo}', 'Report blocker'], ['truck-history', '/trucks/{truck}/history'],
   ] },
   { email: 'mechanic@lightning.local', prefix: 'alignment', pages: [['home', '/mechanic/standard'], ['wo', '/work-orders/{wo}']] },
   { email: 'daniel@lightning.local', prefix: 'pm', pages: [
     ['home', '/mechanic/pm'], ['trucks', '/mechanic/pm/trucks'], ['completed', '/mechanic/pm/completed'],
-    ['new', '/mechanic/pm/new'], ['wo', '/work-orders/{wo}'], ['wo-blocker', '/work-orders/{wo}', 'Report Blocker'],
+    ['new', '/mechanic/pm/new'], ['wo', '/work-orders/{wo}'], ['wo-blocker', '/work-orders/{wo}', 'Report blocker'],
   ] },
   { email: 'safety-1@lightning.local', prefix: 'safety', pages: [['review', '/qc'], ['review-open', '/qc', 'Continue review'], ['returned', '/qc?tab=returned'], ['done', '/qc?tab=done']] },
 ];

@@ -26,7 +26,7 @@ test.describe('Admin navigation without an API trip per click (P19)', () => {
 
   test('a mechanic who types /admin still gets the 403 screen from the signed profile', async ({ page }) => {
     await devLogin(page);
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible();
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();

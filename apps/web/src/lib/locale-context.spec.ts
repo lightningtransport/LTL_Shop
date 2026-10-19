@@ -124,7 +124,7 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').pauseUnavailableUntilInProgress).toMatch(/En progreso/);
     expect(getAdminMessages('en').pauseUnavailableUntilInProgress).toBe(getShopCopy('en').pauseUnavailableUntilInProgress);
     expect(getAdminMessages('es').pauseUnavailableUntilInProgress).toBe(getShopCopy('es').pauseUnavailableUntilInProgress);
-    expect(getShopCopy('en').workOrderAction('Start Work', 'WO-1001', '905')).toBe('Start Work truck 905, Work Order WO-1001');
+    expect(getShopCopy('en').workOrderAction('Start work', 'WO-1001', '905')).toBe('Start work truck 905, Work Order WO-1001');
     expect(getShopCopy('es').workOrderAction(getShopCopy('es').startWork, 'WO-1001', '905')).toBe('Iniciar trabajo unidad 905, Work Order WO-1001');
     expect(getShopCopy('en').lastReportedLocation).toBe('Last reported location');
     expect(getShopCopy('es').lastReportedLocation).toBe('Ubicación reportada');
@@ -136,12 +136,12 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').locationUpdatedOn.toLowerCase()).not.toContain('yard');
     expect(getShopCopy('en').loadingWorkOrder).toBe('Loading work order');
     expect(getShopCopy('es').retryWorkOrder).toBe('Reintentar Work Order');
-    expect(getShopCopy('en').viewWork).toBe('View Work');
+    expect(getShopCopy('en').viewWork).toBe('View work');
     expect(getShopCopy('es').viewDetails).toBe('Ver detalles');
     expect(getShopCopy('en').closeDialog).toBe('Close');
     expect(getShopCopy('es').closeDialog).toBe('Cerrar');
     expect(getShopCopy('es').waitingOnManagerBody).toMatch(/Manager cierra/);
-    expect(getShopCopy('en').workOptions).toBe('Work Options');
+    expect(getShopCopy('en').workOptions).toBe('Work options');
     expect(getShopCopy('es').activeJobsTitle).toBe('En curso');
     expect(getShopCopy('en').pmPausedTitle).toBe('Paused PM services');
     expect(getShopCopy('es').pmPausedTitle).toBe('Servicios de PM pausados');
@@ -155,7 +155,7 @@ describe('shop locale catalogs', () => {
     expect(getShopCopy('es').noPausedPmServices).not.toMatch(/Jobs/i);
     expect(getShopCopy('en').notes).toBe('Notes');
     expect(getShopCopy('es').notes).toBe('Notas');
-    expect(getShopCopy('en').saveNotes).toBe('Save Notes');
+    expect(getShopCopy('en').saveNotes).toBe('Save notes');
     expect(getShopCopy('es').unableToSaveNotes).toBe('No se pudieron guardar las notas.');
     expect(getShopCopy('en').pauseReasonLabel).toBe('Pause reason');
     expect(getShopCopy('es').pauseReasonLabel).toBe('Motivo de pausa');

@@ -314,7 +314,7 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 ### HU-ME1 · Ver lo que me toca (J6)
 
 **Flujo**
-1. Entra. La pantalla de inicio es **My Assigned Work** (pestañas abajo en el
+1. Entra. La pantalla de inicio es **My assigned work** (pestañas abajo en el
    teléfono: My work · Trucks · Completed). Arriba, la **franja del reloj** dice
    en qué camión corre ("Your clock · Truck 922 · since 10:45 AM") o que está
    detenido. Hay un solo botón principal: el camión del reloj o el siguiente
@@ -385,7 +385,7 @@ conductor, otro.
 
 ### HU-ME4 · Dejar notas y pedir trabajo (J7)
 
-**Flujo:** en el Work Order, escribe una **nota** o un **Request Work**
+**Flujo:** en el Work Order, escribe una **nota** o un **Request work**
 (trabajo extra que encontró). Lo que escribe y no envía queda en el teléfono
 hasta que lo publica con el botón (decisión del 2026-10-07, también para el PM).
 
@@ -396,7 +396,7 @@ hasta que lo publica con el botón (decisión del 2026-10-07, también para el P
 | Nota vacía | No deja | ✅ | A22 |
 | No tiene Jobs en ese camión | No puede escribir | ✅ | A22 |
 | El Work Order ya está cerrado | No deja (ni a él ni al Manager) | ✅ | A22 |
-| Lo que encontró fue en la inspección (D41) | No usa Request Work: los defectos de la hoja ya crean Jobs (HU-ME7). Request Work sigue para lo que encuentra mientras trabaja | ✅ | A86 |
+| Lo que encontró fue en la inspección (D41) | No usa Request work: los defectos de la hoja ya crean Jobs (HU-ME7). Request work sigue para lo que encuentra mientras trabaja | ✅ | A86 |
 
 ---
 
@@ -411,7 +411,7 @@ hasta que lo publica con el botón (decisión del 2026-10-07, también para el P
 2. Anota el **millaje observado**.
 3. Elige las **partes** usadas (solo aparecen las que sirven para ese
    camión). El millaje y las partes se guardan solos; las notas se
-   publican con **Add Note** y, mientras tanto, quedan en el teléfono.
+   publican con **Add note** y, mientras tanto, quedan en el teléfono.
 4. **Finish**.
 
 **Resultado:** el PM queda completado, el odómetro del camión se actualiza y

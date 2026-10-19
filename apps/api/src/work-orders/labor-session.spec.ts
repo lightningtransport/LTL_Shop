@@ -132,11 +132,11 @@ describe('openSessionFor (LTR-154 / D18)', () => {
 });
 
 describe('canCompleteJob with stopped labor', () => {
-  it('requires Start Work on an In Progress Work Order without an open session', () => {
+  it('requires Start work on an In Progress Work Order without an open session', () => {
     expect(canCompleteJob('in_progress', false)).toEqual({
       ok: false,
       code: 'START_REQUIRED',
-      message: 'Start Work before completing jobs.',
+      message: 'Start work before completing jobs.',
     });
     expect(canCompleteJob('in_progress', true)).toEqual({ ok: true });
     expect(canCompleteJob('in_progress')).toEqual({ ok: true });
@@ -203,7 +203,7 @@ function serviceFor(wo: ReturnType<typeof standardWorkOrder>) {
   return { service, tx, activity };
 }
 
-describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
+describe('mechanic Start work / Continue (LTR-124, LTR-154 / D18)', () => {
   it('reopens labor on an In Progress Work Order with a new pending Job', async () => {
     const { service, tx } = serviceFor(standardWorkOrder());
 
@@ -227,7 +227,7 @@ describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
     });
   });
 
-  it('rejects Start Work while the mechanic already has a session open', async () => {
+  it('rejects Start work while the mechanic already has a session open', async () => {
     const { service, tx } = serviceFor(standardWorkOrder({ sessions: [{ id: 'session-1', startedAt, endedAt: null, userId: 'mech-1' }] }));
 
     await expect(service.start(mechanic, 'wo-1')).rejects.toMatchObject({
@@ -236,7 +236,7 @@ describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
     expect(tx.workSession.create).not.toHaveBeenCalled();
   });
 
-  it('rejects Start Work when the mechanic has no pending Job of their own', async () => {
+  it('rejects Start work when the mechanic has no pending Job of their own', async () => {
     const wo = standardWorkOrder();
     const { service, tx } = serviceFor(standardWorkOrder({
       jobs: [
@@ -251,7 +251,7 @@ describe('mechanic Start Work / Continue (LTR-124, LTR-154 / D18)', () => {
     expect(tx.workSession.create).not.toHaveBeenCalled();
   });
 
-  it('rejects completing a Job before Start Work when labor is stopped', async () => {
+  it('rejects completing a Job before Start work when labor is stopped', async () => {
     const { service, tx } = serviceFor(standardWorkOrder());
 
     await expect(service.completeJob(mechanic, 'wo-1', 'job-new')).rejects.toMatchObject({

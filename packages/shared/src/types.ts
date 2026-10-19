@@ -339,7 +339,7 @@ export interface WorkOrderDetailDto extends WorkOrderSummaryDto {
   activeBlockers?: PauseEventDto[];
   /** LTR-164 (#9): the blocker the Manager resolved on my Job while I wait to tap Continue, with their note. */
   resolvedBlocker?: PauseEventDto | null;
-  /** LTR-164 (#6): the viewer already had a labor session here (the button reads Continue, not Start Work). */
+  /** LTR-164 (#6): the viewer already had a labor session here (the button reads Continue, not Start work). */
   myLaborStarted?: boolean;
   /** LTR-126: append-only notes and work requests (oldest first). */
   noteEntries?: WorkOrderNoteDto[];

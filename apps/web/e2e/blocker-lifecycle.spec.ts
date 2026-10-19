@@ -7,7 +7,7 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
   test('mechanic blocks a Job and adds a note; Manager sees it and resolves with a note; official pause still works', async ({ page }) => {
     test.setTimeout(90_000);
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible({ timeout: 15_000 });
     await page.goto(`/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Truck T-106' })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/In Progress/i).first()).toBeVisible();
@@ -18,7 +18,7 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('radio', { name: 'Break' })).toHaveCount(0);
     await dialog.getByRole('radio', { name: 'Waiting for Parts' }).check();
-    await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Report blocker', exact: true }).click();
 
     await expect(page.getByText('Work Order WO-0106 · In Progress')).toBeVisible();
     await expect(page.getByTestId('active-blocker').getByText('Inspect brake chamber · Waiting for Parts')).toBeVisible();
@@ -72,7 +72,7 @@ test.describe('LTR-155 blocker lifecycle (D17: per Job, only the Manager resolve
     // LTR-164 (#9): the mechanic sees who resolved it and the Manager's note.
     await page.evaluate(() => localStorage.removeItem('ltl_shop_token'));
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible({ timeout: 15_000 });
     await page.goto(`/work-orders/${BLOCKER_WO_ID}`, { waitUntil: 'domcontentloaded' });
     const resolved = page.getByTestId('resolved-blocker');
     await expect(resolved.getByText(/^Inspect brake chamber · Resolved by /)).toBeVisible({ timeout: 15_000 });

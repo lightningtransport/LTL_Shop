@@ -484,7 +484,7 @@ test.describe('Shop Admin Phase 2A', () => {
       await expect(page.getByRole('heading', { name: 'Workspaces' })).toHaveCount(0);
       await openAdminNavLink(page, 'Standard Mechanic');
       await expect(page).toHaveURL(/\/mechanic\/standard$/);
-      await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible();
       await page.getByRole('link', { name: 'Back to Shop Admin' }).click();
       await expect(page).toHaveURL(/\/admin$/);
 
@@ -500,7 +500,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
   test('mechanic receives a secure forbidden screen for direct Admin access', async ({ page }) => {
     await devLogin(page);
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible();
     const response = await page.goto('/admin');
     expect(response?.status()).toBe(403);
     await expect(page.getByRole('heading', { name: 'Shop Admin access denied' })).toBeVisible();
