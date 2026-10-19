@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { Prisma, type StockMovementKind } from '@prisma/client';
+import { Prisma, type StockAdjustReason, type StockMovementKind } from '@prisma/client';
 import { reverseSource, writeEntries } from './cost-ledger';
 
 /**
@@ -43,6 +43,7 @@ export async function writeMovement(
     workOrderJobId?: string | null;
     truckId?: string | null;
     reason?: string | null;
+    reasonCode?: StockAdjustReason | null;
     reversesId?: string | null;
     pmServiceId?: string | null;
   },
@@ -57,6 +58,7 @@ export async function writeMovement(
       workOrderJobId: data.workOrderJobId ?? null,
       truckId: data.truckId ?? null,
       reason: data.reason ?? null,
+      reasonCode: data.reasonCode ?? null,
       reversesId: data.reversesId ?? null,
       pmServiceId: data.pmServiceId ?? null,
       createdById: data.actorId,

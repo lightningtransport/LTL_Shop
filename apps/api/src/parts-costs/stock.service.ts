@@ -2,9 +2,12 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import {
   ActivityEventType,
   adminConfirmJobTiresSchema,
+  adminStockAddSchema,
+  adminStockCountBatchSchema,
   adminStockCountSchema,
   adminStockIssueSchema,
   adminStockQuerySchema,
+  adminStockRemoveSchema,
   adminStockReturnSchema,
   normalizeCatalogText,
   parseQuantityToHundredths,
@@ -31,6 +34,7 @@ function parse<T>(schema: { safeParse(raw: unknown): { success: true; data: T } 
 }
 
 const qty = (hundredths: number) => (hundredths / 100).toFixed(2);
+const inStock = (item: AdminStockItemDto) => Number(item.onHand) > 0;
 const countToHundredths = (value: string | number) => (Number(value) === 0 ? 0 : parseQuantityToHundredths(value)!);
 
 const partSelect = {
@@ -59,8 +63,9 @@ export class StockService {
       this.prisma.part.findMany({
         where: {
           ...(query.kind ? { category: { kind: query.kind } } : {}),
-          // A part shows once it has movements, or a minimum to watch.
-          OR: [{ stockMovements: { some: {} } }, { minStock: { not: null }, active: true }],
+          // A part shows once it has movements, or a minimum to watch. D47 / HU-M20: with `all`, every active part
+          // shows too (Parts is the inventory), with 0 on hand when it never moved.
+          OR: [{ stockMovements: { some: {} } }, { minStock: { not: null }, active: true }, ...(query.all ? [{ active: true }] : [])],
         },
         select: partSelect,
       }),
@@ -71,7 +76,8 @@ export class StockService {
       .map((part) => this.item(part, byPart.get(part.id)))
       .filter((item) => !needle || normalizeCatalogText(`${item.displayName} ${item.partNumber ?? ''} ${item.tireSize ?? ''}`).includes(needle))
       .filter((item) => !query.low || item.low)
-      .sort((left, right) => Number(right.low) - Number(left.low) || left.categoryName.localeCompare(right.categoryName) || left.displayName.localeCompare(right.displayName));
+      // D47 / HU-M20: Low first, then what is on the shelf, then the rest.
+      .sort((left, right) => Number(right.low) - Number(left.low) || (query.all ? Number(inStock(right)) - Number(inStock(left)) : 0) || left.categoryName.localeCompare(right.categoryName) || left.displayName.localeCompare(right.displayName));
     return {
       items,
       totals: { valueCents: items.reduce((sum, item) => sum + item.valueCents, 0), lowCount: items.filter((item) => item.low).length },
@@ -107,6 +113,7 @@ export class StockService {
         createdAt: movement.createdAt.toISOString(),
         createdBy: movement.createdBy.name,
         reason: movement.reason,
+        reasonCode: movement.reasonCode,
         purchase: movement.purchase ? { id: movement.purchase.id, invoiceNumber: movement.purchase.invoiceNumber, vendorName: movement.purchase.vendor.name } : null,
         job: movement.workOrderJob
           ? { id: movement.workOrderJob.id, displayName: movement.workOrderJob.displayName, workOrderId: movement.workOrderJob.workOrder.id, workOrderDisplayId: movement.workOrderJob.workOrder.displayId }
@@ -117,35 +124,121 @@ export class StockService {
     };
   }
 
-  /** P25: the Manager counts the shelf. More than on hand enters at the cost typed (else the average); less leaves at the average. */
+  /** P25: the Manager counts one part on the shelf. More than on hand enters at the cost typed (else the average); less leaves at the average. */
   async count(actor: AuthUser, raw: unknown) {
     const input = parse(adminStockCountSchema, raw);
     const counted = countToHundredths(input.counted);
     return this.prisma.$transaction(async (tx) => {
-      const part = await tx.part.findUnique({ where: { id: input.partId }, select: { id: true, displayName: true, unitCostCents: true } });
-      if (!part) throw new BadRequestException({ code: 'PART_NOT_FOUND', message: 'That part is not in the catalog.' });
+      const part = await this.findPart(tx, input.partId);
+      const result = await this.adjustTo(tx, actor, part, counted, input.unitCostCents ?? null, input.reason);
+      if (result === 'same') throw new BadRequestException({ code: 'STOCK_COUNT_SAME', message: 'That is what the stock already says.' });
+      if (result === 'cost') throw new BadRequestException({ code: 'STOCK_COST_REQUIRED', message: 'Type what each one cost.', partIds: [part.id] });
+      return { id: result.id, onHand: qty(counted) };
+    });
+  }
+
+  /**
+   * D47 / HU-M20 (LTR-246): Count stock in bulk, the first day and each count. Lines with no count or the same number
+   * are left alone. All or nothing: if a part goes up with no cost to use (typed, average or reference), nothing is
+   * saved and the answer names those parts.
+   */
+  async countBatch(actor: AuthUser, raw: unknown) {
+    const input = parse(adminStockCountBatchSchema, raw);
+    const lines = input.lines.filter((line) => line.counted !== undefined && line.counted !== null && line.counted !== '');
+    return this.prisma.$transaction(async (tx) => {
+      const missing: string[] = [];
+      let changed = 0;
+      for (const line of lines) {
+        const part = await this.findPart(tx, line.partId);
+        const result = await this.adjustTo(tx, actor, part, countToHundredths(line.counted as string | number), line.unitCostCents ?? null, input.note || null);
+        if (result === 'cost') missing.push(part.id);
+        else if (result !== 'same') changed += 1;
+      }
+      // Throwing rolls back every line already written.
+      if (missing.length) throw new BadRequestException({ code: 'STOCK_COST_REQUIRED', message: 'Type what each one cost for the parts that go up.', partIds: missing });
+      return { changed };
+    });
+  }
+
+  /** D47 / HU-M20 (LTR-246): parts that came in without an invoice, at the cost typed. */
+  async add(actor: AuthUser, raw: unknown) {
+    const input = parse(adminStockAddSchema, raw);
+    const hundredths = parseQuantityToHundredths(input.quantity)!;
+    return this.prisma.$transaction(async (tx) => {
+      const part = await this.findPart(tx, input.partId);
+      await lockPart(tx, part.id);
+      const valueCents = Math.round((input.unitCostCents * hundredths) / 100);
+      const movement = await writeMovement(tx, { partId: part.id, kind: 'adjust', hundredths, valueCents, reason: input.note || null, reasonCode: 'received', actorId: actor.id });
+      await this.logAdjust(tx, actor, movement.id, part, 'stock_added', { quantity: qty(hundredths), valueCents, note: input.note ?? null });
+      return { id: movement.id, onHand: qty((await balance(tx, part.id)).hundredths) };
+    });
+  }
+
+  /** D47 / HU-M20 (LTR-246): how many leave and why (Damaged, Lost, Other), at the average cost. No truck is charged. */
+  async remove(actor: AuthUser, raw: unknown) {
+    const input = parse(adminStockRemoveSchema, raw);
+    const hundredths = parseQuantityToHundredths(input.quantity)!;
+    return this.prisma.$transaction(async (tx) => {
+      const part = await this.findPart(tx, input.partId);
       await lockPart(tx, part.id);
       const onHand = await balance(tx, part.id);
-      const diff = counted - onHand.hundredths;
-      if (diff === 0) throw new BadRequestException({ code: 'STOCK_COUNT_SAME', message: 'That is what the stock already says.' });
-      let valueCents: number;
-      if (diff > 0) {
-        const unit = input.unitCostCents ?? averageCents(onHand) ?? part.unitCostCents;
-        if (unit === null || unit === undefined) throw new BadRequestException({ code: 'STOCK_COST_REQUIRED', message: 'Type what each one cost.' });
-        valueCents = Math.round((unit * diff) / 100);
-      } else {
-        valueCents = -outValue(onHand, -diff);
+      if (hundredths > onHand.hundredths) {
+        throw new ConflictException({ code: 'NOT_ENOUGH_STOCK', message: `Only ${qty(Math.max(0, onHand.hundredths))} in stock.`, onHand: qty(Math.max(0, onHand.hundredths)) });
       }
-      const movement = await writeMovement(tx, { partId: part.id, kind: 'adjust', hundredths: diff, valueCents, reason: input.reason, actorId: actor.id });
-      await this.activity.log(tx, {
-        eventType: ActivityEventType.PART_CATALOG_UPDATED,
-        entityType: 'stock_movement',
-        entityId: movement.id,
-        userId: actor.id,
-        newValue: { action: 'stock_counted', partId: part.id, before: qty(onHand.hundredths), counted: qty(counted), valueCents, reason: input.reason },
-        relevantValue: { action: 'stock_counted', part: part.displayName, counted: qty(counted) },
-      });
-      return { id: movement.id, onHand: qty(counted) };
+      const valueCents = outValue(onHand, hundredths);
+      const movement = await writeMovement(tx, { partId: part.id, kind: 'adjust', hundredths: -hundredths, valueCents: -valueCents, reason: input.note || null, reasonCode: input.reason, actorId: actor.id });
+      await this.logAdjust(tx, actor, movement.id, part, 'stock_removed', { quantity: qty(hundredths), valueCents: -valueCents, reason: input.reason, note: input.note ?? null });
+      return { id: movement.id, onHand: qty(onHand.hundredths - hundredths) };
+    });
+  }
+
+  private async findPart(tx: Prisma.TransactionClient, partId: string) {
+    const part = await tx.part.findUnique({ where: { id: partId }, select: { id: true, displayName: true, unitCostCents: true } });
+    if (!part) throw new BadRequestException({ code: 'PART_NOT_FOUND', message: 'That part is not in the catalog.' });
+    return part;
+  }
+
+  /** Sets a part's shelf to `counted` (reason Count). 'same' when nothing changes; 'cost' when it goes up with no cost to use. */
+  private async adjustTo(
+    tx: Prisma.TransactionClient,
+    actor: AuthUser,
+    part: { id: string; displayName: string; unitCostCents: number | null },
+    counted: number,
+    unitCostCents: number | null,
+    reason: string | null,
+  ) {
+    await lockPart(tx, part.id);
+    const onHand = await balance(tx, part.id);
+    const diff = counted - onHand.hundredths;
+    if (diff === 0) return 'same' as const;
+    let valueCents: number;
+    if (diff > 0) {
+      const unit = unitCostCents ?? averageCents(onHand) ?? part.unitCostCents;
+      if (unit === null || unit === undefined) return 'cost' as const;
+      valueCents = Math.round((unit * diff) / 100);
+    } else {
+      valueCents = -outValue(onHand, -diff);
+    }
+    const movement = await writeMovement(tx, { partId: part.id, kind: 'adjust', hundredths: diff, valueCents, reason, reasonCode: 'count', actorId: actor.id });
+    await this.activity.log(tx, {
+      eventType: ActivityEventType.PART_CATALOG_UPDATED,
+      entityType: 'stock_movement',
+      entityId: movement.id,
+      userId: actor.id,
+      newValue: { action: 'stock_counted', partId: part.id, before: qty(onHand.hundredths), counted: qty(counted), valueCents, reason },
+      relevantValue: { action: 'stock_counted', part: part.displayName, counted: qty(counted) },
+    });
+    return movement;
+  }
+
+  private async logAdjust(tx: Prisma.TransactionClient, actor: AuthUser, movementId: string, part: { id: string; displayName: string }, action: string, detail: Record<string, unknown>) {
+    await this.activity.log(tx, {
+      eventType: ActivityEventType.PART_CATALOG_UPDATED,
+      entityType: 'stock_movement',
+      entityId: movementId,
+      userId: actor.id,
+      newValue: { action, partId: part.id, ...detail },
+      relevantValue: { action, part: part.displayName, quantity: detail.quantity },
     });
   }
 
