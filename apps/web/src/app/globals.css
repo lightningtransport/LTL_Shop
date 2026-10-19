@@ -151,6 +151,9 @@ html[data-display='standalone'] body {
 
 body {
   @apply min-h-screen bg-background font-body text-foreground antialiased;
+  /* Mobile UI review: in a phone browser 100vh is taller than what shows under the browser bars; 100dvh is what
+     shows, as in the installed app. Browsers without dvh keep the 100vh above. */
+  min-height: 100dvh;
   letter-spacing: var(--tracking-normal);
 }
 

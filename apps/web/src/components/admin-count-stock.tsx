@@ -172,7 +172,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button type="button" variant="outline" className="size-11 p-0" aria-label={`${messages.pcCountMinus} · ${row.part.displayName}`} onClick={() => step(row, -1)}><Minus aria-hidden="true" /></Button>
-                <Input className="h-11 w-16 text-center tabular-nums" inputMode="decimal" placeholder="—" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} />
+                <Input className="h-11 w-16 text-center tabular-nums" inputMode="decimal" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} />
                 <Button type="button" variant="outline" className="size-11 p-0" aria-label={`${messages.pcCountPlus} · ${row.part.displayName}`} onClick={() => step(row, 1)}><Plus aria-hidden="true" /></Button>
               </div>
             </div>
@@ -201,7 +201,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
                 </td>
                 <td className="p-2.5 text-right tabular-nums">{stockQty(row.item?.onHand ?? 0)}</td>
                 <td className="p-2.5">
-                  <Input className="tabular-nums" inputMode="decimal" placeholder="—" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} aria-invalid={countedHundredths(counted[row.part.id]) === undefined || undefined} />
+                  <Input className="tabular-nums" inputMode="decimal" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} aria-invalid={countedHundredths(counted[row.part.id]) === undefined || undefined} />
                 </td>
                 <td className="p-2.5">{changeText(row)}</td>
               </tr>

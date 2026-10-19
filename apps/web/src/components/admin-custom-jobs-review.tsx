@@ -67,7 +67,7 @@ export function AdminCustomJobsReview({ locale, messages }: { locale: AdminLocal
             role="tab"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={cn('-mb-px border-b-2 px-3 py-2 text-sm', tab === value ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground')}
+            className={cn('-mb-px inline-flex items-center border-b-2 px-3 py-2 text-sm [@media(pointer:coarse)]:min-h-11', tab === value ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground')}
           >
             {value === 'pending' ? messages.cjPendingTab : messages.cjReviewedTab}
           </button>

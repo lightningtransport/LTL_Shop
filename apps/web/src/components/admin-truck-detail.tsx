@@ -148,7 +148,7 @@ function TruckTabs({ truckId, from, active, messages }: { truckId: string; from:
           key={key}
           href={href}
           aria-current={active === key ? 'page' : undefined}
-          className={cn('-mb-px border-b-2 px-3 py-2 text-sm', active === key ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          className={cn('-mb-px inline-flex items-center border-b-2 px-3 py-2 text-sm [@media(pointer:coarse)]:min-h-11', active === key ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
         >
           {label}
         </AdminNavLink>
@@ -409,7 +409,7 @@ function TruckDetailBody({
             <dd className="flex min-w-0 items-center justify-end gap-1.5 font-mono text-[13px]">
               <span className="break-all">{data.truck.vin ?? messages.noValue}</span>
               {data.truck.vin ? (
-                <button type="button" className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={messages.copyVin} onClick={() => void copyText(data.truck.vin!, messages.vinCopied)}>
+                <button type="button" className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:size-8" aria-label={messages.copyVin} onClick={() => void copyText(data.truck.vin!, messages.vinCopied)}>
                   <Copy aria-hidden="true" className="size-3.5" />
                 </button>
               ) : null}
@@ -546,7 +546,7 @@ function RepairHistory({
             return (
               <li key={item.workOrderId} className="space-y-1 px-4 py-3">
                 <div className="flex items-baseline justify-between gap-2">
-                  <Link className="font-mono text-[13px] font-medium text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link>
+                  <Link className="tap-inline font-mono text-[13px] font-medium text-primary hover:underline" href={`/admin/work-orders/${item.workOrderId}`}>{item.displayId}</Link>
                   {item.mileage === null ? null : <span className="tnum text-xs text-muted-foreground">{fillPlaceholders(messages.mileageMi, { value: number.format(item.mileage) })}</span>}
                 </div>
                 <p className="text-muted-foreground">{item.primaryCategoryName} · {formatDay(item.date, locale)}{item.mechanicNames.length ? ` · ${item.mechanicNames.join(', ')}` : ''}</p>

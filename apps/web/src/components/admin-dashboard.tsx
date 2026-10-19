@@ -211,7 +211,9 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
 }
 
 /** "{job} is blocked · {reason}" → the named keys in bold, the rest plain. */
-function rich(template: string, values: Record<string, string>, bold: string[]): ReactNode[] {
+function rich(rawTemplate: string, values: Record<string, string>, bold: string[]): ReactNode[] {
+  // Plurals first ({count:Job|Jobs}); the plain {key} parts stay for the bold ones.
+  const template = rawTemplate.replace(/\{(\w+):((?:[^|{}]|\{\w+\})*)\|((?:[^{}]|\{\w+\})*)\}/g, (match, key: string, one: string, many: string) => (values[key] === undefined ? match : Number(values[key]) === 1 ? one : many));
   return template.split(/(\{[a-z]+\})/g).filter(Boolean).map((part, index) => {
     const key = /^\{([a-z]+)\}$/.exec(part)?.[1];
     if (!key) return part;

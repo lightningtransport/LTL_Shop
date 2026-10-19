@@ -538,7 +538,7 @@ export function WorkPlanAddWork({
                   ) : null}
                   <button
                     type="button"
-                    className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent sm:size-9"
+                    className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent sm:size-9"
                     aria-label={`${messages.removeJobAction} ${job.displayName}`}
                     disabled={disabled}
                     onClick={() => setDrafts((current) => current.filter((item) => item.key !== job.key))}

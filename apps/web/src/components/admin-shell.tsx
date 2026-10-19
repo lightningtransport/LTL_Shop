@@ -224,7 +224,10 @@ function ShellFrame({ children, messages, user }: { children: React.ReactNode; m
           </div>
         </header>
 
-        <main className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overscroll-contain">
+        {/* Mobile UI review (2026-10-19): `relative` keeps absolute children (the `sr-only` labels) inside this scroller.
+            Without it they sit against the body, the document grows past the screen, and in a phone browser the whole
+            page scrolls: the header with the menu button goes up out of view and the bottom looks cut. */}
+        <main className="relative min-h-0 w-full min-w-0 flex-1 overflow-y-auto overscroll-contain">
           {/* LTR-171: the home-indicator space is inside the scroller, so cards scroll under it instead of the
               page ending early above a flat band. */}
           <div className={`mx-auto w-full min-w-0 ${fullWidth ? 'max-w-none' : 'max-w-[1440px]'} px-4 pb-[calc(1.5rem+var(--app-safe-bottom))] pt-6 md:px-6`}>{children}</div>

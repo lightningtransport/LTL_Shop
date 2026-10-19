@@ -1,3 +1,4 @@
+import { fillPlaceholders } from './admin-next-step';
 import { OPEN_WORK_ORDER_STATUSES, type TruckNextStepDto } from '@ltl-shop/shared';
 import type { AdminMessages } from './admin-messages';
 import { truckNextStepText } from './truck-next-step';
@@ -29,9 +30,9 @@ export function workOrderNextJobLine(
 ): string {
   if (item.category.name === 'PM' || item.nextJobName === undefined) return item.category.name;
   if (item.nextJobName) {
-    return messages.workOrderJobsNext.replace('{count}', String(item.jobsTotal)).replace('{job}', item.nextJobName);
+    return fillPlaceholders(messages.workOrderJobsNext, { count: String(item.jobsTotal), job: item.nextJobName });
   }
-  return item.jobsTotal > 0 ? messages.workOrderJobsAllDone.replace('{count}', String(item.jobsTotal)) : item.category.name;
+  return item.jobsTotal > 0 ? fillPlaceholders(messages.workOrderJobsAllDone, { count: String(item.jobsTotal) }) : item.category.name;
 }
 
 /**
