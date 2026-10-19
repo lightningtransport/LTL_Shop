@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, useState } from 'react';
-import { MoreHorizontal, Pencil, Plus, Power, X } from 'lucide-react';
+import { ListChecks, MoreHorizontal, PackageMinus, PackagePlus, Pencil, Plus, Power, X } from 'lucide-react';
 import {
   centsToInput,
   formatCents,
@@ -9,6 +9,7 @@ import {
   type AdminPartCategoryDto,
   type AdminPartDto,
   type AdminPartFitDto,
+  type AdminStockItemDto,
   type AdminVendorDto,
   type PartKind,
   type TireType,
@@ -20,9 +21,11 @@ import {
   PageHeader, PageSkeleton, SectionCard, Select,
 } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { createAdminPart, createAdminPartCategory, updateAdminPart, useAdminPartsCatalog, useAdminVendors } from '@/lib/admin-data';
+import { createAdminPart, createAdminPartCategory, updateAdminPart, useAdminPartsCatalog, useAdminStock, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
+import { AdminNavLink } from './admin-nav-link';
+import { AddToStockDialog, PartStockPanel, RemoveFromStockDialog, stockCost, stockQty } from './admin-stock-actions';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
@@ -31,7 +34,8 @@ import { formatShortDateTime } from '@/lib/work-order-view';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 import { useDocumentTitle } from './admin-breadcrumb';
 
-const CATALOG_FILTERS = { q: '', kind: '', make: '', includeInactive: false };
+// D47 / HU-M20: `inStock` and `low` filter on the shelf (Parts is the inventory).
+const CATALOG_FILTERS = { q: '', kind: '', make: '', includeInactive: false, inStock: false, low: false };
 
 export function partsCostsFailure(failure: unknown, messages: AdminMessages) {
   if (failure instanceof ApiError && apiErrorCode(failure) === 'PART_IN_OPEN_PM') {
@@ -118,8 +122,32 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
   const { data: vendors } = useAdminVendors();
   const [editing, setEditing] = useState<AdminPartDto | 'new' | null>(null);
   const [addingCategory, setAddingCategory] = useState(false);
-  const categories = (data?.categories ?? []).filter((category) => category.parts.length || !filtered);
+  // D47 / HU-M20 (LTR-246): the shelf of every part, so Parts is the inventory (Stock left the menu).
+  const { data: stockData, mutate: mutateStock } = useAdminStock('all=true');
+  const stock = new Map((stockData?.items ?? []).map((item) => [item.partId, item]));
+  const [panel, setPanel] = useState<AdminPartDto | null>(null);
+  const [adding, setAdding] = useState<{ item: AdminStockItemDto; referenceCents: number | null } | null>(null);
+  const [removing, setRemoving] = useState<AdminStockItemDto | null>(null);
+  const refresh = () => { void mutate(); void mutateStock(); };
+  const onShelf = (part: AdminPartDto) => Number(stock.get(part.id)?.onHand ?? 0) > 0;
+  const isLow = (part: AdminPartDto) => Boolean(stock.get(part.id)?.low);
+  const categories = (data?.categories ?? [])
+    .map((category) => ({
+      ...category,
+      parts: category.parts
+        .filter((part) => (!filters.inStock || onShelf(part)) && (!filters.low || isLow(part)))
+        // Low first, then what is on the shelf, then the rest (in the catalog's order).
+        .map((part, index) => ({ part, index }))
+        .sort((left, right) => Number(isLow(right.part)) - Number(isLow(left.part)) || Number(onShelf(right.part)) - Number(onShelf(left.part)) || left.index - right.index)
+        .map((row) => row.part),
+    }))
+    .filter((category) => category.parts.length || !filtered);
   const partCount = categories.reduce((sum, category) => sum + category.parts.length, 0);
+  const stockItem = (part: AdminPartDto): AdminStockItemDto => stock.get(part.id) ?? {
+    partId: part.id, displayName: part.displayName, partNumber: part.partNumber, categoryName: '', kind: 'pm', tireSize: part.tireSize, tireType: part.tireType,
+    active: part.active, onHand: '0.00', avgCostCents: null, valueCents: 0, minStock: part.minStock ?? null, low: false, lastMovementAt: null,
+  };
+  const stockActions = { onPanel: setPanel, onAdd: (part: AdminPartDto) => setAdding({ item: stockItem(part), referenceCents: part.unitCostCents }), onRemove: (part: AdminPartDto) => setRemoving(stockItem(part)) };
 
   return (
     <div className="space-y-6">
@@ -129,7 +157,9 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
         actions={canWrite && data ? (
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={() => setAddingCategory(true)} data-testid="add-part-category"><Plus aria-hidden="true" />{messages.pcAddCategory}</Button>
-            <Button type="button" onClick={() => setEditing('new')}><Plus aria-hidden="true" />{messages.pcAddPart}</Button>
+            <Button type="button" variant="outline" onClick={() => setEditing('new')}><Plus aria-hidden="true" />{messages.pcAddPart}</Button>
+            {/* D47 / HU-M20: after the first day, purchases "To stock" fill the shelf; counting it is the main job here. */}
+            <Button asChild><AdminNavLink href="/admin/parts/count" data-testid="count-stock"><ListChecks aria-hidden="true" />{messages.pcCountStock}</AdminNavLink></Button>
           </div>
         ) : null}
       />
@@ -158,11 +188,29 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
             </Select>
           </div>
           <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={filters.inStock} onChange={(event) => set('inStock', event.target.checked)} />
+            {messages.pcInStockOnly}
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={filters.low} onChange={(event) => set('low', event.target.checked)} />
+            {messages.pcStockLowOnly}
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" checked={filters.includeInactive} onChange={(event) => set('includeInactive', event.target.checked)} />
             {messages.pcShowInactive}
           </label>
         </CardContent>
       </Card>
+      {stockData ? (
+        <p className="text-sm text-muted-foreground" data-testid="stock-totals">
+          {fillPlaceholders(messages.pcPartsTotals, {
+            parts: adminCountLabel(data?.categories.reduce((sum, category) => sum + category.parts.length, 0) ?? 0, messages.pcStockPartsOne, messages.pcStockParts),
+            inStock: String(stockData.items.filter((item) => Number(item.onHand) > 0).length),
+            value: formatCents(stockData.totals.valueCents, locale),
+            low: String(stockData.totals.lowCount),
+          })}
+        </p>
+      ) : null}
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
       {isLoading && !data ? <PageSkeleton label={messages.pcPartsTitle} header={false} /> : null}
@@ -176,7 +224,7 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
       {categories.map((category) => (
         <SectionCard key={category.id} title={category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`} count={category.parts.length} data-testid="parts-category">
           {category.parts.length ? (
-            <PartsTable category={category} canWrite={canWrite} locale={locale} messages={messages} onEdit={setEditing} onChanged={() => void mutate()} />
+            <PartsTable category={category} stock={stock} canWrite={canWrite} locale={locale} messages={messages} onEdit={setEditing} onChanged={refresh} {...stockActions} />
           ) : null}
         </SectionCard>
       ))}
@@ -194,6 +242,22 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
           onSaved={() => { setEditing(null); void mutate(); }}
         />
       ) : null}
+      {panel ? (
+        <PartStockPanel
+          partId={panel.id}
+          referenceCents={panel.unitCostCents}
+          canWrite={canWrite}
+          locale={locale}
+          messages={messages}
+          onClose={() => setPanel(null)}
+          onAdd={(item) => setAdding({ item, referenceCents: panel.unitCostCents })}
+          onRemove={(item) => setRemoving(item)}
+          onEdit={() => { setEditing(panel); setPanel(null); }}
+          onChanged={refresh}
+        />
+      ) : null}
+      {adding ? <AddToStockDialog item={adding.item} referenceCents={adding.referenceCents} locale={locale} messages={messages} onClose={() => setAdding(null)} onSaved={() => { setAdding(null); refresh(); }} /> : null}
+      {removing ? <RemoveFromStockDialog item={removing} locale={locale} messages={messages} onClose={() => setRemoving(null)} onSaved={() => { setRemoving(null); refresh(); }} /> : null}
       {addingCategory ? (
         <CategoryDialog messages={messages} onClose={() => setAddingCategory(false)} onSaved={() => { setAddingCategory(false); void mutate(); }} />
       ) : null}
@@ -249,8 +313,12 @@ function CategoryDialog({ messages, onClose, onSaved }: { messages: AdminMessage
   );
 }
 
-function PartsTable({ category, canWrite, locale, messages, onEdit, onChanged }: {
+function PartsTable({ category, stock, canWrite, locale, messages, onEdit, onChanged, onPanel, onAdd, onRemove }: {
   category: AdminPartCategoryDto;
+  stock: Map<string, AdminStockItemDto>;
+  onPanel: (part: AdminPartDto) => void;
+  onAdd: (part: AdminPartDto) => void;
+  onRemove: (part: AdminPartDto) => void;
   canWrite: boolean;
   locale: AdminLocale;
   messages: AdminMessages;
@@ -271,7 +339,8 @@ function PartsTable({ category, canWrite, locale, messages, onEdit, onChanged }:
           primary: true,
           cell: (part) => (
             <div className={part.active ? undefined : 'text-muted-foreground'}>
-              <span className="font-medium">{part.displayName}</span>
+              {/* D47 / HU-M20: the name opens the part's panel (stock, cost, minimum, movements). */}
+              <button type="button" className="tap-inline text-left font-medium text-primary hover:underline" onClick={() => onPanel(part)} data-testid="part-open">{part.displayName}</button>
               {part.partNumber ? <span className="ml-2 font-mono text-xs text-muted-foreground">{part.partNumber}</span> : null}
               {!part.active ? <Badge variant="secondary" className="ml-2">{messages.pcInactive}</Badge> : null}
               {tireLabel(part, messages) ? <span className="mt-0.5 block text-xs text-muted-foreground" data-testid="part-tire">{tireLabel(part, messages)}</span> : null}
@@ -285,20 +354,38 @@ function PartsTable({ category, canWrite, locale, messages, onEdit, onChanged }:
         },
         { key: 'fits', header: messages.pcFits, cell: (part) => fitsLabel(part.fits, messages) },
         {
+          key: 'inStock',
+          header: messages.pcInStockCol,
+          cell: (part) => {
+            const item = stock.get(part.id);
+            return (
+              <span className="tabular-nums" data-testid="part-in-stock">
+                {stockQty(item?.onHand ?? 0)}
+                {item?.low ? <Badge variant="secondary" className="ml-2 border-warning/50 bg-warning/15 text-warning-foreground">{messages.pcStockLow}</Badge> : null}
+              </span>
+            );
+          },
+        },
+        { key: 'min', header: messages.pcStockMin, cell: (part) => <span className="tabular-nums text-muted-foreground">{part.minStock ?? '—'}</span> },
+        {
           key: 'cost',
-          header: messages.pcRefCost,
-          cell: (part) => (
-            <span>
-              {part.unitCostCents === null
+          // D47 / HU-M20 (UX-10-008): one cost — the average when there is stock, else the reference cost ("ref").
+          header: `${messages.pcCostCol} (${messages.pcCostColHint})`,
+          cell: (part) => {
+            const cost = stockCost(stock.get(part.id) ?? { avgCostCents: null }, part.unitCostCents);
+            return (
+            <span data-testid="part-cost">
+              {cost === null
                 ? <span className="text-xs text-muted-foreground">{messages.pcNoCostYet}</span>
-                : <span className="tabular-nums">{formatCents(part.unitCostCents, locale)}</span>}
+                : <span className={`tabular-nums ${cost.reference ? 'text-muted-foreground' : ''}`}>{formatCents(cost.cents, locale)}{cost.reference ? <span className="ml-1 text-[11px]">{messages.pcRefShort}</span> : null}</span>}
               {part.lastPaid ? (
                 <span className="block text-xs text-muted-foreground" data-testid="part-last-paid">
                   {fillPlaceholders(messages.pcLastPaid, { amount: formatCents(part.lastPaid.unitCostCents, locale), date: formatInvoiceDate(part.lastPaid.invoiceDate, locale), vendor: part.lastPaid.vendorName })}
                 </span>
               ) : null}
             </span>
-          ),
+            );
+          },
         },
         {
           key: 'vendor',
@@ -315,14 +402,14 @@ function PartsTable({ category, canWrite, locale, messages, onEdit, onChanged }:
         ...(canWrite ? [{
           key: 'actions',
           header: '',
-          cell: (part: AdminPartDto) => <div className="flex justify-end"><PartMenu part={part} messages={messages} onEdit={() => onEdit(part)} onChanged={onChanged} /></div>,
+          cell: (part: AdminPartDto) => <div className="flex justify-end"><PartMenu part={part} onShelf={Number(stock.get(part.id)?.onHand ?? 0) > 0} messages={messages} onEdit={() => onEdit(part)} onAdd={() => onAdd(part)} onRemove={() => onRemove(part)} onChanged={onChanged} /></div>,
         }] : []),
       ]}
     />
   );
 }
 
-function PartMenu({ part, messages, onEdit, onChanged }: { part: AdminPartDto; messages: AdminMessages; onEdit: () => void; onChanged: () => void }) {
+function PartMenu({ part, onShelf, messages, onEdit, onAdd, onRemove, onChanged }: { part: AdminPartDto; onShelf: boolean; messages: AdminMessages; onEdit: () => void; onAdd: () => void; onRemove: () => void; onChanged: () => void }) {
   const { showToast } = useActionToast();
   async function toggle() {
     try {
@@ -335,6 +422,9 @@ function PartMenu({ part, messages, onEdit, onChanged }: { part: AdminPartDto; m
   }
   const items: Array<MenuItem | null> = [
     { key: 'edit', label: messages.pcEditPart, icon: Pencil, onSelect: onEdit },
+    // D47 / HU-M20: the stock actions, also in the part's panel.
+    part.active ? { key: 'add', label: messages.pcAddToStock, icon: PackagePlus, onSelect: onAdd } : null,
+    onShelf ? { key: 'remove', label: messages.pcRemoveFromStock, icon: PackageMinus, onSelect: onRemove } : null,
     // A54: the reason shows before anything is sent.
     part.active && part.openPms.length
       ? { key: 'deactivate', label: messages.pcDeactivate, icon: Power, onSelect: () => showToast('error', fillPlaceholders(messages.pcInOpenPmHelp, { truck: part.openPms[0].truckNumber })) }

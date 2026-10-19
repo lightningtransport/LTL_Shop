@@ -51,7 +51,10 @@ import type {
   AdminTruckJobDto,
   AdminStockListDto,
   AdminStockPartDto,
+  AdminStockAddInput,
+  AdminStockCountBatchInput,
   AdminStockCountInput,
+  AdminStockRemoveInput,
   AdminStockIssueInput,
   AdminConfirmJobTiresInput,
   AdminPmOilPricesDto,
@@ -852,6 +855,21 @@ export function useAdminStockPart(partId: string | null) {
 
 export function countAdminStock(input: AdminStockCountInput) {
   return apiFetch<{ id: string; onHand: string }>('/api/admin/parts-costs/stock/count', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D47 / HU-M20 (LTR-246): Count stock in bulk; all or nothing. */
+export function countAdminStockBatch(input: AdminStockCountBatchInput) {
+  return apiFetch<{ changed: number }>('/api/admin/parts-costs/stock/count-batch', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D47 / HU-M20: parts that came in without an invoice. */
+export function addAdminStock(input: AdminStockAddInput) {
+  return apiFetch<{ id: string; onHand: string }>('/api/admin/parts-costs/stock/add', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** D47 / HU-M20: parts that leave the shelf with a reason (Damaged, Lost, Other); no truck is charged. */
+export function removeAdminStock(input: AdminStockRemoveInput) {
+  return apiFetch<{ id: string; onHand: string }>('/api/admin/parts-costs/stock/remove', { method: 'POST', body: JSON.stringify(input) });
 }
 
 export function issueAdminStock(input: AdminStockIssueInput) {

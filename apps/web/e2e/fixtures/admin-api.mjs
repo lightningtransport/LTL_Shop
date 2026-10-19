@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const users = {
@@ -421,13 +422,18 @@ function freshPartsState() {
         createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: '2026-10-06T15:00:00.000Z',
       },
     ],
+    // D47 / HU-M20 (LTR-246): the shelf. Fuel Filter 4 Micron has 3 at $24.10 (minimum 4 → Low).
+    stock: [
+      { id: '00000000-0000-4000-8000-00000000d001', partId: '00000000-0000-4000-8000-00000000a001', kind: 'purchase_in', quantity: 3, valueCents: 7230, reason: null, reasonCode: null, createdAt: '2026-10-06T15:00:00.000Z' },
+    ],
     categories: [
       {
         id: '00000000-0000-4000-8000-00000000c001',
         name: 'Fuel Filter',
+        kind: 'pm',
         parts: [
-          { id: '00000000-0000-4000-8000-00000000a001', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'LFF8897', displayName: 'Fuel Filter 4 Micron', active: true, source: 'seed', unitCostCents: 2410, defaultVendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' }, fits: [], usedInPmCount: 38, lastUsedAt: '2026-10-06T15:00:00.000Z', openPms: [], lastPaid: null },
-          { id: '00000000-0000-4000-8000-00000000a002', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'WF10447', displayName: 'Fuel Filter Volvo', active: true, source: 'seed', unitCostCents: null, defaultVendor: null, fits: [{ make: 'Volvo', model: null }], usedInPmCount: 4, lastUsedAt: '2026-10-07T15:00:00.000Z', openPms: [{ workOrderId: 'wo-968', displayId: 'WO-968-1', truckId: 'truck-968', truckNumber: '968' }], lastPaid: null },
+          { id: '00000000-0000-4000-8000-00000000a001', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'LFF8897', displayName: 'Fuel Filter 4 Micron', active: true, source: 'seed', minStock: 4, tireSize: null, tireType: null, unitCostCents: 2410, defaultVendor: { id: '00000000-0000-4000-8000-00000000f001', name: 'FleetPride' }, fits: [], usedInPmCount: 38, lastUsedAt: '2026-10-06T15:00:00.000Z', openPms: [], lastPaid: null },
+          { id: '00000000-0000-4000-8000-00000000a002', categoryId: '00000000-0000-4000-8000-00000000c001', partNumber: 'WF10447', displayName: 'Fuel Filter Volvo', active: true, source: 'seed', minStock: null, tireSize: null, tireType: null, unitCostCents: null, defaultVendor: null, fits: [{ make: 'Volvo', model: null }], usedInPmCount: 4, lastUsedAt: '2026-10-07T15:00:00.000Z', openPms: [{ workOrderId: 'wo-968', displayId: 'WO-968-1', truckId: 'truck-968', truckNumber: '968' }], lastPaid: null },
         ],
       },
     ],
@@ -579,6 +585,69 @@ createServer(async (request, response) => {
       json(response, 200, { categories, truckMakes: ['Freightliner', 'Volvo'], costedPartCount: allParts().filter((part) => part.unitCostCents !== null).length });
       return;
     }
+    // D47 / HU-M20 (LTR-246): the stock, in memory — enough for Parts, Count stock, Add to stock and Remove from stock.
+    const onHandOf = (partId) => partsState.stock.filter((row) => row.partId === partId).reduce((sum, row) => ({ qty: sum.qty + row.quantity, value: sum.value + row.valueCents }), { qty: 0, value: 0 });
+    const avgOf = (partId) => { const sum = onHandOf(partId); return sum.qty > 0 ? Math.round(sum.value / sum.qty) : null; };
+    const stockItem = (part) => {
+      const sum = onHandOf(part.id);
+      return {
+        partId: part.id, displayName: part.displayName, partNumber: part.partNumber, categoryName: 'Fuel Filter', kind: 'pm', tireSize: null, tireType: null,
+        active: part.active, onHand: sum.qty.toFixed(2), avgCostCents: avgOf(part.id), valueCents: sum.value, minStock: part.minStock ?? null,
+        low: part.minStock !== null && part.minStock !== undefined && sum.qty < part.minStock, lastMovementAt: null,
+      };
+    };
+    const moveStock = (partId, quantity, valueCents, extra) => {
+      partsState.stock.push({ id: randomUUID(), partId, kind: 'adjust', quantity, valueCents, reason: extra.reason ?? null, reasonCode: extra.reasonCode, createdAt: new Date().toISOString() });
+    };
+    if (path === '/api/admin/parts-costs/stock' && request.method === 'GET') {
+      const items = allParts().filter((part) => part.active).map(stockItem);
+      json(response, 200, { items, totals: { valueCents: items.reduce((sum, item) => sum + item.valueCents, 0), lowCount: items.filter((item) => item.low).length } });
+      return;
+    }
+    const stockPart = path.match(/^\/api\/admin\/parts-costs\/stock\/([0-9a-f-]{36})$/i);
+    if (stockPart && request.method === 'GET') {
+      const part = allParts().find((item) => item.id === stockPart[1]);
+      if (!part) { json(response, 404, { message: 'Part not found' }); return; }
+      const movements = partsState.stock.filter((row) => row.partId === part.id).reverse().map((row) => ({
+        id: row.id, kind: row.kind, quantity: row.quantity.toFixed(2), valueCents: row.valueCents, createdAt: row.createdAt, createdBy: 'Shop Manager',
+        reason: row.reason, reasonCode: row.reasonCode, purchase: null, job: null, truck: null, undone: false,
+      }));
+      json(response, 200, { item: stockItem(part), movements });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/stock/count-batch' && request.method === 'POST') {
+      const body = await readJson(request);
+      const lines = (body?.lines ?? []).filter((line) => line.counted !== undefined && line.counted !== null && line.counted !== '');
+      const plans = [];
+      const missing = [];
+      for (const line of lines) {
+        const part = allParts().find((item) => item.id === line.partId);
+        const sum = onHandOf(line.partId);
+        const diff = Number(line.counted) - sum.qty;
+        if (diff === 0) continue;
+        const unit = diff > 0 ? (line.unitCostCents ?? avgOf(line.partId) ?? part?.unitCostCents ?? null) : avgOf(line.partId) ?? 0;
+        if (unit === null) { missing.push(line.partId); continue; }
+        plans.push([line.partId, diff, Math.round(unit * diff)]);
+      }
+      if (missing.length) { json(response, 400, { code: 'STOCK_COST_REQUIRED', message: 'Type what each one cost for the parts that go up.', partIds: missing }); return; }
+      for (const [partId, diff, value] of plans) moveStock(partId, diff, value, { reasonCode: 'count', reason: body?.note ?? null });
+      json(response, 200, { changed: plans.length });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/stock/add' && request.method === 'POST') {
+      const body = await readJson(request);
+      moveStock(body.partId, Number(body.quantity), Math.round(body.unitCostCents * Number(body.quantity)), { reasonCode: 'received', reason: body.note ?? null });
+      json(response, 200, { id: randomUUID(), onHand: onHandOf(body.partId).qty.toFixed(2) });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/stock/remove' && request.method === 'POST') {
+      const body = await readJson(request);
+      const sum = onHandOf(body.partId);
+      if (Number(body.quantity) > sum.qty) { json(response, 409, { code: 'NOT_ENOUGH_STOCK', message: `Only ${sum.qty.toFixed(2)} in stock.`, onHand: sum.qty.toFixed(2) }); return; }
+      moveStock(body.partId, -Number(body.quantity), -Math.round((avgOf(body.partId) ?? 0) * Number(body.quantity)), { reasonCode: body.reason, reason: body.note ?? null });
+      json(response, 200, { id: randomUUID(), onHand: onHandOf(body.partId).qty.toFixed(2) });
+      return;
+    }
     const partPatch = path.match(/^\/api\/admin\/parts-costs\/parts\/([0-9a-f-]+)$/i);
     if (partPatch && request.method === 'PATCH') {
       const body = await readJson(request);
@@ -593,6 +662,7 @@ createServer(async (request, response) => {
       if (body?.partNumber !== undefined) part.partNumber = body.partNumber;
       if (body?.fits !== undefined) part.fits = body.fits;
       if (body?.active !== undefined) part.active = body.active;
+      if (body?.minStock !== undefined) part.minStock = body.minStock;
       if (body?.defaultVendorId !== undefined) {
         const vendor = partsState.vendors.find((item) => item.id === body.defaultVendorId);
         part.defaultVendor = vendor ? { id: vendor.id, name: vendor.name } : null;
