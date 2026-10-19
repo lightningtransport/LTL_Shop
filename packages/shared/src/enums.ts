@@ -169,6 +169,9 @@ export enum WorkOrderNoteKind {
 }
 
 export enum YardPresenceState {
+  /** D49: the last Samsara GPS point is inside the shop geofence. */
+  IN_YARD = 'in_yard',
+  OUTSIDE_YARD = 'outside_yard',
   UNKNOWN = 'unknown',
 }
 

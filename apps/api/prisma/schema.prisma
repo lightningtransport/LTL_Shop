@@ -283,6 +283,11 @@ model Truck {
   samsaraLongitude         Float?    @map("samsara_longitude")
   samsaraSpeedMph          Float?    @map("samsara_speed_mph")
   samsaraLocationAt        DateTime? @map("samsara_location_at")
+  /// D49: the Samsara geofence ("Address") of the last GPS point; null when it was in none. Compared by id to the shop's.
+  samsaraGeofenceId        String?   @map("samsara_geofence_id")
+  samsaraGeofenceName      String?   @map("samsara_geofence_name")
+  /// D49: first reading inside the shop geofence after being outside; null while outside.
+  samsaraInShopSince       DateTime? @map("samsara_in_shop_since")
   samsaraSyncedAt          DateTime? @map("samsara_synced_at")
   /// S3-4: the truck's dash lights from Samsara (J1939 gives STOP and warning per truck, not per code).
   samsaraStopLamp          Boolean?  @map("samsara_stop_lamp")

@@ -16,7 +16,7 @@ import { workOrderStatusLabel } from '@/lib/status-chips';
 import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { formatVehicleYmm } from '@/lib/format';
-import { faultSeverityLabel, faultSeverityVariant, isStaleLocation, shortLocation } from '@/lib/samsara-view';
+import { faultSeverityLabel, faultSeverityVariant, inShopText, isStaleLocation, shortLocation } from '@/lib/samsara-view';
 import { cn } from '@/lib/utils';
 
 /**
@@ -35,6 +35,9 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
     return value === 'inactive' || value === 'all' ? value : 'active';
   };
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>(statusFrom(searchParams));
+  // D49: only the trucks inside the shop geofence.
+  const placeFrom = (params: URLSearchParams) => (params.get('place') === 'in_shop' ? 'in_shop' : '');
+  const [place, setPlace] = useState<'' | 'in_shop'>(placeFrom(searchParams));
   const [addOpen, setAddOpen] = useState(false);
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
@@ -45,6 +48,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   useEffect(() => {
     setSearch(searchParams.get('search') ?? '');
     setStatus(statusFrom(searchParams));
+    setPlace(placeFrom(searchParams));
   }, [searchParams]);
 
   const items = useMemo(() => data?.flatMap((page) => page.items) ?? [], [data]);
@@ -66,16 +70,25 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         searchLabel={messages.searchTrucksShort}
         filtersLabel={messages.filters}
         closeLabel={messages.closeDialog}
-        activeFilterCount={statusFrom(searchParams) === 'active' ? 0 : 1}
+        activeFilterCount={(statusFrom(searchParams) === 'active' ? 0 : 1) + (placeFrom(searchParams) ? 1 : 0)}
         filters={(
-          <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-            {messages.trucksShow}
-            <Select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-auto" data-testid="trucks-status-filter">
-              <option value="active">{messages.trucksShowActive}</option>
-              <option value="inactive">{messages.trucksShowInactive}</option>
-              <option value="all">{messages.trucksShowAll}</option>
-            </Select>
-          </label>
+          <>
+            <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+              {messages.trucksShow}
+              <Select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-auto" data-testid="trucks-status-filter">
+                <option value="active">{messages.trucksShowActive}</option>
+                <option value="inactive">{messages.trucksShowInactive}</option>
+                <option value="all">{messages.trucksShowAll}</option>
+              </Select>
+            </label>
+            <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
+              {messages.trucksWhere}
+              <Select value={place} onChange={(event) => setPlace(event.target.value as typeof place)} className="w-auto" data-testid="trucks-place-filter">
+                <option value="">{messages.trucksWhereAnywhere}</option>
+                <option value="in_shop">{messages.trucksWhereInShop}</option>
+              </Select>
+            </label>
+          </>
         )}
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}
@@ -85,6 +98,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
           if (status !== 'active') next.set('status', status);
+          if (place) next.set('place', place);
           router.replace(`/admin/trucks${next.size ? `?${next}` : ''}`);
         }}
       />
@@ -207,10 +221,14 @@ function LocationCell({ item, locale, messages }: { item: AdminTruckSummaryDto; 
   if (!at) return <span className="text-muted-foreground" title={messages.trucksNotInSamsara}>—</span>;
   const ago = formatAdminAgo(at, locale);
   const stale = isStaleLocation(at);
+  const inShop = inShopText(item.truck.samsara, locale, messages);
   // TL-4, TL-7: city and state, how old; older than a day reads "No signal" in amber. Full address in the title.
+  // D49: inside the shop geofence it reads "In shop · since …"; inside another geofence, that geofence's name.
   return (
     <div title={item.truck.location ?? undefined}>
-      <p>{shortLocation(item.truck.location) ?? '—'}</p>
+      {inShop
+        ? <p className="font-medium text-success" data-testid="truck-in-shop">{inShop}</p>
+        : <p>{item.truck.samsara?.geofenceName ?? shortLocation(item.truck.location) ?? '—'}</p>}
       <p className={cn('text-xs', stale ? 'font-medium text-warning-foreground' : 'text-muted-foreground')}>
         {stale ? fillPlaceholders(messages.trucksLocationNoSignal, { ago }) : ago}
       </p>

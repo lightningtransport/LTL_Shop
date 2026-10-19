@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Building2, CalendarClock, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
-import { AppCapability, Priority, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { AppCapability, Priority, YardPresenceState, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
@@ -411,7 +411,11 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
         data-kanban-card
       >
         <div className="flex items-start justify-between gap-2">
-          <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>
+            {/* D49: inside the shop geofence (Samsara). */}
+            {item.presence.state === YardPresenceState.IN_YARD ? <span className="shrink-0 text-xs font-medium text-success" data-testid="yard-card-in-shop">{messages.presenceInShop}</span> : null}
+          </span>
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
         </div>
         <p className="truncate text-xs text-muted-foreground">

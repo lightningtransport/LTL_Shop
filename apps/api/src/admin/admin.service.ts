@@ -60,6 +60,7 @@ import {
   type AdminWorkOrdersQuery,
   CatalogStatus,
   TruckOperationalStatus,
+  SAMSARA_SHOP_GEOFENCE_IDS,
 } from '@ltl-shop/shared';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
@@ -2430,6 +2431,8 @@ export class AdminService {
     // D44: deactivated trucks are hidden unless the Manager asks for them (Inactive or All).
     if (query.status === 'active') filters.push({ deactivatedAt: null });
     if (query.status === 'inactive') filters.push({ deactivatedAt: { not: null } });
+    // D49: "In shop" is the geofence of the last Samsara point, however old it is.
+    if (query.place === 'in_shop') filters.push({ samsaraGeofenceId: { in: [...SAMSARA_SHOP_GEOFENCE_IDS] } });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({

@@ -343,6 +343,14 @@ const yardOperations = [
   makeYardItem('00000000-0000-4000-8000-000000001008', 'Y-108', 'ready_to_go', null, 'ready'),
 ];
 
+// D49: Y-104 is inside the shop's Samsara geofence (Home Office) since 9:00 AM; Y-105 is in another company geofence.
+const samsaraAt = (geofenceId, geofenceName, inShopSince) => ({ odometerMiles: 412300, odometerSource: 'obd', odometerAt: '2026-10-19T15:00:00.000Z', address: '6015 US-301, Tampa, FL, 33610', latitude: 27.99, longitude: -82.35, speedMph: 0, locationAt: '2026-10-19T15:00:00.000Z', geofenceId, geofenceName, inShopSince, syncedAt: '2026-10-19T15:01:00.000Z', lamps: null });
+for (const [number, samsara, state] of [['Y-104', samsaraAt('12839282', 'Home Office', '2026-10-19T13:00:00.000Z'), 'in_yard'], ['Y-105', samsaraAt('32418339', 'Lightning Transport and Logistics', null), 'outside_yard']]) {
+  const item = yardOperations.find((candidate) => candidate.truck.truckNumber === number);
+  item.truck.samsara = samsara;
+  item.presence = { state, provenance: 'samsara_geofence', since: samsara.inShopSince, at: samsara.locationAt };
+}
+
 const workPlanByTruck = new Map();
 
 function fixtureRepairHistory(truckId) {

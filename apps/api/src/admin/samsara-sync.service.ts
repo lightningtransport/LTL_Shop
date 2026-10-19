@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type SamsaraSyncState } from '@prisma/client';
-import type { SamsaraSyncResultDto, SamsaraSyncStateDto } from '@ltl-shop/shared';
+import { SAMSARA_SHOP_GEOFENCE_IDS, type SamsaraSyncResultDto, type SamsaraSyncStateDto } from '@ltl-shop/shared';
 import { parseFaultReading, type DashLamps, type ParsedFault } from '../integrations/samsara/samsara-faults';
 import { PAIRING_TRUCK_SELECT, pairTrucks, toPairingTruck } from '../integrations/samsara/samsara-pairing';
 import {
@@ -157,8 +157,11 @@ export class SamsaraSyncService {
       ${odometer ? (odometer.at || now.toISOString()) : null}::timestamptz,
       ${location?.address ?? null}::text, ${location?.latitude ?? null}::float8, ${location?.longitude ?? null}::float8,
       ${location?.speedMph ?? null}::float8, ${location?.at ?? null}::timestamptz,
+      ${location?.geofence?.id ?? null}::text, ${location?.geofence?.name ?? null}::text,
       ${lamps ? lamps.stop : null}::boolean, ${lamps ? lamps.warning : null}::boolean,
       ${lamps ? lamps.protect : null}::boolean, ${lamps ? lamps.emissions : null}::boolean)`);
+    // D49: SET reads the old row, so `t.samsara_geofence_id` is where the truck was before this reading.
+    const shop = Prisma.sql`${[...SAMSARA_SHOP_GEOFENCE_IDS]}::text[]`;
     const updated = new Set<string>();
     for (let index = 0; index < rows.length; index += 200) {
       const written = await tx.$queryRaw<Array<{ id: string }>>`
@@ -175,6 +178,15 @@ export class SamsaraSyncService {
           "samsara_longitude" = CASE WHEN v.location_at IS NULL THEN t."samsara_longitude" ELSE v.longitude END,
           "samsara_speed_mph" = CASE WHEN v.location_at IS NULL THEN t."samsara_speed_mph" ELSE v.speed_mph END,
           "samsara_location_at" = COALESCE(v.location_at AT TIME ZONE 'UTC', t."samsara_location_at"),
+          -- D49: the geofence moves with the GPS point; arriving at the shop stamps the time, staying keeps it, leaving clears it.
+          "samsara_geofence_id" = CASE WHEN v.location_at IS NULL THEN t."samsara_geofence_id" ELSE v.geofence_id END,
+          "samsara_geofence_name" = CASE WHEN v.location_at IS NULL THEN t."samsara_geofence_name" ELSE v.geofence_name END,
+          "samsara_in_shop_since" = CASE
+            WHEN v.location_at IS NULL THEN t."samsara_in_shop_since"
+            WHEN v.geofence_id = ANY(${shop}) THEN COALESCE(
+              CASE WHEN t."samsara_geofence_id" = ANY(${shop}) THEN t."samsara_in_shop_since" END,
+              v.location_at AT TIME ZONE 'UTC')
+            ELSE NULL END,
           -- S3-4: the dash lights move together; no fault reading this time keeps the last ones.
           "samsara_stop_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_stop_lamp" ELSE v.stop_lamp END,
           "samsara_warning_lamp" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_warning_lamp" ELSE v.warning_lamp END,
@@ -183,7 +195,7 @@ export class SamsaraSyncService {
           "samsara_lamps_at" = CASE WHEN v.stop_lamp IS NULL THEN t."samsara_lamps_at" ELSE ${now.toISOString()}::timestamptz AT TIME ZONE 'UTC' END
         FROM (VALUES ${Prisma.join(rows.slice(index, index + 200))})
           AS v(id, vehicle_id, vehicle_name, stored_vehicle_id, odometer_miles, odometer_source, odometer_at, address, latitude, longitude,
-            speed_mph, location_at, stop_lamp, warning_lamp, protect_lamp, emissions_lamp)
+            speed_mph, location_at, geofence_id, geofence_name, stop_lamp, warning_lamp, protect_lamp, emissions_lamp)
         -- D44: only if nobody connected, disconnected or deactivated the truck since it was read.
         WHERE t."id" = v.id
           AND t."samsara_vehicle_id" IS NOT DISTINCT FROM v.stored_vehicle_id

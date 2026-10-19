@@ -85,6 +85,8 @@ export type SamsaraLocation = {
   address: string | null;
   speedMph: number | null;
   at: string;
+  /** D49: the Samsara geofence ("Address") the point is in (`gps.address`), or null when it is in none. */
+  geofence: { id: string; name: string | null } | null;
 };
 
 /**
@@ -231,7 +233,15 @@ function locationOf(value: unknown): SamsaraLocation | null {
   const reverseGeo = (gps.reverseGeo ?? {}) as Record<string, unknown>;
   const address = typeof reverseGeo.formattedLocation === 'string' && reverseGeo.formattedLocation.trim() ? reverseGeo.formattedLocation.trim() : null;
   const speed = typeof gps.speedMilesPerHour === 'number' && Number.isFinite(gps.speedMilesPerHour) ? gps.speedMilesPerHour : null;
-  return { latitude, longitude, address, speedMph: speed, at: time };
+  return { latitude, longitude, address, speedMph: speed, at: time, geofence: geofenceOf(gps.address) };
+}
+
+function geofenceOf(value: unknown): SamsaraLocation['geofence'] {
+  if (!value || typeof value !== 'object') return null;
+  const { id, name } = value as Record<string, unknown>;
+  const key = typeof id === 'string' ? id.trim() : typeof id === 'number' && Number.isFinite(id) ? String(id) : '';
+  if (!key) return null;
+  return { id: key, name: typeof name === 'string' && name.trim() ? name.trim() : null };
 }
 
 function reading(value: unknown, source: SamsaraOdometer['source']): SamsaraOdometer | null {

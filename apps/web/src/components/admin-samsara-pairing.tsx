@@ -326,6 +326,8 @@ function SyncCard({ sync, canSync, syncing, onSync, locale, messages }: {
           </p>
         ) : <p className="text-muted-foreground">{messages.samsaraSyncNever}</p>}
         {error ? (sync?.lastError === 'faults_unavailable' ? <p className="text-warning-foreground">{error}</p> : <InlineAlert>{error}</InlineAlert>) : null}
+        {/* D49 / P37: which Samsara geofence is the shop. */}
+        <p className="text-muted-foreground" data-testid="samsara-shop-geofence">{messages.samsaraShopGeofence}</p>
       </div>
     </SectionCard>
   );

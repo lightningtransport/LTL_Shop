@@ -236,6 +236,8 @@ export const adminHistoryQuerySchema = z.object({
 /** D44: Trucks → Inactive shows the deactivated trucks (they are hidden by default). */
 export const adminTrucksQuerySchema = adminNamedListQuerySchema.extend({
   status: z.enum(['active', 'inactive', 'all']).default('active'),
+  /** D49: only the trucks whose last Samsara point is in the shop geofence. */
+  place: z.enum(['in_shop']).optional(),
 });
 export const adminTruckCursorSchema = z.object({
   direction: z.enum(['asc', 'desc']),

@@ -11,7 +11,7 @@ import {
   ReadinessRequirementType,
   OPEN_WORK_ORDER_STATUSES,
   ReadinessAssessmentStatus,
-  YardPresenceState,
+  truckPresence,
   YardReadinessFilter,
   TruckOperationalStatus,
   WorkPlanNotReadyReason,
@@ -748,6 +748,7 @@ export class YardOperationsService {
     const linkedForDerivation = openOnTruck.length ? openOnTruck : linkedWorkOrders;
     const currentWorkOrder = row.workOrders[0] ?? row.readyWorkOrder ?? null;
     const activeWorkOrder = currentWorkOrder ? toAdminWorkOrderSummary(currentWorkOrder) : null;
+    const truck = toTruckDto(row);
     const latestService = row.serviceStatusEvents[0];
     const operationalStatus = latestService?.status === 'in_service'
       ? TruckOperationalStatus.IN_SERVICE
@@ -764,8 +765,8 @@ export class YardOperationsService {
       ? workOrderNextStep(currentWorkOrder, { inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null })
       : deriveTruckNextStep({ workOrder: null, inspectionOutcome: workPlan.inspection.outcome, jobs: [] });
     return {
-      truck: toTruckDto(row),
-      presence: { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' },
+      truck,
+      presence: truckPresence(truck.samsara),
       operationalStatus,
       operationalStatusAt: latestService?.occurredAt.toISOString() ?? null,
       assessment: mappedAssessment,
