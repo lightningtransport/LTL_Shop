@@ -1,9 +1,9 @@
 ---
 name: mobile-ui-check
-description: Review the Shop Admin panel on a phone (iPhone WebKit and Android Chromium) with evidence, before fixing mobile UI. Use when the owner says something looks cut, a menu does not open, buttons or spacing look off on mobile, or before shipping a screen that the Manager uses on the phone.
+description: Review the Shop Admin panel, the mechanic apps (General and PM) and Safety /qc on a phone (iPhone WebKit and Android Chromium) with evidence, before fixing mobile UI. Use when the owner says something looks cut, a menu does not open, buttons or spacing look off on mobile, or before shipping a screen that the Manager uses on the phone.
 ---
 
-# Mobile UI check (Shop Admin)
+# Mobile UI check (Shop Admin, mechanics, Safety)
 
 Goal: find what is really wrong on a phone, with evidence, and never guess. Every finding needs a screenshot, a measurement or a `file:line`.
 
@@ -27,6 +27,12 @@ cd apps/web && MOBILE_WALK=1 MOBILE_WALK_OUT=/tmp/walk ADMIN_E2E_FIXTURE=1 ../..
   - `small`: tap targets under 44 px that are not `.tap-inline` (WCAG 2.5.8 / Apple HIG 44 pt).
   - `truncated`: text cut with an ellipsis or overflow (`sr-only` is skipped).
   - `plurals`: visible "1 Jobs", "1 purchases"…
+- **Mechanic, PM and Safety screens:** `MOBILE_WALK=field`. They need real data, so the fixture API is not enough:
+  - seed `ltl_shop_test` with the helpers in `apps/api/test-real/harness.ts` (a temporary row, not committed): a Work Order in progress with a blocker, a PM running, trucks waiting for QC, one returned and one approved;
+  - start the built API against `ltl_shop_test` with `AUTH_DEV_BYPASS=true` on port 3211 (or set `MOBILE_WALK_API`);
+  - start a production build of the web with `NEXT_PUBLIC_E2E_DEV_LOGIN=1`, `NEXT_PUBLIC_API_URL=http://127.0.0.1:3211` and `NEXT_DIST_DIR=.next-walk` on port 3010;
+  - run with `PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3010 -g field`.
+  The field apps scroll the window on purpose (sticky header, fixed bottom tabs), so `doc > inner` is expected there. A page entry with a third value opens that button first (a dialog, the QC review sheet).
 - Look at every screenshot yourself as well. Content, hierarchy and spacing issues need eyes, not only numbers.
 
 ## 3. Confirm before you fix

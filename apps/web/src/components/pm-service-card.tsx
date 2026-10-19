@@ -444,10 +444,13 @@ export function PmServiceCard({
                     aria-describedby={partsLocked ? 'pm-parts-locked' : undefined}
                     disabled={disabled}
                     onClick={() => toggleCategory(category, !on)}
-                    // UX-2-005: the off track reaches 3:1 against the card (it was 1.5:1, the switch looked missing).
-                    className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${on ? 'bg-success' : 'bg-muted-foreground/75'}`}
+                    // UX-F-001: the button is 44 px tall on touch (gloves); the track inside keeps its 28 px look.
+                    className="flex h-11 shrink-0 items-center disabled:opacity-40 lg:h-7"
                   >
-                    <span aria-hidden="true" className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? 'left-[1.375rem]' : 'left-0.5'}`} />
+                    {/* UX-2-005: the off track reaches 3:1 against the card (it was 1.5:1, the switch looked missing). */}
+                    <span aria-hidden="true" className={`relative block h-7 w-12 rounded-full transition ${on ? 'bg-success' : 'bg-muted-foreground/75'}`}>
+                      <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? 'left-[1.375rem]' : 'left-0.5'}`} />
+                    </span>
                   </button>
                 </div>
                 {on && !noParts ? (
