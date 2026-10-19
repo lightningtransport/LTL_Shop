@@ -46,7 +46,7 @@ test('manager ties a group to its catalog Job, adds another, keeps a one-off and
   await expect(cards.first()).toContainText('Also written: "fix  DASH light"');
 
   await cards.filter({ hasText: 'lights' }).getByRole('button', { name: 'Tie to Lights (Electrical & Starting)' }).click();
-  await expect(page.getByText('Tied 1 Jobs to Lights')).toBeVisible();
+  await expect(page.getByText('Tied 1 Job to Lights')).toBeVisible();
   await expect(cards).toHaveCount(2);
 
   await cards.filter({ hasText: 'Fix dash light' }).getByRole('button', { name: 'Add to catalog…' }).click();

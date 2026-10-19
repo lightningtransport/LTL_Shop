@@ -408,7 +408,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders?status=completed');
     const row = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0104', exact: true }) });
     await expect(row).toBeVisible();
-    // A completed Work Order whose Truck is Ready to Go reads "Return to Service", not "1 Jobs · all done".
+    // A completed Work Order whose Truck is Ready to Go reads "Return to Service", not "1 Job · all done".
     const next = row.getByTestId('work-order-row-next-step');
     await expect(next).toHaveAttribute('data-kind', 'return_to_service');
     await expect(next).toHaveText('Ready to Go. Return it to service when it leaves the shop.');
@@ -417,7 +417,7 @@ test.describe('Shop Admin Phase 2A', () => {
     // An open Work Order with a Job left names that Job, like the Truck does.
     await page.goto('/admin/work-orders?status=in_progress');
     const open = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0106', exact: true }) });
-    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Jobs left · next: Inspect brake chamber');
+    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Job left · next: Inspect brake chamber');
   });
 
   test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {

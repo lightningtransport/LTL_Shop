@@ -57,7 +57,7 @@ const MenuTrigger = forwardRef<HTMLButtonElement, { label: string } & React.Butt
       <button
         ref={ref}
         type="button"
-        className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:size-8"
+        className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:size-8"
         aria-label={label}
         {...props}
       >

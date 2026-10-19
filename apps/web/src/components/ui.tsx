@@ -804,7 +804,8 @@ export function PageHeader({
           {meta ? <div className="mt-1 text-xs text-muted-foreground">{meta}</div> : null}
         </div>
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {/* Mobile UI review: `max-w-full` lets several actions wrap on a phone instead of running off the screen. */}
+      {actions ? <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );
 }

@@ -8,6 +8,7 @@ import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/l
 import { adminAttentionReasonLabel, adminPriorityLabel, workOrderStatusLabel } from '@/lib/status-chips';
 import { cn } from '@/lib/utils';
 import { adminTruckHref, adminWorkOrderHref } from '@/lib/admin-truck-origin';
+import { fillPlaceholders } from '@/lib/admin-next-step';
 import { mechanicNamesLabel, workOrderNextJobLine } from '@/lib/admin-work-summary';
 import { AdminBlockerResolve } from './admin-blocker-resolve';
 import { truckNextStepText } from '@/lib/truck-next-step';
@@ -44,7 +45,7 @@ export function AdminWorkOrderItem({ item, locale, messages, compact = false, fr
             {' · '}
             {/* LTR-189 (W8): with a Next step below, this line only counts the Jobs. */}
             {nextStepText && item.category.name !== 'PM' && item.nextJobName !== undefined && item.jobsTotal > 0
-              ? messages.workOrderJobsCount.replace('{count}', String(item.jobsTotal))
+              ? fillPlaceholders(messages.workOrderJobsCount, { count: String(item.jobsTotal) })
               : workOrderNextJobLine(item, messages)}
           </p>
           {/* LTR-189 (W3): the Next step already says what to do; the attention reason only shows when there is no step. */}

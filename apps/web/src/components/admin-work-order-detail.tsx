@@ -554,7 +554,7 @@ export function AdminWorkOrderDetail({
           title={messages.truck}
           data-testid="admin-wo-truck-card"
           action={(
-            <Link href={truckHref} className="inline-flex h-9 items-center gap-1 font-medium text-primary hover:underline">
+            <Link href={truckHref} className="inline-flex h-9 items-center gap-1 font-medium text-primary hover:underline [@media(pointer:coarse)]:h-11">
               {messages.truckCardOpen}<ArrowUpRight aria-hidden="true" className="size-3.5" />
             </Link>
           )}
@@ -605,7 +605,7 @@ export function AdminWorkOrderDetail({
                     aria-checked={draftPriority === value}
                     disabled={Boolean(pendingAction)}
                     onClick={() => setDraftPriority(value)}
-                    className="seg h-9 rounded-md text-muted-foreground hover:text-foreground"
+                    className="seg h-9 rounded-md text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:h-11"
                   >
                     {adminPriorityLabel(value, messages)}
                   </button>
@@ -667,7 +667,7 @@ export function AdminWorkOrderDetail({
                 {historyItems.map((item) => (
                   <li key={item.workOrderId} className="space-y-1 px-4 py-3">
                     <div className="flex items-baseline justify-between gap-2">
-                      <Link href={`/admin/work-orders/${item.workOrderId}`} className="font-mono text-[13px] font-medium text-primary hover:underline">{item.displayId}</Link>
+                      <Link href={`/admin/work-orders/${item.workOrderId}`} className="tap-inline font-mono text-[13px] font-medium text-primary hover:underline">{item.displayId}</Link>
                       {item.mileage !== null ? <span className="tnum text-xs text-muted-foreground">{fillPlaceholders(messages.mileageMi, { value: number.format(item.mileage) })}</span> : null}
                     </div>
                     <p className="text-muted-foreground">

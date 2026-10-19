@@ -152,7 +152,7 @@ export function AdminJobTable({
         trigger={(
           <button
             type="button"
-            className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 lg:size-8"
+            className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 lg:size-8"
             aria-label={fillPlaceholders(messages.jobRowActions, { job: name })}
             disabled={pending}
           >
@@ -235,7 +235,7 @@ export function AdminJobTable({
           trigger={(
             <button
               type="button"
-              className={cn('flex h-10 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent disabled:opacity-60 max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9', pendingAction === `assign-job-${job.id}` && 'opacity-60')}
+              className={cn('flex h-11 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent disabled:opacity-60 max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9', pendingAction === `assign-job-${job.id}` && 'opacity-60')}
               aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
               disabled={pending}
             >

@@ -1,3 +1,4 @@
+import { fillPlaceholders } from './admin-next-step';
 /** Work Order age for a compact card: "5h" or "3d". */
 export function compactAge(fromIso: string, now = Date.now()) {
   const hours = Math.max(0, Math.floor((now - new Date(fromIso).getTime()) / 3_600_000));
@@ -21,8 +22,9 @@ export function matchesTruckSearch(truckNumber: string, search: string) {
   return !term || truckNumber.toLowerCase().includes(term);
 }
 
+/** Same rules as `fillPlaceholders`, including `{count:one|many}` plurals. */
 export function fillYardText(template: string, values: Record<string, string>) {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+  return fillPlaceholders(template, values);
 }
 
 export interface YardDispatchSignal {

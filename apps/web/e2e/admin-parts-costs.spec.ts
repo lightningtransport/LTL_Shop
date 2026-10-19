@@ -76,7 +76,7 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   await loginToAdmin(page, 'manager@lightning.local');
   await page.goto('/admin/parts/purchases');
   await expect(page.getByRole('heading', { name: 'Purchases', exact: true })).toBeVisible();
-  await expect(page.getByTestId('purchases-summary')).toHaveText('1 purchases · $48.20');
+  await expect(page.getByTestId('purchases-summary')).toHaveText('1 purchase · $48.20');
   await expect(page.getByRole('row', { name: /88412093/ })).toContainText('No invoice file');
 
   await page.getByRole('button', { name: 'New purchase' }).click();
