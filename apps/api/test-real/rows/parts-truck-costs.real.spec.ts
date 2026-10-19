@@ -71,11 +71,13 @@ describe('Manager: costos del camión (D32, PC-4)', () => {
     const t931 = await truck('931');
     const { workOrderId } = await plannedWo('931');
     const today = new Date();
-    const day = today.toISOString().slice(0, 10);
     const sessionStart = new Date(today.getTime() - 3 * 60 * 60 * 1000);
+    // LTR-249: the period starts the day the work started (yesterday's UTC date between 00:00 and 03:00 UTC).
+    const day = sessionStart.toISOString().slice(0, 10);
+    const until = today.toISOString().slice(0, 10);
     await prisma.workSession.create({ data: { workOrderId, startedAt: sessionStart, endedAt: new Date(sessionStart.getTime() + 90 * 60 * 1000), userId: null } });
     await prisma.workSession.create({ data: { workOrderId, startedAt: new Date(), endedAt: null, userId: null } });
-    const view = ok('costos de hoy', await costs(t931.id, `?from=${day}&to=${day}`));
+    const view = ok('costos de hoy', await costs(t931.id, `?from=${day}&to=${until}`));
     const closed = await prisma.workSession.findMany({ where: { workOrder: { truckId: t931.id }, endedAt: { not: null }, startedAt: { gte: new Date(`${day}T00:00:00Z`) } } });
     const expected = Math.round((closed.reduce((sum, item) => sum + (item.endedAt!.getTime() - item.startedAt.getTime()), 0) / 3_600_000) * 100) / 100;
     same('horas de las sesiones cerradas (la abierta no cuenta)', view.laborHours, expected);

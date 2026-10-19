@@ -444,7 +444,13 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('button', { name: /Filters \(1\)/ })).toBeVisible();
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeInViewport();
 
-    for (const width of [768, 1280, 1366, 1440]) {
+    // UX-4-001 (PR 338): the Work Orders bar (search, four selects, Clear, Apply) goes inline when its card is 68rem
+    // wide. With the sidebar from lg that is about 1440 px; tablets and 1280–1366 px laptops keep the sheet.
+    for (const width of [768, 1280, 1366]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON }), `sheet at ${width}px`).toBeVisible();
+    }
+    for (const width of [1440, 1536, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeHidden();
       const toolbar = page.getByRole('search');

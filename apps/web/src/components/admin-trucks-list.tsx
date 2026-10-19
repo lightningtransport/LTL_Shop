@@ -79,7 +79,8 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         )}
         onClear={() => router.replace('/admin/trucks')}
         clearLabel={messages.clearFilters}
-        applyLabel={messages.searchAction}
+        // LTR-236 / LTR-189: a list with extra filters (D44 added Show) says "Apply filters", like People and Work Orders.
+        applyLabel={messages.applyFilters}
         onSubmit={() => {
           const next = new URLSearchParams();
           if (search.trim()) next.set('search', search.trim());
