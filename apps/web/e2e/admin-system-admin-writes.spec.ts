@@ -262,10 +262,11 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByRole('heading', { name: 'Luz Mendez' })).toBeVisible();
 
   await switchLanguage(page, 'es');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager o System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Abre a una persona para renombrarla');
   await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeVisible();
   await page.goto('/admin/mechanics');
-  await expect(page.getByText('Agrega personas Standard, PM o Safety. La app crea su cuenta de acceso con una contraseña temporal.')).toBeVisible();
+  // LTR-253 / D48: the System Admin's People subtitle names the Shop Manager and System Admin types too.
+  await expect(page.getByText('Agrega personas Standard, PM, Safety, Shop Manager o System Admin. La app crea su cuenta de acceso con una contraseña temporal.')).toBeVisible();
   await expect(page.getByText(/solo lectura/i)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
