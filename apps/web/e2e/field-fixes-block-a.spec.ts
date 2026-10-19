@@ -59,7 +59,7 @@ async function mockMechanicApi(page: Page, listItem: Record<string, unknown>) {
 
 async function loginMechanic(page: Page) {
   await devLogin(page, mechanic.email);
-  await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible();
 }
 
 test.describe('Block A · General mechanic', () => {
@@ -67,7 +67,7 @@ test.describe('Block A · General mechanic', () => {
     await mockMechanicApi(page, summary({ myClockStopped: { reason: 'switched_truck', elsewhereWorkOrder: null } }));
     await loginMechanic(page);
     await expect(page.getByTestId('clock-stopped-tap-continue')).toHaveText('Your clock is stopped · tap Continue');
-    await expect(page.getByRole('link', { name: /View Work/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /View work/i })).toHaveCount(0);
     await page.getByRole('button', { name: 'Continue truck 922, Work Order WO-900' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Work started. Your clock moved from Truck 944 to Truck 922.' }).first()).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/work-orders/${woId}$`));
@@ -82,13 +82,13 @@ test.describe('Block A · General mechanic', () => {
     await expect(dialog.getByLabel('What is missing? (optional)')).toBeVisible();
 
     await dialog.getByRole('radio', { name: 'Other' }).check();
-    await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Report blocker', exact: true }).click();
     await expect(dialog.getByText('Say what is stopping you.')).toBeVisible();
     expect(sent.blockers).toHaveLength(0);
 
     await dialog.getByRole('radio', { name: 'Waiting for Parts' }).check();
     await dialog.getByLabel('What is missing? (optional)').fill('Brake chamber 30/30');
-    await dialog.getByRole('button', { name: 'Report Blocker', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Report blocker', exact: true }).click();
     await expect.poll(() => sent.blockers.at(-1)).toMatchObject({ jobId, reason: 'waiting_for_parts', notes: 'Brake chamber 30/30' });
   });
 

@@ -10,7 +10,7 @@ test.describe('LTR-172 fixture routes: mechanic notes and Admin History', () => 
     await expect(page.getByRole('heading', { name: 'Truck T-106' })).toBeVisible({ timeout: 15_000 });
 
     await page.getByPlaceholder(/Write a note/i).fill('Air line checked, no leaks');
-    await page.getByRole('button', { name: 'Add Note' }).click();
+    await page.getByRole('button', { name: 'Add note' }).click();
 
     await expect(page.getByText('Note added.')).toBeVisible();
     await expect(page.getByText('Air line checked, no leaks')).toBeVisible();

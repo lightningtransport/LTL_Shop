@@ -77,18 +77,18 @@ async function mockPmApi(page: Page, last: unknown = null, pmSaveDelayMs = 0) {
 
 async function login(page: Page) {
   await devLogin(page);
-  await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PM mechanic' })).toBeVisible();
 }
 
 async function chooseTruckAndCreate(page: Page) {
-  await page.getByRole('link', { name: /Create PM Service|Create New Work Order/i }).click();
-  await expect(page.getByRole('heading', { name: /New PM Service|New Work Order/i })).toBeVisible();
+  await page.getByRole('link', { name: /Create PM service|Create New Work Order/i }).click();
+  await expect(page.getByRole('heading', { name: /New PM service|New Work Order/i })).toBeVisible();
   const input = page.getByRole('combobox', { name: /Truck/i }).first();
   await input.fill('905');
   await expect(page.getByRole('option', { name: /905/i }).first()).toBeVisible();
   await page.getByRole('option', { name: /905/i }).first().click();
-  await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeEnabled();
-  await page.getByRole('button', { name: /Create PM Service/i }).click();
+  await expect(page.getByRole('button', { name: /Create PM service/i })).toBeEnabled();
+  await page.getByRole('button', { name: /Create PM service/i }).click();
 }
 
 test.describe('Daniel PM workflow', () => {
@@ -103,7 +103,7 @@ test.describe('Daniel PM workflow', () => {
     await login(page);
     await chooseTruckAndCreate(page);
     // The PM mechanic lands on the PM job of the truck Work Order (LTR-146).
-    await expect(page.getByRole('heading', { name: /PM Service/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /PM service/i })).toBeVisible();
     await expect(page.getByText('Jobs To Do')).toHaveCount(0);
     await expect.poll(() => createBody).toMatchObject({ primaryCategoryId: pmCategory.id, mechanicIds: [], jobs: [] });
     expect(createBody).not.toHaveProperty('notes');
@@ -116,7 +116,7 @@ test.describe('Daniel PM workflow', () => {
     // LTR-126: a note is its own entry with author and time; the box clears after adding.
     const notes = page.getByPlaceholder('Write a note: something the shop should know');
     await notes.fill('Filter housing inspected');
-    await page.getByRole('button', { name: 'Add Note' }).click();
+    await page.getByRole('button', { name: 'Add note' }).click();
     await expect(page.getByText('Filter housing inspected')).toBeVisible();
     await expect(page.locator('li').filter({ hasText: 'Filter housing inspected' }).getByText('Daniel', { exact: true })).toBeVisible();
     await expect(notes).toHaveValue('');
@@ -199,7 +199,7 @@ test.describe('Daniel PM workflow', () => {
     await expect(page.getByText(/not available for your account/i)).toBeVisible();
     await page.getByRole('link', { name: /Go to your Shop home/i }).click();
     await expect(page).toHaveURL(/\/mechanic\/pm$/);
-    await expect(page.getByRole('heading', { name: 'PM Mechanic' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'PM mechanic' })).toBeVisible();
   });
 
   test('PM service load failure uses shared retry', async ({ page }) => {
@@ -463,7 +463,7 @@ test.describe('PM job inside the truck Work Order (LTR-146 / LTR-148)', () => {
     await login(page);
     const notice = page.getByTestId('pm-in-progress-notice');
     await expect(notice).toContainText('You have a PM service in progress on Truck 905 (WO-1001).');
-    await expect(page.getByRole('button', { name: /Create PM Service/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /Create PM service/i })).toBeDisabled();
     // The paused-style card of another PM offers no Start either.
     await expect(page.getByRole('link', { name: /Start PM on Truck/ })).toHaveCount(0);
 

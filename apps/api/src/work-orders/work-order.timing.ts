@@ -59,7 +59,7 @@ export function canCompleteJob(status: string, laborRunning = true): {
     return {
       ok: false,
       code: 'START_REQUIRED',
-      message: 'Start Work before completing jobs.',
+      message: 'Start work before completing jobs.',
     };
   }
   if (status === 'completed' || status === 'cancelled') {
@@ -69,12 +69,12 @@ export function canCompleteJob(status: string, laborRunning = true): {
       message: 'This Work Order is closed.',
     };
   }
-  // LTR-124: labor stopped after the last Job; a later Job needs Start Work.
+  // LTR-124: labor stopped after the last Job; a later Job needs Start work.
   if (status === 'in_progress' && !laborRunning) {
     return {
       ok: false,
       code: 'START_REQUIRED',
-      message: 'Start Work before completing jobs.',
+      message: 'Start work before completing jobs.',
     };
   }
   return { ok: true };

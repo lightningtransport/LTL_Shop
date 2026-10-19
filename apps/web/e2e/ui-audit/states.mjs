@@ -105,7 +105,7 @@ async function step(name, fn) {
     await page.keyboard.press('Escape');
   });
   await step('mechanic-job-dialog', async () => {
-    await page.getByRole('link', { name: /Ver trabajo|View Work/i }).first().click();
+    await page.getByRole('link', { name: /Ver trabajo|View work/i }).first().click();
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(800);
     await page.getByText(/Inspect brake chamber/).first().click();
@@ -120,13 +120,13 @@ async function step(name, fn) {
     await toggle.click();
   });
   await step('mechanic-blocker-dialog', async () => {
-    await page.getByRole('button', { name: /Reportar bloqueo|Report Blocker/i }).click();
+    await page.getByRole('button', { name: /Reportar bloqueo|Report blocker/i }).click();
     await shot(page, 'mechanic-blocker-dialog');
     await page.keyboard.press('Escape');
   });
   await step('mechanic-note-added', async () => {
     await page.getByRole('textbox').last().fill('UI audit note');
-    await page.getByRole('button', { name: /Agregar nota|Add Note/i }).click();
+    await page.getByRole('button', { name: /Agregar nota|Add note/i }).click();
     await page.waitForTimeout(400);
     await shot(page, 'mechanic-note-added');
   });
@@ -139,7 +139,7 @@ async function step(name, fn) {
     await shot(page, 'mechanic-long-names-my-work');
   });
   await step('mechanic-long-names-work-order', async () => {
-    await page.getByRole('link', { name: /Ver trabajo|View Work/i }).first().click();
+    await page.getByRole('link', { name: /Ver trabajo|View work/i }).first().click();
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(800);
     await shot(page, 'mechanic-long-names-work-order');

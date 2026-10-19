@@ -61,8 +61,8 @@
 - **La barra fija del PM** (Report Blocker / Finish PM) es translúcida con desenfoque. En la captura sin desenfoque se adivina el texto de atrás; en el teléfono se ve desenfocado.
 - **Los números de WO** en letra monoespaciada en unas tarjetas y normal en otras: es la mezcla que ya tiene el panel del Manager. No se toca sin una regla.
 
-## Para decidir el dueño
-- **Mayúsculas en los botones:** conviven "Add note" y "Add Note", "Complete job" y "Report Blocker", "View Work" y "Continue review". El panel del Manager usa la primera palabra con mayúscula ("Count stock"). Unificarlo toca muchos textos y pruebas, así que se pregunta antes.
+## Decidido por el dueño (2026-10-19)
+- **Mayúsculas en los botones:** solo la primera palabra con mayúscula, como el panel del Manager ("Add note", "Report blocker", "Start work", "View work", "My assigned work", "PM mechanic"). Los términos del producto (Work Order, Job, Truck, PM, Manager, Shop) y los nombres de estado ("In Progress") no cambian. Se hizo en un PR aparte, después de LTR-251.
 
 ## Lo que funciona bien
 - Las tres pestañas de abajo siempre a la vista, con el número de pendientes en Safety ("To review · 2", "Returned · 1").

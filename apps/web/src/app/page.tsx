@@ -261,7 +261,7 @@ function WorkOrderCard({
           {/* LTR-154 / D11: only my Jobs, with the next one marked. */}
           {myJobs.map((job) => (
             <li key={job.id} className="flex items-start gap-2" aria-current={job.id === nextJobId ? 'step' : undefined}>
-              {/* LTR-167: a status mark, not a checkbox; the card's "View Work" is the action. */}
+              {/* LTR-167: a status mark, not a checkbox; the card's "View work" is the action. */}
               {job.status === 'completed' ? (
                 <Check aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-shop-success" />
               ) : (
@@ -304,7 +304,7 @@ function WorkOrderCard({
         ) : mode === 'created' ? (
           <StartWorkAction wo={wo} className="flex-1" />
         ) : nextJobId && clockStoppedLine(wo.myClockStopped, messages) ? (
-          // Block A (MG4): the line says "tap Continue", so the button is Continue, not "View Work".
+          // Block A (MG4): the line says "tap Continue", so the button is Continue, not "View work".
           <StartWorkAction wo={wo} className="flex-1" label={messages.continueWork} />
         ) : (
           <WorkOrderActionLink href={`/work-orders/${wo.id}`} action={messages.viewWork} wo={wo} className="w-full" />
@@ -322,7 +322,7 @@ function StartWorkAction({
 }: {
   wo: WorkOrderSummaryDto;
   className?: string;
-  /** Block A (MG4): "Continue" where my clock stopped; "Start Work" otherwise. */
+  /** Block A (MG4): "Continue" where my clock stopped; "Start work" otherwise. */
   label?: string;
   /** Stage MG-3 (UX-4-001): only the next work is the primary button. */
   variant?: 'default' | 'outline';

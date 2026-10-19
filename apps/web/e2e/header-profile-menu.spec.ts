@@ -6,7 +6,7 @@ test.describe('LTR-167 header and profile menu', () => {
   test('mechanic header holds only the logo and a 44px profile button; settings live in the menu', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible({ timeout: 15_000 });
 
     const header = page.getByRole('banner', { name: 'Home controls' });
     await expect(header.getByRole('button')).toHaveCount(1);
@@ -35,7 +35,7 @@ test.describe('LTR-167 header and profile menu', () => {
   test('installed app: the mechanic header covers the status bar and content starts below it', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await devLogin(page, 'mechanic@lightning.local');
-    await expect(page.getByRole('heading', { name: 'My Assigned Work' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible({ timeout: 15_000 });
     await page.addStyleTag({ content: ':root { --app-safe-top: 59px; }' });
 
     const header = page.getByRole('banner', { name: 'Home controls' });

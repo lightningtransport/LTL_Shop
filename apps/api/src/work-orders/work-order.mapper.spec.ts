@@ -291,7 +291,7 @@ describe('resolvedBlockerAwaitingContinue (LTR-158 / D18)', () => {
     expect(toWorkOrderDetail(resolved).resolvedBlocker).toBeUndefined();
   });
 
-  it('says whether I already worked here, for Start Work vs Continue (LTR-164 #6)', () => {
+  it('says whether I already worked here, for Start work vs Continue (LTR-164 #6)', () => {
     expect(toWorkOrderDetail(wo(null), alex.id).myLaborStarted).toBe(true);
     expect(toWorkOrderDetail(wo(null), 'mechanic-new').myLaborStarted).toBe(false);
     expect(toWorkOrderDetail(wo(null)).myLaborStarted).toBeUndefined();

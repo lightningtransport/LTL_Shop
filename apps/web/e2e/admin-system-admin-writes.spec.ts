@@ -14,7 +14,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
   await expect(page.getByText('Add Standard, PM or Safety people. The app creates their access account with a temporary password.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
   // LTR-185: Safety shows on the roster with a people-facing label.
   await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Alejandro 1' }).click();
@@ -159,7 +159,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
   await expect(page.getByText('Add Standard, PM or Safety people. The app creates their access account with a temporary password.')).toBeVisible();
   await expect(page.getByText(/read-only/i)).toHaveCount(0);
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
 });
 
 test('system admin adds, renames, and activates a Job, then creates and activates a mechanic', async ({ page }) => {
@@ -205,7 +205,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.goto('/admin/mechanics');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
   await page.getByRole('button', { name: 'Add person' }).click();
   const createDialog = page.getByRole('dialog');
   // LTR-163: the dialog focuses Name when it opens; typing before that lands the email in Name.
