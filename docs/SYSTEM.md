@@ -444,6 +444,13 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   de cantidades y su valor la suma de `value_cents`. Una línea To stock entra con
   su parte del impuesto y el flete que cayeron en las líneas sin camión. **Sale al
   costo promedio** (P27); la última unidad se lleva todo el valor que queda.
+  - **D47 / HU-M20 (LTR-246): Stock salió del menú.** **Parts** (`/admin/parts/catalog`) es el inventario:
+    - cada parte muestra En stock (con Low), el mínimo y un solo Costo (el promedio o, sin stock, el de referencia marcado "ref");
+    - los filtros "En stock" y "Solo bajos";
+    - el nombre abre el **panel de la parte**: stock, promedio y referencia, mínimo editable, Movements con su motivo, Add to stock y Remove from stock;
+    - **Count stock** (`/admin/parts/count`) cuenta en lote, en tarjetas en el teléfono.
+
+    `/admin/parts/stock` redirige a Parts con `inStock=true`, y guarda la búsqueda. Lo que sigue describe la pantalla anterior a D47:
   - **Parts & costs → Stock** (`/admin/parts/stock`): por parte, lo que hay, su
     costo promedio, su valor y **Low** si está bajo el mínimo (`min_stock`, ST-2);
     filtros por tipo y "solo bajos"; cada parte abre sus movimientos.
