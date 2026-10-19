@@ -129,20 +129,39 @@ function toDriverList(drivers: Set<string>): string[] | undefined {
   return [...drivers].sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * LTR-254: Incoming Trucks reads `driver_pay`, not the `returns` copy (it holds the whole fleet,
+ * undated rows and stale dates). Each Truck counts its latest assignment (newest Out Date) and that
+ * assignment's Return Date. Assignments that ended early or moved to another Truck do not bring it
+ * back, and rows without a Return Date are not arrivals.
+ */
 export function mapIncomingTrucks(
   rows: Record<string, unknown>[],
   windows: ShopWeekWindows,
 ): YardIncomingTruckItemDto[] {
-  const byTruck = new Map<string, TruckAccumulator>();
+  const latest = new Map<string, { outDate: string; rows: Array<{ returnDate: string; driver: string }> }>();
   for (const row of rows) {
-    const truckNumber = pickField(row, ['Truck', 'Truck_Number', 'truck_number', 'truck']);
-    if (!truckNumber) continue;
+    const truckNumber = pickField(row, ['Truck_Number', 'Truck', 'truck_number', 'truck']);
     const returnDate = toIsoDate(pickField(row, ['Return Date', 'ReturnDate', 'return_date']));
-    if (!inDefaultMovementWindow(returnDate, windows)) continue;
-    mergeDriverRow(byTruck, truckNumber, returnDate, driverDisplayName(row));
+    if (!truckNumber || !returnDate) continue;
+    if (pickField(row, ['Termination']) || pickField(row, ['Termination Date'])) continue;
+    if (/to other truck/i.test(pickField(row, ['Transfer']))) continue;
+    const outDate = toIsoDate(pickField(row, ['Out Date', 'OutDate', 'out_date'])) ?? '';
+    const entry = { returnDate, driver: driverDisplayName(row) };
+    const current = latest.get(truckNumber);
+    if (!current || outDate > current.outDate) latest.set(truckNumber, { outDate, rows: [entry] });
+    else if (outDate === current.outDate) current.rows.push(entry);
+  }
+
+  const byTruck = new Map<string, TruckAccumulator>();
+  for (const [truckNumber, assignment] of latest) {
+    for (const { returnDate, driver } of assignment.rows) {
+      mergeDriverRow(byTruck, truckNumber, returnDate, driver);
+    }
   }
 
   return [...byTruck.values()]
+    .filter((item) => classifyMovementWindow(item.date, windows) !== 'undated')
     .map((item) => {
       const drivers = toDriverList(item.drivers);
       return {

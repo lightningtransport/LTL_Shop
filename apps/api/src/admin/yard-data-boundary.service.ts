@@ -148,7 +148,8 @@ export class YardDataBoundaryService {
     windows: ShopWeekWindows,
   ): Promise<YardDataBoundarySectionDto<YardIncomingTruckItemDto>> {
     try {
-      const { rows } = await client.listAll('returns');
+      // LTR-254: assignments still out on Monday of this shop week; the mapper keeps each Truck's latest.
+      const { rows } = await client.listAll('driver_pay', { return_from: windows.thisWeek.from });
       return { status: 'ok', items: mapIncomingTrucks(rows, windows) };
     } catch {
       return { status: 'error', items: [], message: YARD_DATA_BOUNDARY_SECTION_MESSAGE };

@@ -52,11 +52,14 @@ describe('YardDataBoundaryService', () => {
           as_of: '2026-09-21T16:00:00.000Z',
         });
       }
-      if (url.includes('report=returns')) {
+      if (url.includes('report=driver_pay') && url.includes('return_from=')) {
+        // LTR-254: Incoming Trucks reads driver_pay from Monday of this shop week, never `returns`.
+        expect(url).toContain('return_from=2026-09-21');
+        expect(url).not.toContain('out_from');
         return jsonResponse({
           data: [
-            { Truck: '277', 'Return Date': '2026-09-22', 'Driver Name': 'Ana' },
-            { Truck: '277', 'Return Date': '2026-09-22', 'Driver Name': 'Luis' },
+            { Truck_Number: '277', 'Out Date': '2026-09-01', 'Return Date': '2026-09-22', 'Driver Name': 'Ana' },
+            { Truck_Number: '277', 'Out Date': '2026-09-01', 'Return Date': '2026-09-22', 'Driver Name': 'Luis' },
           ],
           has_more: false,
         });
@@ -115,7 +118,7 @@ describe('YardDataBoundaryService', () => {
     const fetchImpl = vi.fn(async (input: URL) => {
       const url = String(input);
       if (url.includes('report=trucks')) return jsonResponse({ data: [{ truck_number: 277, yard_location: 'Outside' }], has_more: false });
-      if (url.includes('report=returns')) return jsonResponse({ data: [{ Truck: '905', 'Return Date': '2026-09-22' }], has_more: false });
+      if (url.includes('return_from=')) return jsonResponse({ data: [{ Truck_Number: '905', 'Out Date': '2026-09-01', 'Return Date': '2026-09-22' }], has_more: false });
       return jsonResponse({ data: [], has_more: false });
     });
     const findMany = vi.fn().mockResolvedValue([
@@ -169,9 +172,6 @@ describe('YardDataBoundaryService', () => {
       const url = String(input);
       if (url.includes('report=trucks')) {
         return jsonResponse({ error: 'boom' }, 500);
-      }
-      if (url.includes('report=returns')) {
-        return jsonResponse({ data: [], has_more: false });
       }
       return jsonResponse({ data: [], has_more: false });
     });
