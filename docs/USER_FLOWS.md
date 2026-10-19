@@ -895,7 +895,7 @@ Las filas están en `apps/api/test-real/rows/parts-stock-care.real.spec.ts` y pa
 **Historia:** como Manager, quiero ver en Trucks, en el panel Truck y en el Yard qué camiones están dentro del geofence del shop y desde cuándo, para saber qué tengo en el patio sin abrir Samsara.
 
 **Flujo** (D49):
-1. Una vez: **Setup → Samsara → Shop geofence**, el Manager elige el geofence (o los geofences) del taller de la lista de Samsara (P37).
+1. El shop es el geofence **Home Office** de Samsara (id `12839282`, P37); Setup → Samsara lo muestra.
 2. En cada sync, la app guarda en qué geofence está cada camión y desde cuándo.
 3. **Trucks:** la columna Location dice **In shop · since 9:00 AM** en lugar de la dirección; filtro **In shop**.
 4. **Panel Truck y Yard:** el mismo "In shop" (o "Outside", con la última dirección).
@@ -904,7 +904,7 @@ Las filas están en `apps/api/test-real/rows/parts-stock-care.real.spec.ts` y pa
 |---|---|---|---|
 | El camión entra al geofence del shop | En el siguiente sync dice "In shop · since" la hora de la lectura | 🔲 | — |
 | El camión sale | Dice "Outside" con su dirección; la hora de llegada se borra | 🔲 | — |
-| Nadie eligió el geofence del shop | Nadie sale "In shop"; Setup → Samsara avisa que falta elegirlo | 🔲 | — |
+| Renombran "Home Office" en Samsara | Sigue valiendo: se compara por id | 🔲 | — |
 | El camión no está conectado a Samsara | "Unknown", como hoy | 🔲 | — |
 | La última lectura tiene más de 24 h | Sigue "In shop" con su hora, en ámbar | 🔲 | — |
 | El camión está en otro geofence (cliente, proveedor) | "Outside"; el nombre de ese geofence se muestra como lugar | 🔲 | — |

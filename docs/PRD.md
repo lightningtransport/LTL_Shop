@@ -125,8 +125,8 @@ Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fall
 se recomiendan como Jobs, el sistema aprende el Job de cada código y sabe si la
 falla se fue o volvió.
 **Propuesto (D49, sin construir):** "In shop" cuando el camión está dentro del geofence
-de Samsara que el Manager marca como el taller, con la hora de llegada (LTR-55).
-**Decisiones:** D35, D42, D49 (P12 cerrada) · **Preguntas:** P37 · **Historias:** HU-M14, HU-M15, HU-M21.
+de Samsara "Home Office" (el taller), con la hora de llegada (LTR-55).
+**Decisiones:** D35, D42, D49 (P12 cerrada) (P37 cerrada) · **Historias:** HU-M14, HU-M15, HU-M21.
 
 ### 4.9 Demo & Landing — ✅
 Modo demo que cambia de usuario sin cerrar sesión, con guía, cursor y Play;
