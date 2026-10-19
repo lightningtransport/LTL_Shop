@@ -1,41 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { Undo2 } from 'lucide-react';
+import { CircleDot, ShoppingCart, Undo2 } from 'lucide-react';
 import { formatCents, parseQuantityToHundredths, type AdminWorkOrderJobDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
+import { AdminNavLink } from './admin-nav-link';
 import { kindLabel, partsCostsFailure, tireLabel } from './admin-parts-catalog';
-import { Button, DialogActions, InlineAlert, Input, Label, Modal, Select } from './ui';
-import { issueAdminStock, returnAdminStock, useAdminStock } from '@/lib/admin-data';
+import { stockQty } from './admin-stock-actions';
+import { Badge, Button, DialogActions, InlineAlert, Input, Label, Modal, Select } from './ui';
+import { issueAdminStock, returnAdminStock, useAdminPmPreview, useAdminStock, type AdminPmPreviewDto } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 
 /**
- * D45 / ST-3 (LTR-223): "Parts from stock" on a Job. The Manager picks a part on the shelf and how many; it leaves
- * at the average cost (P27) and goes to this truck on this Work Order. What already left for the Job is listed with
- * "Return to stock" (it comes back at the same cost and the truck's cost is reversed).
+ * D47 / LTR-247: the Job's one "Parts…" sheet (it replaces "Add parts invoice", "Parts from stock" and "Tires to put").
+ * - Tires from the inspection: only on the Job that has them (ST-4); "Confirm tires…" opens the tire dialog.
+ * - On this Job: what was bought for it and what left the stock, with "Return…" (how many and why).
+ * - From stock: a part on the shelf, how many, "Take from stock" (D45 / ST-3, at the average cost, P27).
+ * - Buy for this Job: New purchase with the truck and the Job set; saving comes back to the Work Order.
+ * - On the PM Job: what completing it will charge, per part the mechanic picked (LTR-242), and the PM parts are not
+ *   offered from stock, because the PM takes them by itself.
  */
-export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
+export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, onChanged, onTires }: {
   job: AdminWorkOrderJobDto;
+  isPm: boolean;
+  buyHref: string;
   locale: AdminLocale;
   messages: AdminMessages;
   onClose: () => void;
   onChanged: () => void;
+  onTires?: () => void;
 }) {
   const { showToast } = useActionToast();
   const { data: stock, mutate: mutateStock } = useAdminStock('');
+  const { data: preview, mutate: mutatePreview } = useAdminPmPreview(isPm ? job.id : null);
   const [partId, setPartId] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [returning, setReturning] = useState<string | null>(null);
+  const [returnQty, setReturnQty] = useState('');
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const available = (stock?.items ?? []).filter((item) => Number(item.onHand) > 0);
+  const pmPicked = new Set((preview?.parts ?? []).map((row) => row.partId));
+  const available = (stock?.items ?? []).filter((item) => Number(item.onHand) > 0 && !pmPicked.has(item.partId));
   const picked = available.find((item) => item.partId === partId);
   const hundredths = parseQuantityToHundredths(quantity);
   const tooMany = Boolean(picked && hundredths !== undefined && hundredths > Math.round(Number(picked.onHand) * 100));
   const canSave = !busy && Boolean(picked) && hundredths !== undefined && !tooMany;
-  const onJob = job.stockParts ?? [];
+  const bought = job.parts ?? [];
+  const fromStock = (job.stockParts ?? []).filter((part) => !part.returned);
+  const total = bought.reduce((sum, part) => sum + (part.lineTotalCents ?? 0), 0) + fromStock.reduce((sum, part) => sum + (part.valueCents ?? 0), 0);
+  const tires = job.tires ?? [];
+  const refresh = () => { void mutateStock(); void mutatePreview(); onChanged(); };
 
   async function take(event: React.FormEvent) {
     event.preventDefault();
@@ -47,8 +63,7 @@ export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
       showToast('success', messages.pcStockIssued);
       setPartId('');
       setQuantity('1');
-      void mutateStock();
-      onChanged();
+      refresh();
     } catch (failure) {
       setError(partsCostsFailure(failure, messages));
     } finally {
@@ -56,17 +71,18 @@ export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
     }
   }
 
-  async function giveBack(movementId: string) {
-    if (!reason.trim()) return;
+  async function giveBack(movementId: string, issued: string) {
+    const back = returnQty.trim() || stockQty(issued);
+    if (!reason.trim() || parseQuantityToHundredths(back) === undefined) return;
     setBusy(true);
     setError(null);
     try {
-      await returnAdminStock(movementId, reason.trim());
+      await returnAdminStock(movementId, reason.trim(), back === stockQty(issued) ? undefined : back);
       showToast('success', messages.pcStockReturnedToast);
       setReturning(null);
       setReason('');
-      void mutateStock();
-      onChanged();
+      setReturnQty('');
+      refresh();
     } catch (failure) {
       setError(partsCostsFailure(failure, messages));
     } finally {
@@ -75,34 +91,66 @@ export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
   }
 
   return (
-    <Modal open title={fillPlaceholders(messages.pcStockIssueTitle, { job: job.displayName })} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!busy}>
+    <Modal open title={fillPlaceholders(messages.pcJobPartsTitle, { job: job.displayName })} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!busy}>
       <div className="space-y-5" data-testid="job-stock-dialog">
-        {onJob.length ? (
+        {tires.length && onTires ? (
+          <section className="space-y-2" data-testid="job-parts-tires">
+            <h3 className="text-sm font-medium">{messages.pcJobTiresSection}</h3>
+            <ul className="divide-y rounded-lg border text-sm">
+              {tires.map((tire) => (
+                <li key={tire.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span>{tire.position} · {tire.part ? tire.part.displayName : tire.tireType === 'new' ? messages.pcTireNew : messages.pcTireRecap}</span>
+                  <Badge variant="secondary">{tire.status}</Badge>
+                </li>
+              ))}
+            </ul>
+            <Button type="button" variant="outline" size="sm" onClick={onTires}><CircleDot aria-hidden="true" />{messages.pcJobTiresOpen}</Button>
+          </section>
+        ) : null}
+
+        {isPm ? <PmPreview preview={preview} locale={locale} messages={messages} /> : null}
+
+        {bought.length || fromStock.length || (job.stockParts ?? []).length ? (
           <section className="space-y-2">
             <h3 className="text-sm font-medium">{messages.pcStockOnJob}</h3>
             <ul className="divide-y rounded-lg border text-sm">
-              {onJob.map((part) => (
+              {bought.map((part, index) => (
+                <li key={`${part.purchaseId}-${index}`} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span>
+                    {part.description} × {stockQty(part.quantity)}
+                    <span className="ml-2 text-muted-foreground">· {fillPlaceholders(messages.pcJobBoughtFrom, { vendor: part.vendorName })}{part.lineTotalCents !== undefined ? ` · ${formatCents(part.lineTotalCents, locale)}` : ''}</span>
+                  </span>
+                  <AdminNavLink className="tap-inline text-xs text-primary hover:underline" href={`/admin/parts/purchases/${part.purchaseId}`}>{messages.pcJobOpenPurchase}</AdminNavLink>
+                </li>
+              ))}
+              {(job.stockParts ?? []).map((part) => (
                 <li key={part.movementId} className="space-y-2 px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <span className={part.returned ? 'text-muted-foreground line-through' : ''}>
-                      {part.description} × {Number(part.quantity)}
-                      {part.valueCents !== undefined ? <span className="ml-2 tabular-nums text-muted-foreground">{formatCents(part.valueCents, locale)}</span> : null}
+                      {part.description} × {stockQty(part.quantity)}
+                      <span className="ml-2 text-muted-foreground">· {messages.pcJobFromStock}{part.valueCents !== undefined ? ` · ${formatCents(part.valueCents, locale)}` : ''}</span>
                     </span>
                     {part.returned ? (
                       <span className="text-xs text-muted-foreground">{messages.pcStockReturned}</span>
                     ) : (
-                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { setReturning(part.movementId); setReason(''); }} data-testid="job-stock-return">
+                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { setReturning(part.movementId); setReason(''); setReturnQty(stockQty(part.quantity)); }} data-testid="job-stock-return">
                         <Undo2 aria-hidden="true" />{messages.pcStockReturn}
                       </Button>
                     )}
                   </div>
                   {returning === part.movementId ? (
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="min-w-48 flex-1 space-y-1">
+                    <div className="grid gap-2 sm:grid-cols-[6rem_1fr_auto] sm:items-end">
+                      <div className="space-y-1">
+                        <Label htmlFor={`stock-return-qty-${part.movementId}`} className="text-xs">{messages.pcJobReturnHowMany}</Label>
+                        <Input id={`stock-return-qty-${part.movementId}`} inputMode="decimal" className="tabular-nums" value={returnQty} onChange={(event) => setReturnQty(event.target.value)} disabled={busy} autoComplete="off" />
+                      </div>
+                      <div className="space-y-1">
                         <Label htmlFor={`stock-return-${part.movementId}`} className="text-xs">{messages.pcStockReturnReason}</Label>
                         <Input id={`stock-return-${part.movementId}`} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} autoComplete="off" />
                       </div>
-                      <Button type="button" size="sm" disabled={busy || !reason.trim()} onClick={() => void giveBack(part.movementId)}>{messages.pcStockReturn}</Button>
+                      <Button type="button" size="sm" disabled={busy || !reason.trim() || parseQuantityToHundredths(returnQty) === undefined} onClick={() => void giveBack(part.movementId, part.quantity)}>
+                        {fillPlaceholders(messages.pcJobReturnSubmit, { qty: stockQty(returnQty || part.quantity) })}
+                      </Button>
                     </div>
                   ) : null}
                 </li>
@@ -111,9 +159,9 @@ export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
           </section>
         ) : null}
 
-        <form className="space-y-4" onSubmit={(event) => void take(event)}>
+        <form className="space-y-3" onSubmit={(event) => void take(event)}>
+          <h3 className="text-sm font-medium">{isPm ? messages.pcJobOtherFromStock : messages.pcJobFromStockSection}</h3>
           <p className="text-sm text-muted-foreground">{messages.pcStockIssueHelp}</p>
-          {stock && !available.length ? <InlineAlert>{messages.pcStockNoParts}</InlineAlert> : null}
           <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
             <div className="space-y-1.5">
               <Label htmlFor="job-stock-part">{messages.pcStockIssuePart}</Label>
@@ -137,13 +185,64 @@ export function JobStockDialog({ job, locale, messages, onClose, onChanged }: {
               {tooMany && picked ? <p className="text-xs text-destructive-text">{fillPlaceholders(messages.pcStockNotEnough, { qty: String(Number(picked.onHand)) })}</p> : null}
             </div>
           </div>
-          {error ? <InlineAlert>{error}</InlineAlert> : null}
-          <DialogActions>
-            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.closeDialog}</Button>
+          {stock && !available.length ? <InlineAlert>{messages.pcStockNoParts}</InlineAlert> : null}
+          <div className="flex justify-end">
             <Button type="submit" disabled={!canSave}>{messages.pcStockIssueSave}</Button>
-          </DialogActions>
+          </div>
         </form>
+
+        <section className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Button asChild variant="outline" size="sm"><AdminNavLink href={buyHref} data-testid="job-parts-buy"><ShoppingCart aria-hidden="true" />{messages.pcJobBuy}</AdminNavLink></Button>
+          <p className="mt-1 text-xs text-muted-foreground">{messages.pcJobBuyHelp}</p>
+        </section>
+
+        {error ? <InlineAlert>{error}</InlineAlert> : null}
+        <DialogActions>
+          <p className="mr-auto self-center text-sm tabular-nums" data-testid="job-parts-total">{fillPlaceholders(messages.pcJobTotal, { value: formatCents(total, locale) })}</p>
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.closeDialog}</Button>
+        </DialogActions>
       </div>
     </Modal>
+  );
+}
+
+/** D47 / LTR-247: what completing the PM will charge, per part the mechanic picked (same rule as LTR-242). */
+function PmPreview({ preview, locale, messages }: { preview: AdminPmPreviewDto | undefined; locale: AdminLocale; messages: AdminMessages }) {
+  if (!preview) return null;
+  const status = (row: AdminPmPreviewDto['parts'][number]) => {
+    switch (row.status) {
+      case 'from_stock': return fillPlaceholders(messages.pcPmFromStock, { cost: formatCents(row.unitCostCents ?? 0, locale) });
+      case 'bought_for_job': return messages.pcPmBought;
+      case 'taken_for_job': return messages.pcPmTaken;
+      default: return messages.pcPmNotInStock;
+    }
+  };
+  const total = preview.parts.reduce((sum, row) => sum + (row.status === 'from_stock' ? row.unitCostCents ?? 0 : 0), 0) + (preview.oilCents ?? 0);
+  const names = new Map(preview.parts.map((row) => [row.partId, row.displayName]));
+  return (
+    <section className="space-y-2" data-testid="job-parts-pm-preview">
+      <h3 className="text-sm font-medium">{messages.pcPmPreviewTitle}</h3>
+      <ul className="divide-y rounded-lg border text-sm">
+        {preview.parts.map((row) => (
+          <li key={row.partId} className="flex items-center justify-between gap-3 px-3 py-2" data-status={row.status}>
+            <span>{row.displayName}</span>
+            <span className={row.status === 'from_stock' ? 'tabular-nums' : row.status === 'not_in_stock' ? 'text-warning-foreground' : 'text-muted-foreground'}>{status(row)}</span>
+          </li>
+        ))}
+        {preview.oilCents !== null ? (
+          <li className="flex items-center justify-between gap-3 px-3 py-2">
+            <span>{messages.pcPmOil}</span>
+            <span className="tabular-nums">{formatCents(preview.oilCents, locale)}</span>
+          </li>
+        ) : null}
+      </ul>
+      {preview.truckPurchasesWithoutJob.map((row) => (
+        <p key={`${row.purchaseId}-${row.partId}`} className="rounded-lg border border-warning/40 bg-warning/10 p-2 text-sm" data-testid="job-parts-pm-loose">
+          {fillPlaceholders(messages.pcPmLoose, { invoice: row.invoiceNumber, part: names.get(row.partId) ?? '—' })}{' '}
+          <AdminNavLink className="tap-inline text-primary hover:underline" href={`/admin/parts/purchases/${row.purchaseId}`}>{messages.pcJobOpenPurchase}</AdminNavLink>
+        </p>
+      ))}
+      <p className="text-sm tabular-nums">{fillPlaceholders(messages.pcPmOnComplete, { value: formatCents(total, locale) })}</p>
+    </section>
   );
 }

@@ -24,7 +24,7 @@ La columna **Fila** es el número de la prueba que lo comprueba
 Si cambias un flujo, cambias su prueba y esta tabla en el mismo PR.
 
 **Resultado de la auditoría (2026-09-29):** 61 comprobaciones · 59 funcionan · 0 fallan
-· 2 no aplican. Desde entonces se sumaron filas hasta A134; la cuenta al día la da
+· 2 no aplican. Desde entonces se sumaron filas hasta A144; la cuenta al día la da
 `npm run test:real --workspace=@ltl-shop/api`.
 
 **Resultado del cuestionario de operación** (Cristian, 2026-09-29): 12
@@ -609,6 +609,8 @@ Ver la fila E7 en HU-ME2.
 | La parte del PM no estaba en el estante, o no hay precio de aceite | No se cobra (la parte ya se cargó al camión al comprarla); sin precio no hay cargo de aceite | ✅ | A126 |
 | La parte del PM ya se compró directo al camión (o a su Job de PM) y también hay en el estante (P29) | Al completar la WO no se cobra otra vez: el costo cuenta la compra una sola vez y el estante no baja (LTR-242). Una compra al camión sin Job no cuenta: el Manager la ata al Job de PM cuando fue para el PM | ✅ | A133 |
 | El Manager ya sacó la parte del estante al Job de PM (**Parts from stock**) y el mecánico eligió la misma en el PM (P29) | Al completar la WO no sale otra vez: el camión paga una vez y el estante baja una. Reabrir o cancelar solo deshace lo que sacó el PM (LTR-242) | ✅ | A134 |
+| Antes de completar, el Manager abre **Parts…** del Job de PM (D47, LTR-247) | Ve, por cada parte que eligió el mecánico, si sale del estante (y a cuánto), si ya se compró o se sacó para ese Job (no se cobra otra vez) o si no hay (no se cobra); el aceite a precio fijo; y un aviso si una compra del camión sin Job tiene esa parte | ✅ | A143 |
+| En **Parts…** del Job, devuelve 1 de 2 que salieron del estante (D47, LTR-247) | Vuelve 1 al mismo costo; el camión paga solo la que queda; después se puede devolver la otra | ✅ | A144 |
 | El Manager pone el precio del cambio de aceite | Setup → Labor rate → PM oil change: desde hoy o después, uno por día; mecánicos y Safety no lo ven | ✅ | A127 |
 | Quiere cobrarle a Finanzas | Factura interna por camión y mes con partes al costo, reparaciones externas y mano de obra (HU-M13, D34) | ✅ | A72–A75 |
 

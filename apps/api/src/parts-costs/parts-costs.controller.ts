@@ -169,6 +169,12 @@ export class PartsCostsController {
     return this.oilPrices.set(request.user!, body);
   }
 
+  // D47 / LTR-247: what completing a PM Job will charge, per part.
+  @Get('jobs/:jobId/pm-preview')
+  pmPreview(@Param('jobId') jobId: string) {
+    return this.stock.pmPreview(jobId);
+  }
+
   // D45 / ST-4: confirm the tires the inspection proposed on a Tires Job.
   @Post('jobs/:jobId/tires')
   confirmTires(@Req() request: Request, @Param('jobId') jobId: string, @Body() body: unknown) {

@@ -901,8 +901,24 @@ export function confirmAdminJobTires(jobId: string, input: AdminConfirmJobTiresI
   return apiFetch<{ issued: number; toBuy: number }>(`/api/admin/parts-costs/jobs/${jobId}/tires`, { method: 'POST', body: JSON.stringify(input) });
 }
 
-export function returnAdminStock(movementId: string, reason: string) {
-  return apiFetch<{ id: string }>(`/api/admin/parts-costs/stock/movements/${movementId}/return`, { method: 'POST', body: JSON.stringify({ reason }) });
+/** D47 / LTR-247: `quantity` gives back part of what left (1 of 2); without it, all of it. */
+export function returnAdminStock(movementId: string, reason: string, quantity?: string) {
+  return apiFetch<{ id: string }>(`/api/admin/parts-costs/stock/movements/${movementId}/return`, { method: 'POST', body: JSON.stringify({ reason, ...(quantity ? { quantity } : {}) }) });
+}
+
+export type AdminPmPreviewDto = {
+  parts: Array<{ partId: string; displayName: string; partNumber: string | null; status: 'from_stock' | 'bought_for_job' | 'taken_for_job' | 'not_in_stock'; unitCostCents: number | null }>;
+  oilCents: number | null;
+  truckPurchasesWithoutJob: Array<{ purchaseId: string; invoiceNumber: string; partId: string }>;
+};
+
+/** D47 / LTR-247: what completing a PM Job will charge, per picked part. */
+export function useAdminPmPreview(jobId: string | null) {
+  const { token } = useAuth();
+  return withAdminReadPending(
+    token,
+    useSWR<AdminPmPreviewDto>(token && jobId ? `/api/admin/parts-costs/jobs/${jobId}/pm-preview` : null, adminReadFetcher, { dedupingInterval: 2_000, ...adminReadRetry }),
+  );
 }
 
 export function useAdminPartsCatalog(query: string) {

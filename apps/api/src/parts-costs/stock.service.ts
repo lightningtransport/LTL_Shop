@@ -23,7 +23,8 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { reverseSource, writeEntries } from './cost-ledger';
-import { averageCents, balance, fromHundredths, issueToJob, lockPart, outValue, toHundredths, undoIssue, writeMovement } from './stock-ledger';
+import { previewPmCharges } from './pm-charges';
+import { ISSUE_SOURCE, averageCents, balance, fromHundredths, issueToJob, lockPart, outValue, toHundredths, undoIssue, writeMovement } from './stock-ledger';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -242,6 +243,15 @@ export class StockService {
     });
   }
 
+  /** D47 / LTR-247: what completing this PM Job will charge, per picked part (the Job's Parts… sheet). */
+  async pmPreview(jobId: string) {
+    this.assertId(jobId);
+    const preview = await this.prisma.$transaction((tx) => previewPmCharges(tx, jobId));
+    if (preview === null) throw new NotFoundException('Job not found');
+    if (preview === 'not_pm') throw new BadRequestException({ code: 'PM_JOB_REQUIRED', message: 'This Job is not a PM.' });
+    return preview;
+  }
+
   /** A part leaves the stock for a Job; its average cost goes to that truck on that Work Order. */
   async issue(actor: AuthUser, raw: unknown) {
     const input = parse(adminStockIssueSchema, raw);
@@ -354,22 +364,43 @@ export class StockService {
   /** "Return to stock": the part comes back at the same cost and the truck's cost is reversed. Once per issue. */
   async returnToStock(actor: AuthUser, movementId: string, raw: unknown) {
     this.assertId(movementId);
-    const { reason } = parse(adminStockReturnSchema, raw);
+    const { reason, quantity } = parse(adminStockReturnSchema, raw);
     return this.prisma.$transaction(async (tx) => {
       const issue = await tx.stockMovement.findUnique({
         where: { id: movementId },
-        include: { reversals: { select: { id: true } }, part: { select: { displayName: true } }, workOrderJob: { select: { displayName: true, workOrderId: true } } },
+        include: { reversals: { select: { id: true } }, part: { select: { displayName: true, partNumber: true } }, workOrderJob: { select: { displayName: true, workOrderId: true } } },
       });
       if (!issue || issue.kind !== 'issue') throw new NotFoundException('That part did not leave the stock.');
       if (issue.reversals.length) throw new ConflictException({ code: 'STOCK_ALREADY_RETURNED', message: 'That part is already back in stock.' });
+      const issued = Math.abs(toHundredths(issue.quantity));
+      const back = quantity === undefined ? issued : parseQuantityToHundredths(quantity)!;
+      if (back > issued) throw new BadRequestException({ code: 'RETURN_MORE_THAN_ISSUED', message: `Only ${qty(issued)} left for this Job.` });
       const movement = await undoIssue(tx, issue, actor.id, reason);
+      // D47 / LTR-247: part of it comes back. The whole issue is undone and what stays on the Job leaves again at
+      // the same cost it left with, so each issue keeps one truck cost row and one return.
+      const stays = issued - back;
+      if (stays > 0 && issue.workOrderJob && issue.truckId) {
+        const value = Math.round((Math.abs(issue.valueCents) * stays) / issued);
+        const again = await writeMovement(tx, {
+          partId: issue.partId, kind: 'issue', hundredths: -stays, valueCents: -value,
+          workOrderJobId: issue.workOrderJobId, truckId: issue.truckId, pmServiceId: issue.pmServiceId, actorId: actor.id,
+        });
+        await writeEntries(tx, {
+          sourceType: ISSUE_SOURCE, sourceId: again.id, kind: 'part_purchase', occurredOn: new Date(new Date().toISOString().slice(0, 10)),
+          vendorId: null, workOrderId: issue.workOrderJob.workOrderId, actorId: actor.id,
+        }, [{
+          truckId: issue.truckId,
+          amountCents: value,
+          description: `Stock · ${issue.part.displayName}${issue.part.partNumber ? ` ${issue.part.partNumber}` : ''} × ${stays / 100} → ${issue.workOrderJob.displayName}`,
+        }]);
+      }
       await this.activity.log(tx, {
         eventType: ActivityEventType.PART_CATALOG_UPDATED,
         entityType: 'stock_movement',
         entityId: movement.id,
         userId: actor.id,
         workOrderId: issue.workOrderJob?.workOrderId ?? undefined,
-        newValue: { action: 'stock_returned', issueId: issue.id, quantity: issue.quantity.abs().toFixed(2), reason },
+        newValue: { action: 'stock_returned', issueId: issue.id, quantity: qty(back), reason },
         relevantValue: { action: 'stock_returned', part: issue.part.displayName, job: issue.workOrderJob?.displayName ?? null },
       });
       return { id: movement.id };
