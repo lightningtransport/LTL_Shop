@@ -132,6 +132,22 @@ export class PartsCostsController {
     return this.stock.count(request.user!, body);
   }
 
+  // D47 / HU-M20 (LTR-246): Count stock in bulk, Add to stock (no invoice), Remove from stock (with a reason).
+  @Post('stock/count-batch')
+  stockCountBatch(@Req() request: Request, @Body() body: unknown) {
+    return this.stock.countBatch(request.user!, body);
+  }
+
+  @Post('stock/add')
+  stockAdd(@Req() request: Request, @Body() body: unknown) {
+    return this.stock.add(request.user!, body);
+  }
+
+  @Post('stock/remove')
+  stockRemove(@Req() request: Request, @Body() body: unknown) {
+    return this.stock.remove(request.user!, body);
+  }
+
   @Post('stock/issue')
   stockIssue(@Req() request: Request, @Body() body: unknown) {
     return this.stock.issue(request.user!, body);

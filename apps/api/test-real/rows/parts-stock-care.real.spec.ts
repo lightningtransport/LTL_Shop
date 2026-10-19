@@ -5,8 +5,7 @@
  * - Add to stock: parts that came in without an invoice, with their cost.
  * - Remove from stock: how many leave, and why (Damaged, Lost, Other).
  *
- * These rows are written before the code (docs and tests first): until LTR-246 lands, the new routes answer 404 and
- * the rows fail on purpose. The contract they pin:
+ * The rows were written before the code (docs and tests first) and pin this contract:
  * - `POST /admin/parts-costs/stock/count-batch` `{ lines: [{ partId, counted?, unitCostCents? }], note? }` → `{ changed }`;
  *   all or nothing; a line with no `counted` or the same number is skipped; a part that goes up with no average and
  *   no reference cost and no cost typed refuses the whole count (`STOCK_COST_REQUIRED`, naming the parts).
@@ -59,8 +58,9 @@ describe('Manager: cuidar el stock (D47, HU-M20)', () => {
     const belt = await part('Belt count', { unitCostCents: 2500 });
     const valve = await part('Valve count');
     const lines = [{ partId: pump, counted: 2 }, { partId: belt, counted: '4' }, { partId: valve, counted: 3 }];
-    const refusedCount = refused('la válvula no tiene costo', await manager.post(`${STOCK}/count-batch`, { lines, note: 'Primer día' }), 400, 'STOCK_COST_REQUIRED');
-    same('nombra la parte sin costo', JSON.stringify(refusedCount).includes(valve), true);
+    const noCost = await manager.post(`${STOCK}/count-batch`, { lines, note: 'Primer día' });
+    refused('la válvula no tiene costo', noCost, 400, 'STOCK_COST_REQUIRED');
+    same('nombra solo la parte sin costo', noCost.json.partIds, [valve]);
     same('no guardó nada', [await onHand(pump), await onHand(belt)], [['0.00', 0, null], ['0.00', 0, null]]);
     const saved = ok('con el costo de la válvula', await manager.post(`${STOCK}/count-batch`, { lines: [...lines.slice(0, 2), { partId: valve, counted: 3, unitCostCents: 4000 }], note: 'Primer día' }));
     same('tres cambiaron', saved.changed, 3);

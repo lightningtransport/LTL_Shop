@@ -720,23 +720,25 @@ enum PurchaseLineDestination {
 /// D45 / ST-3 (LTR-223): the Shop's stock is a list of movements that is only added to. On hand = the sum of
 /// `quantity`; its value = the sum of `value_cents`; a part leaves at the average cost (P27).
 model StockMovement {
-  id             String            @id @default(uuid()) @db.Uuid
-  partId         String            @map("part_id") @db.Uuid
+  id             String             @id @default(uuid()) @db.Uuid
+  partId         String             @map("part_id") @db.Uuid
   kind           StockMovementKind
   /// Signed: + comes in, - goes out.
-  quantity       Decimal           @db.Decimal(10, 2)
+  quantity       Decimal            @db.Decimal(10, 2)
   /// Signed, in cents: what came in or went out.
-  valueCents     Int               @map("value_cents")
-  purchaseId     String?           @map("purchase_id") @db.Uuid
-  workOrderJobId String?           @map("work_order_job_id") @db.Uuid
-  truckId        String?           @map("truck_id") @db.Uuid
+  valueCents     Int                @map("value_cents")
+  purchaseId     String?            @map("purchase_id") @db.Uuid
+  workOrderJobId String?            @map("work_order_job_id") @db.Uuid
+  truckId        String?            @map("truck_id") @db.Uuid
   reason         String?
+  /// D47 / HU-M20 (LTR-246): why an adjustment moved the shelf (Count stock, Add to stock, Remove from stock).
+  reasonCode     StockAdjustReason? @map("reason_code")
   /// A reversal (purchase corrected or voided) or a return names the movement it undoes.
-  reversesId     String?           @map("reverses_id") @db.Uuid
+  reversesId     String?            @map("reverses_id") @db.Uuid
   /// D45 / ST-5: a part a PM took off the shelf (written when the Work Order is completed).
-  pmServiceId    String?           @map("pm_service_id") @db.Uuid
-  createdById    String            @map("created_by_id") @db.Uuid
-  createdAt      DateTime          @default(now()) @map("created_at")
+  pmServiceId    String?            @map("pm_service_id") @db.Uuid
+  createdById    String             @map("created_by_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at")
 
   part         Part            @relation(fields: [partId], references: [id], onDelete: Restrict)
   purchase     PartPurchase?   @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
@@ -763,6 +765,17 @@ enum StockMovementKind {
   reversal
 
   @@map("stock_movement_kind")
+}
+
+/// D47 / HU-M20 (LTR-246): Count stock (count), Add to stock (received), Remove from stock (damaged, lost, other).
+enum StockAdjustReason {
+  count
+  received
+  damaged
+  lost
+  other
+
+  @@map("stock_adjust_reason")
 }
 
 enum PartKind {

@@ -451,6 +451,12 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
     dice el stock entra al costo que escribe (si no, el promedio o el de
     referencia; sin ninguno, `STOCK_COST_REQUIRED`); menos sale al promedio. Pide
     motivo; el mismo número → `STOCK_COUNT_SAME`.
+  - **D47 / HU-M20 (LTR-246, API):**
+    - `POST stock/count-batch`: **Count stock** en lote. Es todo o nada. Una fila vacía o con el mismo número se salta. Si una parte sube sin costo (ni el escrito, ni el promedio, ni el de referencia), no se guarda nada y responde `STOCK_COST_REQUIRED` con `partIds`.
+    - `POST stock/add`: **Add to stock**, para lo que llegó sin factura. Requiere el costo.
+    - `POST stock/remove`: **Remove from stock**, con `reason` Damaged, Lost u Other (Other pide nota). Sale al promedio, no cobra a ningún camión y nunca saca más de lo que hay (`NOT_ENOUGH_STOCK`).
+    - Cada ajuste guarda `reason_code`: `count`, `received`, `damaged`, `lost` u `other`. Los conteos de antes de esta migración quedaron como `count`.
+    - `GET stock?all=true`: todas las partes activas, también las que nunca se movieron (0). Lo Low va primero, después lo que hay en stock.
   - **Parts from stock** en el menú del Job (Manager y System Admin): saca una parte
     para ese Job (`POST /stock/issue`). El camión carga su costo en esa Work Order
     como una parte más (`truck_cost_entries` kind `part_purchase`, `source_type`

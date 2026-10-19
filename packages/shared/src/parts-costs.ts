@@ -730,6 +730,8 @@ export const adminStockQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   kind: z.enum(PART_KINDS).optional(),
   low: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+  /** D47 / HU-M20: Parts is the inventory, so every active part shows, also the ones that never moved (0 on hand). */
+  all: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 
 /** P25: the Manager counts the shelf; the difference enters or leaves at a cost (in: the one typed, else the average). */
@@ -747,6 +749,47 @@ export const adminStockIssueSchema = z.object({
 });
 
 export const adminStockReturnSchema = z.object({ reason: z.string().trim().min(1).max(300) });
+
+/** D47 / HU-M20 (LTR-246): why an adjustment moved the shelf. */
+export const STOCK_ADJUST_REASONS = ['count', 'received', 'damaged', 'lost', 'other'] as const;
+export type StockAdjustReason = (typeof STOCK_ADJUST_REASONS)[number];
+export const STOCK_REMOVE_REASONS = ['damaged', 'lost', 'other'] as const;
+
+const note = z.string().trim().max(300).optional();
+
+/**
+ * D47 / HU-M20: Count stock in bulk. Each line says what is on the shelf; a line with no count (or the same number)
+ * is left alone. All or nothing: a part that goes up with no cost to use refuses the whole count.
+ */
+export const adminStockCountBatchSchema = z.object({
+  lines: z.array(z.object({
+    partId: z.string().uuid(),
+    // Empty first: `count` alone would read '' as 0.
+    counted: z.union([z.literal(''), z.null(), count]).optional(),
+    unitCostCents: moneyCents.nullable().optional(),
+  })).min(1).max(1000),
+  note,
+});
+
+/** D47 / HU-M20: parts that came in without an invoice, at the cost typed. */
+export const adminStockAddSchema = z.object({
+  partId: z.string().uuid(),
+  quantity,
+  unitCostCents: moneyCents,
+  note,
+});
+
+/** D47 / HU-M20: how many leave and why; "Other" says what happened. No truck is charged. */
+export const adminStockRemoveSchema = z.object({
+  partId: z.string().uuid(),
+  quantity,
+  reason: z.enum(STOCK_REMOVE_REASONS),
+  note,
+}).refine((input) => input.reason !== 'other' || Boolean(input.note), { message: 'Say what happened', path: ['note'] });
+
+export type AdminStockCountBatchInput = z.input<typeof adminStockCountBatchSchema>;
+export type AdminStockAddInput = z.input<typeof adminStockAddSchema>;
+export type AdminStockRemoveInput = z.input<typeof adminStockRemoveSchema>;
 
 export type AdminStockCountInput = z.input<typeof adminStockCountSchema>;
 export type AdminStockIssueInput = z.input<typeof adminStockIssueSchema>;
@@ -783,6 +826,8 @@ export interface AdminStockMovementDto {
   createdAt: string;
   createdBy: string;
   reason: string | null;
+  /** D47 / HU-M20: Count, Received, Damaged, Lost or Other; null for purchases, Jobs, returns and reversals. */
+  reasonCode: StockAdjustReason | null;
   purchase: { id: string; invoiceNumber: string; vendorName: string } | null;
   job: AdminPurchaseJobRefDto | null;
   truck: AdminTruckRefDto | null;
