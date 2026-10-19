@@ -10,7 +10,7 @@ import { AdminWriteTip } from './admin-write-tip';
 import { stepLabel } from './admin-shop-workflow';
 import { currentMode } from './admin-mechanic-roster';
 import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, Select } from './ui';
-import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { useCanShowManagerWrites, useIsSystemAdmin } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { MechanicMode } from '@ltl-shop/shared';
@@ -18,6 +18,8 @@ import { MechanicMode } from '@ltl-shop/shared';
 /** ME5: Standard, PM, Safety — or System Admin for an admin row on the roster. */
 export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | 'capabilities'>, messages: AdminMessages) {
   if (person.role === UserRole.ADMIN) return messages.peopleSystemAdminType;
+  // LTR-253 / D48: People lists the Shop Managers too.
+  if (person.role === UserRole.MANAGER) return messages.roleLabelManager;
   const mode = currentMode(person.capabilities);
   return mode === MechanicMode.PM ? messages.mechanicPm : mode === MechanicMode.SAFETY ? messages.capabilitySafety : messages.mechanicStandard;
 }
@@ -25,6 +27,8 @@ export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | '
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   // D22: the Shop Manager manages the roster (System Admin too); the Job catalog too (D25).
   const canWrite = useCanShowManagerWrites();
+  // LTR-253 / D48: only a System Admin adds Shop Managers and System Admins.
+  const isSystemAdmin = useIsSystemAdmin();
   const { showToast } = useActionToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -57,7 +61,7 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
     <div className="space-y-6">
       <PageHeader
         title={messages.mechanicsTitle}
-        subtitle={canWrite ? messages.mechanicsWriteDescription : messages.mechanicsDescription}
+        subtitle={canWrite ? (isSystemAdmin ? messages.mechanicsWriteDescriptionAdmin : messages.mechanicsWriteDescription) : messages.mechanicsDescription}
       />
       {canWrite ? (
         <div className="space-y-3">
@@ -149,6 +153,7 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
           <CreateMechanicDialog
             open={createOpen}
             messages={messages}
+            allowStaff={isSystemAdmin}
             onClose={() => setCreateOpen(false)}
             // D22: the dialog stays open on the temporary-password step; Done closes it.
             onCreated={() => {

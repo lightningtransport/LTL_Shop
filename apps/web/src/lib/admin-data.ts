@@ -77,6 +77,7 @@ import type {
   AdminCustomJobGroupDto,
   AdminReviewCustomJobsInput,
 } from '@ltl-shop/shared';
+import { UserRole } from '@ltl-shop/shared';
 import { ADMIN_YARD_DATA_BOUNDARY_PATH } from './yard-data-boundary';
 import { ADMIN_READ_TIMEOUT_MS, apiFetch, isTransientApiError } from './api';
 import { useAuth } from './auth-context';
@@ -730,14 +731,21 @@ export function updateAdminCatalogJob(
   });
 }
 
-/** D22: also creates the access account; `temporaryPassword` comes back once (null without Supabase). */
-export function createAdminMechanic(input: { name: string; email: string; mode: MechanicMode }) {
+/**
+ * D22: also creates the access account; `temporaryPassword` comes back once (null without Supabase).
+ * LTR-253 / D48: `mode: 'manager' | 'admin'` sends a Shop Manager or System Admin instead (System Admin only).
+ */
+/** LTR-253 / D48: the two non-mechanic types People can add. */
+export type StaffRole = UserRole.MANAGER | UserRole.ADMIN;
+
+export function createAdminMechanic(input: { name: string; email: string; mode: MechanicMode | StaffRole }) {
+  const staff = input.mode === UserRole.MANAGER || input.mode === UserRole.ADMIN;
   return apiFetch<AdminMechanicCreatedDto>(ADMIN_MECHANICS_COLLECTION_PATH, {
     method: 'POST',
     body: JSON.stringify({
       name: input.name.trim(),
       email: input.email.trim().toLowerCase(),
-      mode: input.mode,
+      ...(staff ? { role: input.mode } : { mode: input.mode }),
     }),
   });
 }

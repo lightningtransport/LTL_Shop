@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 178 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 192 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -152,6 +152,20 @@ PASA 178 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A132 | Un hallazgo pide texto; un Job sugerido tiene que existir; devolver sin nota ni hallazgo, no | PASA |
 | A133 | Una parte del PM comprada directo al camión no se cobra otra vez al cerrar, aunque también haya en el estante | PASA |
 | A134 | Una parte del PM que el Manager ya sacó del estante al Job de PM ("Parts from stock") no sale otra vez al cerrar | PASA |
+| A135 | Primer día: cuenta tres partes en 0 de una vez; una sin costo frena todo hasta que se lo pone | PASA |
+| A136 | Cuenta 8 de una parte que tenía 10: salen 2 al promedio y ningún camión paga | PASA |
+| A137 | Una fila vacía o con el mismo número no cambia nada | PASA |
+| A138 | Add to stock: llegaron 2 sin factura a $12.50; el promedio se recalcula | PASA |
+| A139 | Remove from stock: salen 2 dañadas al promedio, con su motivo; ningún camión paga | PASA |
+| A140 | No se saca más de lo que hay | PASA |
+| A141 | Con el mínimo en 4 y 3 en stock, la parte sale Low en Parts | PASA |
+| A142 | Una parte nueva sale en Parts con 0 en stock, sin moverse; lo que hay sale primero | PASA |
+| A143 | Antes de completar, el Job de PM dice qué va a pasar con cada parte: sale del estante, ya comprada, sacada a mano o no hay (D47, LTR-247) | PASA |
+| A144 | Return to stock devuelve 1 de 2: vuelve al mismo costo y el camión paga solo la que queda; después la otra (D47, LTR-247) | PASA |
+| A145 | El Manager ve en People a los Managers y System Admins con su tipo, y abre su detalle | PASA |
+| A146 | El System Admin da de alta un Manager y un System Admin con su paquete completo; el Manager nuevo entra y maneja el taller | PASA |
+| A147 | Un Manager no da de alta ni toca a un Manager o a un System Admin; sí al personal del taller | PASA |
+| A148 | El System Admin desactiva, reactiva y quita a un Manager (D31); el tipo no cambia; nadie se quita a sí mismo | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

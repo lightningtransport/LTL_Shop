@@ -8,7 +8,7 @@ import { SupabaseAdminClient } from '../auth/supabase-admin';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { personHistoryCount } from './admin.service';
-import { SystemAdminWritesService } from './system-admin-writes.service';
+import { SystemAdminWritesService, assertCanManagePerson, assertNotLastSystemAdmin } from './system-admin-writes.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -30,8 +30,11 @@ export class PeopleAdminService {
 
   async remove(actor: AuthUser, id: string) {
     const person = await this.person(id);
+    // D48: Managers and System Admins only by a System Admin; never yourself; never the last System Admin.
+    assertCanManagePerson(actor, person, true);
     if (person.removedAt) return { removed: true };
     await this.prisma.$transaction(async (tx) => {
+      await assertNotLastSystemAdmin(tx, person);
       const openWork = await this.writes.openWorkOf(tx, id);
       if (openWork) throw new ConflictException(openWork);
       await tx.shopWorkflowStepMember.deleteMany({ where: { userId: id } });
@@ -41,8 +44,10 @@ export class PeopleAdminService {
     return { removed: true };
   }
 
-  async delete(id: string) {
+  async delete(actor: AuthUser, id: string) {
     const person = await this.person(id);
+    assertCanManagePerson(actor, person, true);
+    await assertNotLastSystemAdmin(this.prisma, person);
     if (await personHistoryCount(this.prisma, id)) {
       throw new ConflictException({
         code: 'PERSON_HAS_HISTORY',
@@ -59,7 +64,7 @@ export class PeopleAdminService {
 
   /** D28: the person's pending Jobs born in a team queue go back to it (not while their clock runs on that truck). */
   async sendJobsToQueue(actor: AuthUser, id: string, raw: unknown) {
-    await this.person(id);
+    assertCanManagePerson(actor, await this.person(id));
     const parsed = adminSendJobsToQueueSchema.safeParse(raw ?? {});
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
     const jobs = await this.prisma.workOrderJob.findMany({
@@ -105,8 +110,9 @@ export class PeopleAdminService {
 
   private async person(id: string) {
     if (!UUID.test(id)) throw new BadRequestException('Invalid Mechanic id');
-    const person = await this.prisma.user.findUnique({ where: { id }, select: { id: true, role: true, removedAt: true, supabaseAuthId: true } });
-    if (!person || person.role !== 'mechanic') throw new NotFoundException('Mechanic not found');
+    // D48: People holds Managers and System Admins too; who may act on them is `assertCanManagePerson`.
+    const person = await this.prisma.user.findUnique({ where: { id }, select: { id: true, role: true, active: true, removedAt: true, supabaseAuthId: true } });
+    if (!person) throw new NotFoundException('Mechanic not found');
     return person;
   }
 }

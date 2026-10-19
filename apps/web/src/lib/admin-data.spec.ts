@@ -1,4 +1,4 @@
-import { CatalogStatus, MechanicMode } from '@ltl-shop/shared';
+import { CatalogStatus, MechanicMode, UserRole } from '@ltl-shop/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ADMIN_READ_TIMEOUT_MS, ApiError } from './api';
 import {
@@ -157,6 +157,10 @@ describe('system admin write contracts', () => {
       email: 'ana@shop.example',
       mode: MechanicMode.PM,
     });
+    // LTR-253 / D48: a Shop Manager goes as a role, without a mechanic type.
+    await createAdminMechanic({ name: 'Jess', email: 'jess@shop.example', mode: UserRole.MANAGER });
+    const [, staffInit] = fetchMock.mock.calls[2] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(staffInit.body))).toEqual({ name: 'Jess', email: 'jess@shop.example', role: 'manager' });
     expect(patchUrl).toBe('http://localhost:3001/api/admin/mechanics/00000000-0000-4000-8000-000000000007');
     expect(patchInit.method).toBe('PATCH');
     expect(JSON.parse(String(patchInit.body))).toEqual({

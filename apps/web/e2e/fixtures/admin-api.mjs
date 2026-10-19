@@ -1445,7 +1445,10 @@ createServer(async (request, response) => {
     const body = await readJson(request);
     const name = String(body?.name ?? '').trim();
     const email = String(body?.email ?? '').trim().toLowerCase();
-    const capability = modeToCapability(body?.mode);
+    // LTR-253 / D48: a System Admin may add a Shop Manager or a System Admin, with the whole package.
+    const staffRole = body?.role === 'manager' || body?.role === 'admin' ? body.role : null;
+    if (staffRole && user.role !== 'admin') { json(response, 403, { code: 'STAFF_ADMIN_ONLY', message: 'Only a System Admin can add a Manager or a System Admin.' }); return; }
+    const capability = staffRole ? 'admin.access' : modeToCapability(body?.mode);
     if (!name) { json(response, 400, { message: 'Enter a name.' }); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { json(response, 400, { message: 'Enter a valid email.' }); return; }
     if (!capability) { json(response, 400, { message: 'Choose Standard, PM or Safety.' }); return; }
@@ -1456,9 +1459,9 @@ createServer(async (request, response) => {
       id: fixtureUuid(rosterWriteSeq),
       email,
       name,
-      role: 'mechanic',
+      role: staffRole ?? 'mechanic',
       active: true,
-      capabilities: [capability],
+      capabilities: staffRole ? ['admin.access', 'yard.operations.manage', 'work_orders.manage'] : [capability],
     };
     users[email] = created;
     // D22: the access account exists in the fixture, so a temporary password comes back once.
@@ -1514,7 +1517,9 @@ createServer(async (request, response) => {
     const assignable = new URL(request.url, 'http://fixture').searchParams.get('assignable') === 'true';
     const items = Object.values(users)
       // LTR-185: the roster shows Safety too; Job pickers (`assignable`) do not offer them.
-      .filter((candidate) => candidate.capabilities.some((cap) => (assignable ? cap === 'mechanic.standard' || cap === 'mechanic.pm' : ROSTER_CAPABILITIES.includes(cap))))
+      .filter((candidate) => candidate.capabilities.some((cap) => (assignable ? cap === 'mechanic.standard' || cap === 'mechanic.pm' : ROSTER_CAPABILITIES.includes(cap)))
+        // LTR-253 / D48: People lists the Shop Managers and System Admins too; Job pickers never offer them.
+        || (!assignable && (candidate.role === 'manager' || candidate.role === 'admin')))
       .filter((candidate) => !assignable || candidate.role !== 'admin')
       // DM2 (LTR-204): like the real API, `status=all` / `all_in_shop` / `inactive` list inactive people too.
       .filter((candidate) => {

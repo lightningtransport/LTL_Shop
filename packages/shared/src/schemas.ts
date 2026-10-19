@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   CatalogStatus,
   MechanicMode,
+  UserRole,
   JobExternalKind,
   BlockerReason,
   PauseReason,
@@ -18,11 +19,18 @@ import {
 
 export const mechanicModeSchema = z.nativeEnum(MechanicMode);
 
-/** LTR-78 / D22. Creates an active person and applies exactly one of Standard, PM or Safety. */
+/**
+ * LTR-78 / D22. Creates an active person and applies exactly one of Standard, PM or Safety.
+ * LTR-253 / D48: `role: manager | admin` creates a Shop Manager or a System Admin instead (no `mode`).
+ */
 export const adminCreateMechanicSchema = z.object({
   email: z.string().trim().email().max(320).transform((value) => value.toLowerCase()),
   name: z.string().trim().min(1).max(120),
-  mode: mechanicModeSchema,
+  mode: mechanicModeSchema.optional(),
+  role: z.nativeEnum(UserRole).default(UserRole.MECHANIC),
+}).refine((value) => (value.role === UserRole.MECHANIC) === (value.mode !== undefined), {
+  message: 'Choose Standard, PM or Safety for a mechanic; a Manager or System Admin has no mechanic type',
+  path: ['mode'],
 });
 
 /** LTR-78 / D22. Activate or deactivate, rename, or switch Standard/PM/Safety on an existing roster row. */

@@ -126,6 +126,7 @@ describe('Manager: dar de alta al personal (HU-M9, D22)', () => {
     refused('un mecánico no reinicia contraseñas', await as(USERS.general).post(`/admin/mechanics/${person.id}/reset-password`), 403);
     refused('un PM no reinicia contraseñas', await as(USERS.pm).post(`/admin/mechanics/${person.id}/reset-password`), 403);
     refused('Safety no reinicia contraseñas', await as(USERS.safety).post(`/admin/mechanics/${person.id}/reset-password`), 403);
-    refused('no se reinicia la del Manager', await manager.post(`/admin/mechanics/${await userId(USERS.manager)}/reset-password`), 404);
+    // D48: the Manager's own row is in People now, but only a System Admin resets a Manager's password.
+    refused('el Manager no reinicia la de un Manager', await manager.post(`/admin/mechanics/${await userId(USERS.manager)}/reset-password`), 403, 'STAFF_ADMIN_ONLY');
     refused('id inventado', await manager.post('/admin/mechanics/not-a-uuid/reset-password'), 400);
   });});

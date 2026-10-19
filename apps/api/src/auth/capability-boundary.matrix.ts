@@ -486,7 +486,7 @@ export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
     enforcement: 'manager_writes_guard',
-    notes: 'D22. Manager or role admin. Creates Standard, PM or Safety plus the Supabase account (temporary password returned once).',
+    notes: 'D22. Manager or role admin. Creates Standard, PM or Safety plus the Supabase account (temporary password returned once). D48: a Manager or System Admin (role + admin.access, yard.operations.manage, work_orders.manage) only by role admin (STAFF_ADMIN_ONLY).',
   },
   {
     method: 'PATCH',
@@ -495,7 +495,7 @@ export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
     enforcement: 'manager_writes_guard',
-    notes: 'D22. Rename, switch type, deactivate (refused with open work: MECHANIC_HAS_OPEN_WORK) or reactivate. Does not edit manager or admin accounts.',
+    notes: 'D22. Rename, switch type, deactivate (refused with open work: MECHANIC_HAS_OPEN_WORK) or reactivate. D48: manager and admin accounts only by role admin (name and active only); never yourself; never the last active System Admin.',
   },
   {
     method: 'POST',
@@ -504,7 +504,7 @@ export const MANAGER_WRITES: CapabilityBoundaryEntry[] = [
     controller: 'admin',
     expected: [ADMIN, WORK_ORDERS],
     enforcement: 'manager_writes_guard',
-    notes: 'D22. New temporary password, returned once; AUTH_ACCOUNT_MISSING without a Supabase account.',
+    notes: 'D22. New temporary password, returned once; AUTH_ACCOUNT_MISSING without a Supabase account. D48: for a manager or admin account, role admin only.',
   },
   {
     method: 'POST',

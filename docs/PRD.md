@@ -100,10 +100,10 @@ respaldo.
 
 ### 4.6 Setup, People & Permisos — 🟡
 Shop workflow (equipos y colas por paso), horario del taller, Job Catalog con
-categorías y aliases, bandeja de Custom Jobs, People (alta, desactivar, quitar),
+categorías y aliases, bandeja de Custom Jobs, People (alta, desactivar, quitar; también Managers y System Admins, que solo maneja un System Admin),
 checklist de inspección, Setup → Samsara.
 **Pendiente:** modelo de roles y permisos con pantalla propia (LTR-161).
-**Decisiones:** D16, D22, D25, D28, D30, D31, D-SET1–9 · **Historias:** HU-M8, HU-M9, HU-A2.
+**Decisiones:** D16, D22, D25, D28, D30, D31, D48, D-SET1–9 · **Historias:** HU-M8, HU-M9, HU-A2.
 
 ### 4.7 Parts, Costs & Finance — ✅
 Catálogo de partes, proveedores, compras y reparaciones externas con su factura,

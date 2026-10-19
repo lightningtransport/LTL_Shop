@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { AppCapability } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { AppCapability as SharedCapability, CatalogStatus, MechanicMode } from '@ltl-shop/shared';
@@ -15,6 +15,15 @@ const ACTOR: AuthUser = {
   active: true,
   capabilities: [SharedCapability.ADMIN_ACCESS],
   supabaseAuthId: null,
+};
+
+/** D48: a Shop Manager handles shop floor staff only. */
+const MANAGER: AuthUser = {
+  ...ACTOR,
+  id: '00000000-0000-4000-8000-0000000000ab',
+  email: 'manager@lightning.local',
+  role: 'manager',
+  capabilities: [SharedCapability.ADMIN_ACCESS, SharedCapability.YARD_OPERATIONS_MANAGE, SharedCapability.WORK_ORDERS_MANAGE],
 };
 
 const MECHANIC_ID = '00000000-0000-4000-8000-0000000000b1';
@@ -48,7 +57,7 @@ function createPrisma() {
         role: data.role,
         active: data.active,
         supabaseAuthId: data.supabaseAuthId ?? null,
-        capabilities: [{ capability: data.capabilities.create.capability }],
+        capabilities: [data.capabilities.create].flat().map((item: { capability: AppCapability }) => ({ capability: item.capability })),
       })),
     },
   };
@@ -77,7 +86,7 @@ describe('SystemAdminWritesService roster', () => {
           name: data.name,
           role: data.role,
           active: data.active,
-          capabilities: [{ capability: data.capabilities.create.capability }],
+          capabilities: [data.capabilities.create].flat().map((item: { capability: AppCapability }) => ({ capability: item.capability })),
         })),
       },
     };
@@ -102,10 +111,7 @@ describe('SystemAdminWritesService roster', () => {
         role: 'mechanic',
         active: true,
         capabilities: {
-          create: {
-            capability: AppCapability.MECHANIC_STANDARD,
-            grantedById: ACTOR.id,
-          },
+          create: [{ capability: AppCapability.MECHANIC_STANDARD, grantedById: ACTOR.id }],
         },
       }),
     }));
@@ -121,7 +127,7 @@ describe('SystemAdminWritesService roster', () => {
           name: data.name,
           role: data.role,
           active: data.active,
-          capabilities: [{ capability: data.capabilities.create.capability }],
+          capabilities: [data.capabilities.create].flat().map((item: { capability: AppCapability }) => ({ capability: item.capability })),
         })),
       },
     };
@@ -133,7 +139,7 @@ describe('SystemAdminWritesService roster', () => {
     });
 
     expect(result.capabilities).toEqual([SharedCapability.MECHANIC_PM]);
-    expect(prisma.user.create.mock.calls[0][0].data.capabilities.create.capability).toBe(AppCapability.MECHANIC_PM);
+    expect(prisma.user.create.mock.calls[0][0].data.capabilities.create[0].capability).toBe(AppCapability.MECHANIC_PM);
   });
 
   it('refuses to create a mechanic over an existing mechanic or a manager email', async () => {
@@ -211,20 +217,76 @@ describe('SystemAdminWritesService roster', () => {
     });
   });
 
-  it('does not edit a manager account through the mechanic roster', async () => {
+  it('D48: a Manager cannot change a Manager or System Admin; a System Admin renames or deactivates them, never with a type', async () => {
+    const managerRow = { id: MECHANIC_ID, role: 'manager', active: true, removedAt: null, capabilities: [] };
     const tx = {
       user: {
-        findUnique: vi.fn().mockResolvedValue({ id: ACTOR.id, role: 'manager', capabilities: [] }),
+        findUnique: vi.fn().mockResolvedValue(managerRow),
         update: vi.fn(),
+        count: vi.fn().mockResolvedValue(1),
       },
-      userCapability: { deleteMany: vi.fn(), create: vi.fn() },
+      userCapability: { deleteMany: vi.fn(), create: vi.fn(), createMany: vi.fn() },
+      workOrderJob: { findMany: vi.fn().mockResolvedValue([]) },
+      workSession: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const service = serviceWith({
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
     });
 
-    await expect(service.updateMechanic(ACTOR, ACTOR.id, { active: true })).rejects.toBeInstanceOf(NotFoundException);
+    const refused = await service.updateMechanic(MANAGER, MECHANIC_ID, { active: false }).catch((error) => error);
+    expect(refused).toBeInstanceOf(ForbiddenException);
+    expect(refused.getResponse()).toMatchObject({ code: 'STAFF_ADMIN_ONLY' });
+    await expect(service.updateMechanic(ACTOR, MECHANIC_ID, { mode: MechanicMode.PM })).rejects.toBeInstanceOf(BadRequestException);
     expect(tx.userCapability.deleteMany).not.toHaveBeenCalled();
+
+    await service.updateMechanic(ACTOR, MECHANIC_ID, { active: false });
+    expect(tx.user.update).toHaveBeenCalledWith({ where: { id: MECHANIC_ID }, data: { active: false } });
+    expect(tx.userCapability.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('D48: nobody deactivates themself, and the last active System Admin stays', async () => {
+    const adminRow = { id: ACTOR.id, role: 'admin', active: true, removedAt: null, capabilities: [] };
+    const other = { ...adminRow, id: MECHANIC_ID };
+    const tx = {
+      user: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn().mockResolvedValue(0) },
+      userCapability: { deleteMany: vi.fn(), create: vi.fn(), createMany: vi.fn() },
+      workOrderJob: { findMany: vi.fn().mockResolvedValue([]) },
+      workSession: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const service = serviceWith({ $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)) });
+
+    tx.user.findUnique.mockResolvedValueOnce(adminRow);
+    const self = await service.updateMechanic(ACTOR, ACTOR.id, { active: false }).catch((error) => error);
+    expect(self.getResponse()).toMatchObject({ code: 'PERSON_IS_SELF' });
+
+    tx.user.findUnique.mockResolvedValueOnce(other);
+    const last = await service.updateMechanic(ACTOR, MECHANIC_ID, { active: false }).catch((error) => error);
+    expect(last).toBeInstanceOf(ConflictException);
+    expect(last.getResponse()).toMatchObject({ code: 'LAST_SYSTEM_ADMIN' });
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('D48: only a System Admin adds a Manager or System Admin, with the whole package', async () => {
+    const prisma = createPrisma();
+    const service = serviceWith(prisma);
+    const refused = await service.createMechanic(MANAGER, { email: 'boss@lightning.local', name: 'Boss', role: 'manager' }).catch((error) => error);
+    expect(refused).toBeInstanceOf(ForbiddenException);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+
+    const created = await service.createMechanic(ACTOR, { email: 'boss@lightning.local', name: 'Boss', role: 'manager' });
+    expect(created.role).toBe('manager');
+    expect(created.capabilities).toEqual([
+      SharedCapability.ADMIN_ACCESS,
+      SharedCapability.YARD_OPERATIONS_MANAGE,
+      SharedCapability.WORK_ORDERS_MANAGE,
+    ]);
+    expect(prisma.user.create.mock.calls[0][0].data.capabilities.create).toEqual([
+      { capability: AppCapability.ADMIN_ACCESS, grantedById: ACTOR.id },
+      { capability: AppCapability.YARD_OPERATIONS_MANAGE, grantedById: ACTOR.id },
+      { capability: AppCapability.WORK_ORDERS_MANAGE, grantedById: ACTOR.id },
+    ]);
+    const admin = await service.createMechanic(ACTOR, { email: 'it@lightning.local', name: 'IT', role: 'admin' });
+    expect(admin.role).toBe('admin');
   });
 
   it('requires Standard or PM when the row has no mechanic cap', async () => {
@@ -263,7 +325,7 @@ describe('SystemAdminWritesService roster (D22)', () => {
       temporaryPassword: null,
     });
     expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ supabaseAuthId: null, capabilities: { create: expect.objectContaining({ capability: AppCapability.QUALITY_CHECK_PERFORM }) } }),
+      data: expect.objectContaining({ supabaseAuthId: null, capabilities: { create: [expect.objectContaining({ capability: AppCapability.QUALITY_CHECK_PERFORM })] } }),
     }));
   });
 
@@ -348,7 +410,7 @@ describe('SystemAdminWritesService roster (D22)', () => {
     const withAccount = { id: MECHANIC_ID, email: 'ana@lightning.local', name: 'Ana', role: 'mechanic', active: true, supabaseAuthId: 'auth-user-1', capabilities: [] };
     const auth = configuredAuth();
     const service = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } }, auth);
-    const reset = await service.resetPassword(MECHANIC_ID);
+    const reset = await service.resetPassword(ACTOR, MECHANIC_ID);
     expect(isTemporaryPasswordShape(reset.temporaryPassword)).toBe(true);
     expect(auth.resetPassword).toHaveBeenCalledWith('auth-user-1', reset.temporaryPassword);
 
@@ -356,7 +418,7 @@ describe('SystemAdminWritesService roster (D22)', () => {
     const createAuth = configuredAuth({ createUser: vi.fn().mockResolvedValue({ id: 'auth-new' }) });
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const noAccount = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }), updateMany } }, createAuth);
-    const created = await noAccount.resetPassword(MECHANIC_ID);
+    const created = await noAccount.resetPassword(ACTOR, MECHANIC_ID);
     expect(isTemporaryPasswordShape(created.temporaryPassword)).toBe(true);
     expect(createAuth.createUser).toHaveBeenCalledWith({ email: 'ana@lightning.local', password: created.temporaryPassword, name: 'Ana' });
     expect(updateMany).toHaveBeenCalledWith({ where: { id: MECHANIC_ID, supabaseAuthId: null }, data: { supabaseAuthId: 'auth-new' } });
@@ -364,15 +426,17 @@ describe('SystemAdminWritesService roster (D22)', () => {
 
     // Someone linked it meanwhile: the new account is removed and nothing is linked twice.
     const raced = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, supabaseAuthId: null }), updateMany: vi.fn().mockResolvedValue({ count: 0 }) } }, createAuth);
-    const conflict = await raced.resetPassword(MECHANIC_ID).catch((error) => error);
+    const conflict = await raced.resetPassword(ACTOR, MECHANIC_ID).catch((error) => error);
     expect(conflict).toBeInstanceOf(ConflictException);
     expect(createAuth.deleteUser).toHaveBeenCalledWith('auth-new');
 
     const unconfigured = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue(withAccount) } });
-    await expect(unconfigured.resetPassword(MECHANIC_ID)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(unconfigured.resetPassword(ACTOR, MECHANIC_ID)).rejects.toBeInstanceOf(ServiceUnavailableException);
 
+    // D48: a Manager's password is reset by a System Admin only.
     const manager = serviceWith({ user: { findUnique: vi.fn().mockResolvedValue({ ...withAccount, role: 'manager' }) } }, auth);
-    await expect(manager.resetPassword(MECHANIC_ID)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(manager.resetPassword(MANAGER, MECHANIC_ID)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(manager.resetPassword(ACTOR, MECHANIC_ID)).resolves.toHaveProperty('temporaryPassword');
   });
 });
 

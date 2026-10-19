@@ -292,6 +292,7 @@ export class AdminController {
   }
 
   // D22 / LTR-187: the Shop Manager manages the roster; the System Admin keeps role access.
+  // D48: Managers and System Admins are added and changed only by a System Admin (service check).
   // D46: People and Setup manage the Safety accounts and teams by name.
   @ShowSafetyPeople()
   @Post('mechanics')
@@ -312,8 +313,8 @@ export class AdminController {
   @ShowSafetyPeople()
   @Post('mechanics/:id/reset-password')
   @UseGuards(ManagerWritesGuard)
-  resetMechanicPassword(@Param('id') id: string) {
-    return this.systemAdminWrites.resetPassword(id);
+  resetMechanicPassword(@Req() request: Request, @Param('id') id: string) {
+    return this.systemAdminWrites.resetPassword(request.user!, id);
   }
 
   // LTR-199 / D31: Remove from Shop, delete (never did anything) and send queue Jobs back to their team queue.
@@ -329,8 +330,8 @@ export class AdminController {
   @ShowSafetyPeople()
   @Delete('mechanics/:id')
   @UseGuards(ManagerWritesGuard)
-  deleteMechanic(@Param('id') id: string) {
-    return this.people.delete(id);
+  deleteMechanic(@Req() request: Request, @Param('id') id: string) {
+    return this.people.delete(request.user!, id);
   }
 
   // D46: People and Setup manage the Safety accounts and teams by name.

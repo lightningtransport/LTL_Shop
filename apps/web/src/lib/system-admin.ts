@@ -30,6 +30,20 @@ export function canShowManagerWrites(
   return sessionRole === UserRole.MANAGER;
 }
 
+/**
+ * LTR-253 / D48: who may act on a person in People. Standard, PM and Safety: whoever has the roster writes.
+ * A Shop Manager or a System Admin: a System Admin only. Mirrors `assertCanManagePerson` in the API.
+ */
+export function canManagePerson(
+  sessionRole: string | null | undefined,
+  user: Pick<UserDto, 'role' | 'capabilities'> | null | undefined,
+  personRole: string,
+): boolean {
+  if (!canShowManagerWrites(sessionRole, user)) return false;
+  if (personRole === UserRole.MECHANIC) return true;
+  return isSystemAdminRole(sessionRole) || isSystemAdmin(user);
+}
+
 /** D22: the `MECHANIC_HAS_OPEN_WORK` body, when that is what the API refused with. */
 export function mechanicOpenWorkFromError(error: unknown): Pick<AdminMechanicOpenWorkDto, 'pendingJobs' | 'runningSession'> | null {
   if (!(error instanceof ApiError) || apiErrorCode(error) !== 'MECHANIC_HAS_OPEN_WORK') return null;
@@ -50,7 +64,12 @@ export function adminWriteFailureMessage(
   copy: { forbidden: string; conflict: string; failed: string } & Partial<ApiErrorCatalog>,
 ): string {
   if (error instanceof ApiError) {
-    if (error.status === 403) return copy.forbidden;
+    if (error.status === 403) {
+      // D48: a coded refusal (only a System Admin changes Managers and Admins) has its own sentence.
+      const code = apiErrorCode(error);
+      if (code && copy.locale && copy.apiError && code in copy.apiError) return copy.apiError[code as keyof typeof copy.apiError];
+      return copy.forbidden;
+    }
     // D22: a coded 409 (open work, missing account) has its own sentence in the catalog.
     if (error.status === 409) {
       const code = apiErrorCode(error);

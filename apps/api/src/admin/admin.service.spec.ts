@@ -408,9 +408,11 @@ describe('AdminService', () => {
     const service = createService(prisma);
     await expect(service.mechanicDetail(baseRow.createdById)).rejects.toBeInstanceOf(NotFoundException);
     const where = prisma.user.findFirst.mock.calls[0][0].where;
-    const allowed: string[] = where.capabilities.some.capability.in.map(String);
+    const allowed: string[] = where.OR[0].capabilities.some.capability.in.map(String);
     expect(allowed).toHaveLength(3);
     expect(allowed.some((capability) => /quality/i.test(capability))).toBe(true);
+    // LTR-253 / D48: Managers and System Admins open from People too.
+    expect(where.OR[1]).toEqual({ role: { in: ['manager', 'admin'] } });
   });
 
   it('excludes System Admin accounts only when listing assignable mechanics (LTR-151)', async () => {
@@ -422,7 +424,10 @@ describe('AdminService', () => {
     const assignableWhere = JSON.stringify(prisma.user.findMany.mock.calls[0][0].where);
     const rosterWhere = JSON.stringify(prisma.user.findMany.mock.calls[1][0].where);
     expect(assignableWhere).toContain('{"role":{"not":"admin"}}');
-    expect(rosterWhere).not.toContain('"role"');
+    expect(rosterWhere).not.toContain('{"role":{"not":"admin"}}');
+    // LTR-253 / D48: People lists Managers and System Admins; job pickers never offer them.
+    expect(rosterWhere).toContain('{"role":{"in":["manager","admin"]}}');
+    expect(assignableWhere).not.toContain('"in":["manager","admin"]');
   });
 
   it('hides deactivated mechanics unless includeInactive is requested (LTR-160)', async () => {
