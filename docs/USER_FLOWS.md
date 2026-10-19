@@ -272,7 +272,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ---
 
-### HU-M9 · Dar de alta al personal (J12) — ✅ (D22, LTR-187)
+### HU-M9 · Dar de alta al personal (J12) — ✅ (D22, LTR-187; Managers y Admins: D48, LTR-253)
 
 **Función:** Admin → **Mecánicos → Agregar**. El Manager (y el System Admin)
 crea mecánicos Standard, PM y Safety; la app crea también la cuenta de acceso.
@@ -285,6 +285,13 @@ crea mecánicos Standard, PM y Safety; la app crea también la cuenta de acceso.
    **cambiarla** antes de seguir.
 4. Desde el detalle de la persona el Manager puede **desactivar** (y
    reactivar) y **reiniciar la contraseña**.
+
+5. **Managers y System Admins (D48, LTR-253).** People lista también a los
+   Shop Managers y System Admins, con su tipo. Solo un **System Admin** ve en
+   Add person los tipos **Shop Manager** y **System Admin**; la app crea la
+   cuenta con contraseña temporal y les pone el paquete completo (Admin,
+   Patio y Work Orders). Solo un System Admin los desactiva, reactiva, quita,
+   borra o les reinicia la contraseña. Un Manager los ve sin acciones.
 
 En local y en las pruebas de flujo la API no tiene la service key de
 Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
@@ -306,6 +313,12 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 | **Quita del Shop** a alguien sin trabajo abierto (D31) | Deja de entrar y de aparecer en listas y equipos; su nombre sigue en el historial; solo se ve con el filtro "Quitadas del Shop" y no se puede reactivar | ✅ | A49 |
 | Quita a alguien con trabajo abierto | La app lo dice **antes** de confirmar, dice qué pasa con sus equipos y manda a la cola los Jobs que vinieron de una cola; los demás se reasignan en su Work Order | ✅ | A50 |
 | Borra a alguien creado por error, que nunca hizo nada | Se borra de verdad; con cualquier historial no deja y pide quitarlo del Shop | ✅ | A51 |
+| Un Manager abre People (D48) | Ve también a los Shop Managers y System Admins, con su tipo; no aparecen para asignar Jobs | ✅ | A145 |
+| El System Admin da de alta un Shop Manager o un System Admin (D48) | Se crea con contraseña temporal y el paquete completo (Admin, Patio, Work Orders); entra y maneja el taller sin SQL | ✅ | A146 |
+| Un Manager intenta dar de alta, desactivar, quitar, borrar o reiniciar la contraseña de un Manager o System Admin (D48) | No ve esas acciones; la API lo niega (403) y dice que solo un System Admin puede. Al personal del taller sí lo maneja | ✅ | A147 |
+| El System Admin desactiva, reactiva o quita a un Manager (D48, D31) | Igual que con un mecánico: deja de entrar, vuelve, sale de People; el tipo no se cambia (se quita y se agrega de nuevo) | ✅ | A148 |
+| Alguien intenta desactivarse, quitarse o borrarse a sí mismo (D48) | No deja; su detalle dice que otro System Admin puede hacerlo | ✅ | A148 |
+| Desactivar o quitar al último System Admin activo (D48) | No deja: el Shop siempre tiene un System Admin activo | ✅ (unitaria) | — |
 
 ---
 

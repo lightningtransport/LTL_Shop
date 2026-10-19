@@ -54,6 +54,8 @@ test('manager adds a Safety person and gets the temporary password once (D22, HU
   await expect(dialog.getByLabel('Name')).toBeFocused();
   await dialog.getByLabel('Name').fill('Sofia Safety');
   await dialog.getByLabel('Email').fill('sofia@lightning.local');
+  // LTR-253 / D48: only a System Admin adds a Shop Manager or a System Admin.
+  await expect(dialog.getByLabel('Shop Manager')).toHaveCount(0);
   await dialog.getByLabel('Safety (Quality Check)').check();
   await dialog.getByRole('button', { name: 'Add person' }).click();
 
@@ -157,9 +159,23 @@ test('system admin with only admin.access sees catalog and roster writes', async
 
   await page.goto('/admin/mechanics');
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
-  await expect(page.getByText('Add Standard, PM or Safety people. The app creates their access account with a temporary password.')).toBeVisible();
+  // LTR-253 / D48: a System Admin also adds Shop Managers and System Admins.
+  await expect(page.getByText('Add Standard, PM, Safety, Shop Manager or System Admin people. The app creates their access account with a temporary password.')).toBeVisible();
   await expect(page.getByText(/read-only/i)).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
+
+  await page.getByRole('button', { name: 'Add person' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('Name')).toBeFocused();
+  await dialog.getByLabel('Name').fill('Jessica Manager');
+  await dialog.getByLabel('Email').fill('jessica@lightning.local');
+  await dialog.getByLabel('Shop Manager').check();
+  await expect(dialog.getByText('Shop Managers and System Admins get Admin, Yard and Work Orders access.')).toBeVisible();
+  await expect(dialog.getByLabel('System Admin')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Add person' }).click();
+  await expect(dialog.getByTestId('temporary-password-panel')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('row', { name: /Jessica Manager/ })).toContainText('Shop Manager');
 });
 
 test('system admin adds, renames, and activates a Job, then creates and activates a mechanic', async ({ page }) => {

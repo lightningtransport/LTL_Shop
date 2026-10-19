@@ -121,11 +121,15 @@ const mechanicCapabilityWhere: Prisma.UserWhereInput = {
   },
 };
 
-/** LTR-185 / D19: the roster also shows Safety; Job pickers (`assignable`) do not offer them. */
+/**
+ * LTR-185 / D19: the roster also shows Safety; Job pickers (`assignable`) do not offer them.
+ * LTR-253 / D48: People also lists the Shop Managers and System Admins, with their type.
+ */
 const rosterCapabilityWhere: Prisma.UserWhereInput = {
-  capabilities: {
-    some: { capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM, AppCapability.QUALITY_CHECK_PERFORM] } },
-  },
+  OR: [
+    { capabilities: { some: { capability: { in: [AppCapability.MECHANIC_STANDARD, AppCapability.MECHANIC_PM, AppCapability.QUALITY_CHECK_PERFORM] } } } },
+    { role: { in: ['manager', 'admin'] } },
+  ],
 };
 
 const mechanicAssignmentInclude = {

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   BadGatewayException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -39,6 +40,43 @@ export const MECHANIC_CAPS = [
   AppCapability.MECHANIC_PM,
   AppCapability.QUALITY_CHECK_PERFORM,
 ] as const;
+
+/**
+ * LTR-253 / D48: the package of a Shop Manager and of a System Admin (the one the working accounts hold). The type
+ * comes from the role; both get the same three permissions.
+ */
+export const STAFF_CAPS = [
+  AppCapability.ADMIN_ACCESS,
+  AppCapability.YARD_OPERATIONS_MANAGE,
+  AppCapability.WORK_ORDERS_MANAGE,
+] as const;
+
+/** D48: a Shop Manager or a System Admin (not shop floor staff). */
+export function isStaffRole(role: string): role is 'manager' | 'admin' {
+  return role === 'manager' || role === 'admin';
+}
+
+/**
+ * D48: only a System Admin changes a Manager or a System Admin; a Manager handles Standard, PM and Safety only.
+ * `retire` (deactivate, remove, delete) also refuses the actor's own row.
+ */
+export function assertCanManagePerson(actor: Pick<AuthUser, 'id' | 'role'>, target: { id: string; role: string }, retire = false) {
+  if (isStaffRole(target.role) && actor.role !== 'admin') {
+    throw new ForbiddenException({ code: 'STAFF_ADMIN_ONLY', message: 'Only a System Admin can change a Manager or a System Admin.' });
+  }
+  if (retire && actor.id === target.id) {
+    throw new ConflictException({ code: 'PERSON_IS_SELF', message: 'You cannot deactivate, remove or delete yourself.' });
+  }
+}
+
+/** D48: the Shop never stays without an active System Admin. */
+export async function assertNotLastSystemAdmin(tx: Pick<Prisma.TransactionClient, 'user'>, target: { id: string; role: string; active: boolean }) {
+  if (target.role !== 'admin' || !target.active) return;
+  const others = await tx.user.count({ where: { role: 'admin', active: true, removedAt: null, id: { not: target.id } } });
+  if (!others) {
+    throw new ConflictException({ code: 'LAST_SYSTEM_ADMIN', message: 'The Shop needs at least one active System Admin.' });
+  }
+}
 
 const mechanicSelect = {
   id: true,
@@ -78,7 +116,11 @@ export class SystemAdminWritesService {
   async createMechanic(actor: AuthUser, raw: unknown): Promise<AdminMechanicCreatedDto> {
     const parsed = adminCreateMechanicSchema.safeParse(raw);
     if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
-    const { email, name, mode } = parsed.data;
+    const { email, name, mode, role } = parsed.data;
+    // D48: only a System Admin adds a Manager or a System Admin.
+    if (isStaffRole(role) && actor.role !== 'admin') {
+      throw new ForbiddenException({ code: 'STAFF_ADMIN_ONLY', message: 'Only a System Admin can add a Manager or a System Admin.' });
+    }
     const existing = await this.prisma.user.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },
       select: { id: true, role: true },
@@ -93,14 +135,13 @@ export class SystemAdminWritesService {
         data: {
           email,
           name,
-          role: 'mechanic',
+          role,
           active: true,
           supabaseAuthId: account?.authId ?? null,
           capabilities: {
-            create: {
-              capability: mechanicCapability(mode),
-              grantedById: actor.id,
-            },
+            // D48: a Manager or System Admin gets its whole package, so nobody adds permissions by hand.
+            create: (isStaffRole(role) ? [...STAFF_CAPS] : [mechanicCapability(mode as MechanicMode)])
+              .map((capability) => ({ capability, grantedById: actor.id })),
           },
         },
         select: mechanicSelect,
@@ -136,13 +177,17 @@ export class SystemAdminWritesService {
         where: { id },
         select: mechanicSelect,
       });
-      if (!current || current.role !== 'mechanic') {
-        throw new NotFoundException('Mechanic not found');
+      if (!current) throw new NotFoundException('Mechanic not found');
+      // D48: a Manager or System Admin is changed only by a System Admin, and only its name and active flag.
+      assertCanManagePerson(actor, current, input.active === false);
+      const staff = isStaffRole(current.role);
+      if (staff && (input.mode || input.canInspect !== undefined)) {
+        throw new BadRequestException({ code: 'STAFF_TYPE_FIXED', message: 'A Manager or System Admin has no mechanic type or inspect permission to change.' });
       }
       const hasMechanicCap = current.capabilities.some((item) =>
         (MECHANIC_CAPS as readonly AppCapability[]).includes(item.capability),
       );
-      if (!input.mode && !hasMechanicCap) {
+      if (!staff && !input.mode && !hasMechanicCap) {
         throw new BadRequestException('Choose Standard, PM or Safety before changing this person.');
       }
 
@@ -153,6 +198,7 @@ export class SystemAdminWritesService {
 
       // D22: deactivating is refused while the person has Jobs to do or labor time running.
       if (input.active === false && current.active) {
+        await assertNotLastSystemAdmin(tx, current);
         const openWork = await this.openWorkOf(tx, id);
         if (openWork) throw new ConflictException(openWork);
       }
@@ -185,11 +231,13 @@ export class SystemAdminWritesService {
 
       // D41: "Can inspect trucks" is apart from the type. Safety only does QC, so a Safety person never keeps it.
       const nextCapability = input.mode ? mechanicCapability(input.mode) : currentMechanicCapability(current);
-      const isSafety = nextCapability === 'QUALITY_CHECK_PERFORM';
+      const isSafety = !staff && nextCapability === 'QUALITY_CHECK_PERFORM';
       if (input.canInspect === true && isSafety) {
         throw new BadRequestException({ code: 'INSPECT_NOT_FOR_SAFETY', message: 'Safety does the Quality Check only; it cannot inspect trucks.' });
       }
-      if (input.canInspect === false || isSafety) {
+      if (staff) {
+        // D48: nothing to do; the package of a Manager or System Admin is not edited here.
+      } else if (input.canInspect === false || isSafety) {
         await tx.userCapability.deleteMany({ where: { userId: id, capability: 'INSPECTION_PERFORM' } });
       } else if (input.canInspect === true) {
         await tx.userCapability.createMany({
@@ -215,10 +263,12 @@ export class SystemAdminWritesService {
    * D22: a new temporary password when the person lost the first one. Re-arms the forced change.
    * Returned once, never stored.
    */
-  async resetPassword(id: string): Promise<AdminMechanicPasswordResetDto> {
+  async resetPassword(actor: Pick<AuthUser, 'id' | 'role'>, id: string): Promise<AdminMechanicPasswordResetDto> {
     if (!isUuid(id)) throw new BadRequestException('Invalid Mechanic id');
     const current = await this.prisma.user.findUnique({ where: { id }, select: mechanicSelect });
-    if (!current || current.role !== 'mechanic') throw new NotFoundException('Mechanic not found');
+    if (!current) throw new NotFoundException('Mechanic not found');
+    // D48: a Manager's or System Admin's password is reset only by a System Admin.
+    assertCanManagePerson(actor, current);
     if (!this.supabaseAdmin.isConfigured()) {
       throw new ServiceUnavailableException({
         code: 'AUTH_NOT_CONFIGURED',
@@ -497,16 +547,11 @@ export class SystemAdminWritesService {
   }
 
   private emailConflict(existing: { id: string; role: PrismaUserRole }): never {
-    if (existing.role === 'mechanic') {
-      throw new ConflictException({
-        code: 'MECHANIC_EMAIL_EXISTS',
-        message: 'A person with this email already exists. Open that roster row to reactivate it or change the type.',
-        mechanicId: existing.id,
-      });
-    }
+    // D48: People lists Managers and System Admins too, so the existing row can always be opened.
     throw new ConflictException({
       code: 'MECHANIC_EMAIL_EXISTS',
-      message: 'This email belongs to a non-mechanic account and cannot be created as a mechanic.',
+      message: 'A person with this email already exists. Open that roster row to reactivate it or change the type.',
+      mechanicId: existing.id,
     });
   }
 }

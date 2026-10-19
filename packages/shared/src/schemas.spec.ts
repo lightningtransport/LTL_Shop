@@ -324,7 +324,12 @@ describe('shared contracts', () => {
       email: 'new.mechanic@lightning.local',
       name: 'New Mechanic',
       mode: 'pm',
+      role: 'mechanic',
     });
+    // LTR-253 / D48: a Manager or System Admin has a role and no mechanic type.
+    expect(adminCreateMechanicSchema.parse({ email: 'boss@lightning.local', name: 'Boss', role: 'manager' }).role).toBe('manager');
+    expect(adminCreateMechanicSchema.safeParse({ email: 'boss@lightning.local', name: 'Boss', role: 'admin', mode: 'pm' }).success).toBe(false);
+    expect(adminCreateMechanicSchema.safeParse({ email: 'new@lightning.local', name: 'New' }).success).toBe(false);
     expect(adminUpdateMechanicSchema.safeParse({}).success).toBe(false);
     expect(adminUpdateMechanicSchema.parse({ active: true }).active).toBe(true);
     expect(adminCreateCatalogJobSchema.parse({

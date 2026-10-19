@@ -49,6 +49,10 @@ export type ApiErrorCode =
   | 'VENDOR_NEEDS_KIND'
   | 'PERSON_HAS_HISTORY'
   | 'PERSON_REMOVED'
+  | 'STAFF_ADMIN_ONLY'
+  | 'STAFF_TYPE_FIXED'
+  | 'PERSON_IS_SELF'
+  | 'LAST_SYSTEM_ADMIN'
   | 'ALIAS_EMPTY'
   | 'ALIAS_IS_JOB_NAME'
   | 'CATALOG_CATEGORY_EXISTS'
@@ -173,6 +177,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     VENDOR_NEEDS_KIND: 'A vendor sells parts, does outside repairs, or both.',
     PERSON_HAS_HISTORY: 'This person has history in the Shop, so they cannot be deleted. Remove them from the Shop instead.',
     PERSON_REMOVED: 'This person was removed from the Shop. To bring them back, add them again.',
+    STAFF_ADMIN_ONLY: 'Only a System Admin can add or change a Shop Manager or a System Admin.',
+    STAFF_TYPE_FIXED: 'A Shop Manager or System Admin keeps their type. Remove them and add them again to change it.',
+    PERSON_IS_SELF: 'You cannot deactivate, remove or delete yourself. Ask another System Admin.',
+    LAST_SYSTEM_ADMIN: 'The Shop needs at least one active System Admin. Add another one first.',
     ALIAS_EMPTY: 'An alias needs a letter or a number.',
     ALIAS_IS_JOB_NAME: "The Job's own name is always an alias. Rename the Job instead.",
     CATALOG_CATEGORY_EXISTS: 'A Category with this name already exists.',
@@ -295,6 +303,10 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     VENDOR_NEEDS_KIND: 'Un proveedor vende partes, hace reparaciones afuera, o las dos cosas.',
     PERSON_HAS_HISTORY: 'Esta persona tiene historial en el taller, así que no se puede borrar. Quítala del Shop en su lugar.',
     PERSON_REMOVED: 'Esta persona fue quitada del Shop. Para que vuelva, agrégala de nuevo.',
+    STAFF_ADMIN_ONLY: 'Solo un System Admin puede agregar o cambiar a un Shop Manager o a un System Admin.',
+    STAFF_TYPE_FIXED: 'Un Shop Manager o System Admin conserva su tipo. Para cambiarlo, quítalo y agrégalo de nuevo.',
+    PERSON_IS_SELF: 'No puedes desactivarte, quitarte ni borrarte a ti mismo. Pídeselo a otro System Admin.',
+    LAST_SYSTEM_ADMIN: 'El Shop necesita al menos un System Admin activo. Agrega otro primero.',
     ALIAS_EMPTY: 'Un alias necesita una letra o un número.',
     ALIAS_IS_JOB_NAME: 'El nombre del Job siempre es un alias. Renombra el Job en su lugar.',
     CATALOG_CATEGORY_EXISTS: 'Ya existe una categoría con ese nombre.',

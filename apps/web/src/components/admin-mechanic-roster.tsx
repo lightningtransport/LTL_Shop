@@ -13,7 +13,7 @@ import {
 } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, DialogActions, InlineAlert, Input, Label, Modal } from './ui';
-import { createAdminMechanic, deleteAdminMechanic, removeAdminMechanic, resetAdminMechanicPassword, sendAdminMechanicJobsToQueue, updateAdminMechanic } from '@/lib/admin-data';
+import { type StaffRole, createAdminMechanic, deleteAdminMechanic, removeAdminMechanic, resetAdminMechanicPassword, sendAdminMechanicJobsToQueue, updateAdminMechanic } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminWriteFailureMessage, isRosterEmail, mechanicOpenWorkFromError } from '@/lib/system-admin';
@@ -36,27 +36,38 @@ export function currentMode(capabilities: AppCapability[]): MechanicMode {
     : MechanicMode.STANDARD;
 }
 
+/** D22 types, plus (LTR-253 / D48) Shop Manager and System Admin when a System Admin adds someone. */
+export type PersonKind = MechanicMode | StaffRole;
+
 export function MechanicCapabilityFields({
   idPrefix,
   value,
   messages,
   disabled,
+  staffOptions = false,
   onChange,
 }: {
   idPrefix: string;
-  value: MechanicMode;
+  value: PersonKind;
   messages: AdminMessages;
   disabled?: boolean;
-  onChange: (value: MechanicMode) => void;
+  staffOptions?: boolean;
+  onChange: (value: PersonKind) => void;
 }) {
+  const options: Array<{ id: string; value: PersonKind; label: string }> = [
+    { id: `${idPrefix}-standard`, value: MechanicMode.STANDARD, label: messages.mechanicStandard },
+    { id: `${idPrefix}-pm`, value: MechanicMode.PM, label: messages.mechanicPm },
+    { id: `${idPrefix}-safety`, value: MechanicMode.SAFETY, label: messages.capabilitySafety },
+    ...(staffOptions ? [
+      { id: `${idPrefix}-manager`, value: UserRole.MANAGER as StaffRole, label: messages.roleLabelManager },
+      { id: `${idPrefix}-admin`, value: UserRole.ADMIN as StaffRole, label: messages.roleLabelAdmin },
+    ] : []),
+  ];
+  const staff = value === UserRole.MANAGER || value === UserRole.ADMIN;
   return (
     <fieldset className="space-y-2" disabled={disabled}>
       <legend className="text-sm font-medium text-foreground">{messages.mechanicCapability}</legend>
-      {[
-        { id: `${idPrefix}-standard`, value: MechanicMode.STANDARD, label: messages.mechanicStandard },
-        { id: `${idPrefix}-pm`, value: MechanicMode.PM, label: messages.mechanicPm },
-        { id: `${idPrefix}-safety`, value: MechanicMode.SAFETY, label: messages.capabilitySafety },
-      ].map((option) => (
+      {options.map((option) => (
         <label key={option.id} htmlFor={option.id} className="flex min-h-11 items-center gap-3 text-sm">
           <input
             id={option.id}
@@ -69,6 +80,7 @@ export function MechanicCapabilityFields({
           {option.label}
         </label>
       ))}
+      {staff ? <p className="text-sm text-muted-foreground">{messages.peopleStaffTypeHint}</p> : null}
     </fieldset>
   );
 }
@@ -121,18 +133,21 @@ export function TemporaryPasswordPanel({
 export function CreateMechanicDialog({
   open,
   messages,
+  allowStaff = false,
   onClose,
   onCreated,
 }: {
   open: boolean;
   messages: AdminMessages;
+  /** LTR-253 / D48: a System Admin may also add a Shop Manager or a System Admin. */
+  allowStaff?: boolean;
   onClose: () => void;
   /** Called once the person exists (the dialog stays open on the password step until Done). */
   onCreated: () => void;
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [capability, setCapability] = useState<MechanicMode>(MechanicMode.STANDARD);
+  const [capability, setCapability] = useState<PersonKind>(MechanicMode.STANDARD);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ name: string; email: string; temporaryPassword: string | null } | null>(null);
@@ -199,7 +214,7 @@ export function CreateMechanicDialog({
             <Label htmlFor="create-mechanic-email">{messages.mechanicEmail}</Label>
             <Input id="create-mechanic-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} autoComplete="off" />
           </div>
-          <MechanicCapabilityFields idPrefix="create-mechanic" value={capability} messages={messages} disabled={busy} onChange={setCapability} />
+          <MechanicCapabilityFields idPrefix="create-mechanic" value={capability} messages={messages} disabled={busy} staffOptions={allowStaff} onChange={setCapability} />
           {error ? <InlineAlert>{error}</InlineAlert> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={close} disabled={busy}>{messages.cancel}</Button>
@@ -322,10 +337,13 @@ export function MechanicOpenWorkAlert({
 export function MechanicAccessCard({
   mechanic,
   messages,
+  isSelf = false,
   onChanged,
 }: {
   mechanic: AdminMechanicDetailDto;
   messages: AdminMessages;
+  /** LTR-253 / D48: nobody deactivates or removes themself, so those rows are not offered. */
+  isSelf?: boolean;
   onChanged: () => void;
 }) {
   const { showToast } = useActionToast();
@@ -342,7 +360,6 @@ export function MechanicAccessCard({
     : null;
   const blockingWork = openWork ?? knownOpenWork;
   const [resetPassword, setResetPassword] = useState<string | null>(null);
-  if (mechanic.role !== UserRole.MECHANIC) return null;
 
   function closeDeactivate() {
     setDeactivateOpen(false);
@@ -452,6 +469,10 @@ export function MechanicAccessCard({
             <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleResetHint}</p>
             <Button type="button" variant="outline" disabled={busy} onClick={() => setResetOpen(true)}>{messages.resetPasswordAction}</Button>
           </li>
+          {isSelf ? (
+            <li className="px-3 py-2.5 text-sm text-muted-foreground" data-testid="person-self-hint">{messages.peopleSelfHint}</li>
+          ) : null}
+          {isSelf ? null : (<>
           <li className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
             <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleDeactivateHint}</p>
             {mechanic.active ? (
@@ -464,6 +485,7 @@ export function MechanicAccessCard({
             <p className="min-w-0 flex-1 text-sm text-muted-foreground">{messages.peopleRemoveHint}</p>
             <Button type="button" variant="outline" className="text-destructive-text" disabled={busy} onClick={() => { setError(null); setRemoveOpen(true); }}>{messages.peopleRemove}</Button>
           </li>
+          </>)}
         </ul>
       </CardContent>
 
@@ -644,7 +666,7 @@ function CapabilityForm({
         messages={messages}
         disabled={busy}
         onChange={(next) => {
-          setCapability(next);
+          setCapability(next as MechanicMode);
           setWarned(false);
         }}
       />

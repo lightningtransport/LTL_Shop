@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { getAdminMessages } from './admin-messages-catalog';
 import { ApiError } from './api';
 import {
-  adminWriteFailureMessage, canShowManagerWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,
+  adminWriteFailureMessage, canManagePerson, canShowManagerWrites, isRosterEmail, isSystemAdmin, mechanicOpenWorkFromError,
 } from './system-admin';
 
 describe('isSystemAdmin', () => {
@@ -13,6 +13,29 @@ describe('isSystemAdmin', () => {
     expect(isSystemAdmin({ role: UserRole.MECHANIC })).toBe(false);
     expect(isSystemAdmin(null)).toBe(false);
     expect(isSystemAdmin(undefined)).toBe(false);
+  });
+});
+
+describe('canManagePerson (LTR-253 / D48)', () => {
+  const managerCaps = [AppCapability.ADMIN_ACCESS, AppCapability.WORK_ORDERS_MANAGE, AppCapability.YARD_OPERATIONS_MANAGE];
+  const manager = { role: UserRole.MANAGER, capabilities: managerCaps };
+
+  it('lets a Shop Manager act on shop floor staff only', () => {
+    expect(canManagePerson(UserRole.MANAGER, manager, UserRole.MECHANIC)).toBe(true);
+    expect(canManagePerson(UserRole.MANAGER, manager, UserRole.MANAGER)).toBe(false);
+    expect(canManagePerson(UserRole.MANAGER, manager, UserRole.ADMIN)).toBe(false);
+  });
+
+  it('lets a System Admin act on everyone, and a mechanic on no one', () => {
+    expect(canManagePerson(UserRole.ADMIN, { role: UserRole.ADMIN, capabilities: managerCaps }, UserRole.MANAGER)).toBe(true);
+    expect(canManagePerson(UserRole.ADMIN, null, UserRole.ADMIN)).toBe(true);
+    expect(canManagePerson(UserRole.MECHANIC, { role: UserRole.MECHANIC, capabilities: [AppCapability.MECHANIC_STANDARD] }, UserRole.MECHANIC)).toBe(false);
+  });
+
+  it('shows the coded 403 sentence instead of the generic one', () => {
+    const es = { ...getAdminMessages('es'), forbidden: 'generic', conflict: 'c', failed: 'f' };
+    expect(adminWriteFailureMessage(new ApiError('no', 403, { code: 'STAFF_ADMIN_ONLY', message: 'no' }), es)).toBe(getAdminMessages('es').apiError.STAFF_ADMIN_ONLY);
+    expect(adminWriteFailureMessage(new ApiError('no', 403, { message: 'no' }), es)).toBe('generic');
   });
 });
 

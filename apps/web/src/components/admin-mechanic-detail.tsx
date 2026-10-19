@@ -13,7 +13,7 @@ import { MechanicAvatar } from './mechanic-avatar';
 import { AdminBackLink, PageHeader, Badge, Button, CompactEmpty, EmptyState, InlineAlert, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
-import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { useCanShowManagerWrites, usePersonAccess } from '@/lib/admin-actor';
 import { sendAdminMechanicJobsToQueue, updateAdminMechanic, useAdminMechanic } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -29,7 +29,10 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
   const { data, error, isLoading, mutate } = useAdminMechanic(id);
   // LTR-245 (UX-5-007): "People › Ana Ruiz" in the top bar.
   useAdminBreadcrumb(data ? [{ label: messages.mechanics, href: '/admin/mechanics' }, { label: data.name }] : null);
-  const canEditRoster = canWrite && data?.role === UserRole.MECHANIC && !data.removedAt;
+  // LTR-253 / D48: a Shop Manager or System Admin is changed only by a System Admin; nobody retires themself.
+  const { canManage, isSelf } = usePersonAccess(data);
+  const canEditRoster = canWrite && canManage && Boolean(data) && !data?.removedAt;
+  const staff = data?.role === UserRole.MANAGER || data?.role === UserRole.ADMIN;
   if (isLoading) return <PageSkeleton label={messages.mechanicsTitle} />;
   if (error instanceof ApiError && error.status === 404) {
     return <EmptyState><p>{messages.mechanicNotFound}</p><Button asChild variant="outline" className="mt-4"><Link href="/admin/mechanics">{messages.backToMechanics}</Link></Button></EmptyState>;
@@ -90,10 +93,11 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
         </div>
       </SectionCard>
 
-      {canEditRoster ? <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip> : null}
+      {canEditRoster && !staff ? <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip> : null}
+      {canWrite && staff && !canManage ? <p className="text-sm text-muted-foreground" data-testid="person-staff-read-only">{messages.peopleStaffReadOnly}</p> : null}
       {canEditRoster ? <MechanicCapabilityEditor mechanic={data} messages={messages} onSaved={() => void mutate()} /> : null}
       {canEditRoster ? <InspectPermissionCard person={data} messages={messages} onSaved={() => void mutate()} /> : null}
-      {canEditRoster ? <MechanicAccessCard mechanic={data} messages={messages} onChanged={() => void mutate()} /> : null}
+      {canEditRoster ? <MechanicAccessCard mechanic={data} messages={messages} isSelf={isSelf} onChanged={() => void mutate()} /> : null}
 
       <SectionCard title={messages.peopleCompletedTitle}>
         <div className="px-4 py-3">
