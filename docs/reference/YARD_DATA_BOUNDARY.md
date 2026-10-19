@@ -1,7 +1,7 @@
 # Yard data-boundary proxy (LTR-70)
 
 **Classification:** CURRENT STATE / INTEGRATION BOUNDARY
-**Updated:** 2026-09-21
+**Updated:** 2026-10-19 (LTR-254)
 **Capability:** `admin.access` (same as other Admin Yard reads)
 
 Admin Yard Phase 1 cards — **Incoming Trucks**, **Upcoming Departures**, and
@@ -162,7 +162,7 @@ never requested.
 | Card | Report | Mapping |
 | --- | --- | --- |
 | Work location | `trucks` | Compact `{ truckNumber, location }` for trucks with non-empty `yard_location`. `summary` is set when one location is **strictly more than half** of those items (typical headline: `301 Yard`). This is Ninox `E.X1` text such as a yard or vendor — **not** Presence. |
-| Incoming Trucks | `returns` | Driver-row grain collapsed to distinct `Truck`. `returnDate` is the earliest ISO date on that truck (`null` stays undated). Driver display names only. Default window: this Monday–Sunday, next week, plus undated. |
+| Incoming Trucks | `driver_pay` | LTR-254: `return_from` = this Monday. Each `Truck_Number` counts its **latest assignment** (newest `Out Date`); `returnDate` is that assignment's earliest `Return Date`. Rows with a `Termination` / `Termination Date` or `Transfer` "To Other Truck" are skipped, and rows without a `Return Date` are dropped. Window: this Monday–Sunday and next week only (no undated). Sorted by date, then truck number. Driver display names only. Not `returns`: that copy holds the whole fleet, undated rows and dates that lag Ninox (2026-10-19: 608, 921, 943). |
 | Upcoming Departures | `driver_pay` | `out_from` = this Monday, `out_to` = next Sunday (`America/New_York`). Distinct `Truck_Number`. `outDate` from `Out Date`. Driver display names only. |
 
 Weeks are Monday–Sunday in `America/New_York`. Optional item `window` is

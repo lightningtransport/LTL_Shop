@@ -49,15 +49,15 @@ describe('yard data-boundary mappers', () => {
     ).toBeUndefined();
   });
 
-  it('collapses returns driver rows to distinct trucks in the default window', () => {
+  it('collapses driver_pay rows to distinct trucks in the default window, dated only', () => {
     const items = mapIncomingTrucks(
       [
-        { Truck: '277', 'Return Date': '2026-09-22', 'Driver Name': 'Ana' },
-        { Truck: '277', 'Return Date': '2026-09-23', 'Driver Name': 'Luis' },
-        { Truck: '905', 'Return Date': null, 'First Name': 'Pat', 'Last Name': 'Lee' },
-        { Truck: '922', 'Return Date': '2026-09-10', 'Driver Name': 'Too early' },
-        { Truck: '968', 'Return Date': '2026-09-29', 'Driver Name': 'Next week' },
-        { Truck: '277', 'Phone Number': '555-0100', CDL: 'X' },
+        { Truck_Number: '277', 'Out Date': '2026-08-24', 'Return Date': '2026-09-22', 'Driver Name': 'Ana' },
+        { Truck_Number: '277', 'Out Date': '2026-08-24', 'Return Date': '2026-09-23', 'Driver Name': 'Luis' },
+        { Truck_Number: '905', 'Out Date': '2026-08-24', 'Return Date': null, 'First Name': 'Pat', 'Last Name': 'Lee' },
+        { Truck_Number: '922', 'Out Date': '2026-08-01', 'Return Date': '2026-09-10', 'Driver Name': 'Too early' },
+        { Truck_Number: '968', 'Out Date': '2026-09-01', 'Return Date': '2026-09-29', 'First Name': 'Next', 'Last Name': 'Week' },
+        { Truck_Number: '277', 'Out Date': '2026-08-24', 'Phone Number': '555-0100', CDL: 'X' },
       ],
       windows,
     );
@@ -73,17 +73,39 @@ describe('yard data-boundary mappers', () => {
         truckNumber: '968',
         returnDate: '2026-09-29',
         window: 'next_week',
-        drivers: ['Next week'],
-      },
-      {
-        truckNumber: '905',
-        returnDate: null,
-        window: 'undated',
-        drivers: ['Pat Lee'],
+        drivers: ['Next Week'],
       },
     ]);
     expect(JSON.stringify(items)).not.toContain('555-0100');
     expect(JSON.stringify(items)).not.toContain('"X"');
+  });
+
+  it('LTR-254: a Truck counts only its latest assignment that still brings it back', () => {
+    const items = mapIncomingTrucks(
+      [
+        // 608: the older assignment said next week; the newest one (later Out Date) says this week.
+        { Truck_Number: '608', 'Out Date': '2026-08-20', 'Return Date': '2026-09-29' },
+        { Truck_Number: '608', 'Out Date': '2026-09-02', 'Return Date': '2026-09-21' },
+        // 614: the newest assignment returns after next week, so the old date does not count.
+        { Truck_Number: '614', 'Out Date': '2026-08-01', 'Return Date': '2026-09-21' },
+        { Truck_Number: '614', 'Out Date': '2026-09-15', 'Return Date': '2026-10-20' },
+        // 911: the driver moved to another truck; the remaining assignment returns in December.
+        { Truck_Number: '911', 'Out Date': '2026-08-24', 'Return Date': '2026-12-07' },
+        { Truck_Number: '911', 'Out Date': '2026-09-14', 'Return Date': '2026-09-21', Transfer: 'Transfer To Other Truck' },
+        // 930: the assignment ended early.
+        { Truck_Number: '930', 'Out Date': '2026-09-01', 'Return Date': '2026-09-22', Termination: 'Driver Changed', 'Termination Date': '2026-09-10' },
+        // 974: a truck the shop has not loaded yet still sorts by date and number.
+        { Truck_Number: '974', 'Out Date': '2026-09-01', 'Return Date': '2026-09-21' },
+        { Truck_Number: '823', 'Out Date': '2026-09-01', 'Return Date': '2026-09-21' },
+      ],
+      windows,
+    );
+
+    expect(items.map((item) => [item.truckNumber, item.returnDate])).toEqual([
+      ['608', '2026-09-21'],
+      ['823', '2026-09-21'],
+      ['974', '2026-09-21'],
+    ]);
   });
 
   it('collapses driver_pay Out Date rows to distinct trucks', () => {

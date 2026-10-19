@@ -283,10 +283,8 @@ function MovementRows({
 }) {
   const [showAll, setShowAll] = useState(false);
   if (!items.length) return <p className="px-4 py-3 text-muted-foreground">{messages.yardNoTrucksMatch}</p>;
-  // Trucks the shop is working on first (stable otherwise).
-  const rows = items
-    .map((item, index) => ({ item, index, truck: shop.get(item.truckNumber) }))
-    .sort((left, right) => Number(Boolean(right.truck)) - Number(Boolean(left.truck)) || left.index - right.index);
+  // LTR-254: the API order (date, then truck number); a truck the shop has not loaded yet keeps its place.
+  const rows = items.map((item, index) => ({ item, index, truck: shop.get(item.truckNumber) }));
   const visible = showAll ? rows : rows.slice(0, LIST_PREVIEW);
   return (
     <>
