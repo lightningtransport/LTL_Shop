@@ -66,11 +66,10 @@ export default function RepairHistoryPage() {
       />
 
       <Card className="mb-4 text-sm">
-        <p>
-          {truck.make} | {truck.model} | {truck.year}
-        </p>
+        {/* UX-F-005: the vehicle reads like everywhere else ("2022 Volvo VNL 760"), with "·" between facts. */}
+        <p>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</p>
         <p className="text-shop-muted">
-          {formatMileage(truck.mileage)} | {truck.company} | {truck.owner}
+          {[formatMileage(truck.mileage), truck.company, truck.owner].filter(Boolean).join(' · ')}
         </p>
         <p className="text-shop-muted">
           {messages.vin}: {truck.vin || '—'}

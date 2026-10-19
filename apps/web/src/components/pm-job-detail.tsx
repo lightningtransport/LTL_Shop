@@ -40,6 +40,7 @@ export function PmJobDetail({
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const [busy, setBusy] = useState(false);
+  const [truckOpen, setTruckOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   // LTR-158 / D17: the PM mechanic blocks their PM job and adds notes; the Manager resolves.
@@ -230,18 +231,29 @@ export function PmJobDetail({
         <p className="mb-4 rounded-xl bg-shop-success/10 px-3 py-2 text-sm text-shop-success">{messages.pmJobFinishedHint}</p>
       ) : null}
 
-      {/* LTR-158: the PM comes first; truck data is folded below it. */}
-      <details className="card mb-4" aria-labelledby="pm-job-truck-information">
-        <summary id="pm-job-truck-information" className="group-title cursor-pointer select-none">{messages.truckInformation}</summary>
-        <div className="mt-3 space-y-3">
-          <TruckInformationFields truck={wo.truck} locale={messages.locale} />
-          <Button asChild variant="secondary" className="w-full">
-            <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
-              {messages.repairHistory}
-            </Link>
-          </Button>
-        </div>
-      </details>
+      {/* LTR-158: the PM comes first; truck data is folded below it. UX-F-004: the same fold as the General Work Order. */}
+      <section className="mb-4 overflow-hidden rounded-xl border bg-card">
+        <button
+          type="button"
+          className="flex min-h-12 w-full items-center justify-between px-4 py-2 text-left"
+          onClick={() => setTruckOpen((open) => !open)}
+          aria-expanded={truckOpen}
+          aria-controls="pm-job-truck-information"
+        >
+          <span className="text-base font-semibold">{messages.truckInformation}</span>
+          <ChevronDown className={`size-5 transition-transform ${truckOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+        {truckOpen ? (
+          <div id="pm-job-truck-information" className="space-y-3 border-t p-4">
+            <TruckInformationFields truck={wo.truck} locale={messages.locale} />
+            <Button asChild variant="secondary" className="w-full">
+              <Link href={`/trucks/${wo.truckId}/history?from=${encodeURIComponent(`/work-orders/${wo.id}`)}`}>
+                {messages.repairHistory}
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+      </section>
 
       {/* LTR-189 (W15): the PM mechanic leaves notes and asks for work like any other mechanic. */}
       <WorkOrderNotesThread wo={wo} onUpdated={onUpdated} />

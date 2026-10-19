@@ -55,7 +55,7 @@ test('manager makes a truck invoice for the month, takes a line off, sends it an
   await expect(page.getByText('No internal invoices yet.')).toBeVisible();
   // PCA16 (D37, P15): the month close lists the truck with its uncharged costs and offers to make every draft at once.
   await page.getByLabel('Month', { exact: true }).first().fill('2026-10');
-  await expect(page.getByTestId('invoice-month-summary-line')).toHaveText('1 trucks to charge · $2,484.20 not charged yet · $0.00 already invoiced');
+  await expect(page.getByTestId('invoice-month-summary-line')).toHaveText('1 truck to charge · $2,484.20 not charged yet · $0.00 already invoiced');
   await expect(page.getByTestId('invoice-month-close')).toContainText('4 movements · $2,484.20');
   await expect(page.getByTestId('invoice-create-all')).toHaveText('Create drafts for all (1)');
   await page.getByRole('button', { name: 'New invoice' }).first().click();

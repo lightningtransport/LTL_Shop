@@ -67,7 +67,7 @@ export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
               <div className="flex items-start justify-between gap-2">
                 <p className="font-display text-lg font-semibold">{messages.truckTitle(truck.truckNumber)}</p>
                 {truck.openWorkOrder && mine.has(truck.openWorkOrder.id) ? (
-                  <Link href={`/work-orders/${truck.openWorkOrder.id}`} className="inline-flex min-h-9 items-center gap-0.5 rounded-md px-2 text-sm font-medium text-primary-text hover:bg-accent" data-testid="open-my-work-order">
+                  <Link href={`/work-orders/${truck.openWorkOrder.id}`} className="inline-flex min-h-9 items-center gap-0.5 rounded-md px-2 text-sm font-medium text-primary-text hover:bg-accent [@media(pointer:coarse)]:min-h-11" data-testid="open-my-work-order">
                     {messages.truckOpenWorkOrder(truck.openWorkOrder.displayId)}<ChevronRight aria-hidden="true" className="size-4" />
                   </Link>
                 ) : truck.openWorkOrder ? <OpenWorkOrderTag label={messages.truckOpenWorkOrder(truck.openWorkOrder.displayId)} /> : null}

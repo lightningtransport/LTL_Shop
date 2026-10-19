@@ -36,6 +36,7 @@ import {
   Badge,
   Button,
   Card,
+  DialogActions,
   CountChip,
   SectionCard,
   EmptyState,
@@ -588,7 +589,8 @@ export default function WorkOrderDetailPage() {
           onChange={(event) => setFinishNotes(event.target.value)}
           maxLength={2000}
         />
-        <div className="grid grid-cols-2 gap-2">
+        {/* UX-F-003: the house dialog buttons (confirm on top on a phone), like the PM and Safety dialogs. */}
+        <DialogActions>
           <Button
             variant="secondary"
             disabled={busy}
@@ -635,7 +637,7 @@ export default function WorkOrderDetailPage() {
           >
             {busy ? messages.completingJob : messages.jobFinishConfirm}
           </Button>
-        </div>
+        </DialogActions>
       </Modal>
 
       <Modal
@@ -697,7 +699,8 @@ export default function WorkOrderDetailPage() {
         </div>
         {/* LTR-169 / LTR-189 (W13): a disabled button says why — above the buttons, where the floating button cannot cover it. */}
         {!pauseReason ? <p className="mb-3 text-sm text-muted-foreground">{messages.blockerReasonRequiredHint}</p> : null}
-        <div className="grid grid-cols-2 gap-2">
+        {/* UX-F-003: the house dialog buttons (confirm on top on a phone), like the PM and Safety dialogs. */}
+        <DialogActions>
           <Button
             variant="secondary"
             disabled={busy}
@@ -739,7 +742,7 @@ export default function WorkOrderDetailPage() {
           >
             {busy ? messages.reportingBlocker : messages.reportBlocker}
           </Button>
-        </div>
+        </DialogActions>
       </Modal>
     </div>
   );
