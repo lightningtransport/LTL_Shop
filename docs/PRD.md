@@ -124,7 +124,9 @@ acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
 se recomiendan como Jobs, el sistema aprende el Job de cada código y sabe si la
 falla se fue o volvió.
-**Decisiones:** D35, D42 (P12 cerrada) · **Historias:** HU-M14, HU-M15.
+**Propuesto (D49, sin construir):** "In shop" cuando el camión está dentro del geofence
+de Samsara que el Manager marca como el taller, con la hora de llegada (LTR-55).
+**Decisiones:** D35, D42, D49 (P12 cerrada) · **Preguntas:** P37 · **Historias:** HU-M14, HU-M15, HU-M21.
 
 ### 4.9 Demo & Landing — ✅
 Modo demo que cambia de usuario sin cerrar sesión, con guía, cursor y Play;
@@ -138,7 +140,7 @@ Salida en vivo, deploy y migraciones (Release safety), login, app instalable
 **Referencia:** [`reference/`](reference/), [`design-system/`](design-system/README.md).
 
 ### 4.11 Integraciones V3 — ⏸
-Presencia en el patio por geocerca, trailers como activos, API para terceros
+Trailers como activos, API para terceros
 y, solo si hace falta un dato que no tenemos, leer algo de Ninox (P4). Nada se
 empieza sin decisión (etiqueta **Gated** en Linear).
 **Preguntas:** P4, P13, P14.
