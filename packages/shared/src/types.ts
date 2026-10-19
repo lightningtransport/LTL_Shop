@@ -616,7 +616,12 @@ export interface AdminOpenWorkRequestDto {
 
 export interface YardPresenceDto {
   state: YardPresenceState;
-  provenance: 'phase_1_unavailable';
+  /** D49: `samsara_geofence` once the truck has a Samsara GPS point; `phase_1_unavailable` while it has none. */
+  provenance: 'phase_1_unavailable' | 'samsara_geofence';
+  /** D49: when it entered the shop geofence (only `IN_YARD`). */
+  since?: string | null;
+  /** D49: time of the GPS point the answer comes from. */
+  at?: string | null;
 }
 
 export interface ReadinessRequirementDto {

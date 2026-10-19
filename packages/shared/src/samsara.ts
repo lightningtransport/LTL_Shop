@@ -1,3 +1,6 @@
+import { YardPresenceState } from './enums';
+import type { YardPresenceDto } from './types';
+
 /**
  * D35 / S-1, D44: which Samsara vehicles are our trucks. A truck is connected iff `trucks.samsara_vehicle_id` is set
  * (the Manager's decision, or the Samsara id that came from Ninox, which the sync stores). An exact VIN match is only
@@ -234,10 +237,25 @@ export type TruckSamsaraDto = {
   longitude: number | null;
   speedMph: number | null;
   locationAt: string | null;
+  /** D49: the Samsara geofence ("Address") the last GPS point was in, or null when it was in none. */
+  geofenceId: string | null;
+  geofenceName: string | null;
+  /** D49: when the truck entered the shop geofence (the first reading inside after being outside); null outside. */
+  inShopSince: string | null;
   syncedAt: string | null;
   /** S3-4: the dash lights, or null before the first fault reading. */
   lamps: TruckDashLampsDto | null;
 };
+
+/**
+ * D49 / P37: the Samsara geofences that are the shop. "Home Office" (6015 US-301, Tampa, FL 33610; type Yard). Compared
+ * by id, so renaming it in Samsara changes nothing.
+ */
+export const SAMSARA_SHOP_GEOFENCE_IDS: readonly string[] = ['12839282'];
+
+export function isShopGeofence(geofenceId: string | null | undefined): boolean {
+  return Boolean(geofenceId) && SAMSARA_SHOP_GEOFENCE_IDS.includes(geofenceId as string);
+}
 
 /** D44 §3: a Samsara vehicle no other truck has, for Connect Samsara on the truck. */
 export type SamsaraCandidateDto = {
@@ -266,3 +284,14 @@ export type SamsaraConnectResultDto = {
   updatedFields: Array<'vin' | 'make' | 'model' | 'year' | 'licensePlate'>;
   synced: boolean;
 };
+
+/**
+ * D49: is the truck in the shop? Only from the Samsara geofence of its last GPS point (never from the address text, the
+ * coordinates or Ninox). An old reading keeps its answer: a parked truck with the engine off stops reporting.
+ */
+export function truckPresence(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofenceId' | 'inShopSince'> | null | undefined): YardPresenceDto {
+  if (!samsara?.locationAt) return { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' };
+  return isShopGeofence(samsara.geofenceId)
+    ? { state: YardPresenceState.IN_YARD, provenance: 'samsara_geofence', since: samsara.inShopSince, at: samsara.locationAt }
+    : { state: YardPresenceState.OUTSIDE_YARD, provenance: 'samsara_geofence', since: null, at: samsara.locationAt };
+}

@@ -38,6 +38,20 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('button', { name: 'End review', exact: true })).toHaveCount(0);
   });
 
+  test('D49: a truck inside the Home Office geofence reads In shop on its Yard card and its page; another geofence does not', async ({ page }) => {
+    await login(page, 'manager@lightning.local');
+    await openYardOperations(page);
+    const card = (number: string) => page.getByTestId('yard-truck-card').filter({ has: page.getByText(number, { exact: true }) });
+    await expect(card('Y-104').getByTestId('yard-card-in-shop')).toHaveText('In shop');
+    await expect(card('Y-105').getByTestId('yard-card-in-shop')).toHaveCount(0);
+    await page.screenshot({ path: 'test-results/d49-yard-in-shop.png', fullPage: false });
+    await page.getByRole('link', { name: 'Y-104' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/trucks\/.*001004/);
+    await expect(page.getByTestId('truck-in-shop')).toHaveText(/^In shop · since (Oct 19, )?9:00\sAM$/);
+    await page.getByTestId('truck-in-shop').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'test-results/d49-truck-in-shop.png', fullPage: false });
+  });
+
   test('A Ready to Go Truck says its Work Order is completed, not open (LTR-151, T1)', async ({ page }) => {
     await page.route(/\/api\/admin\/trucks\/[0-9a-f-]+$/, async (route) => {
       const response = await route.fetch();

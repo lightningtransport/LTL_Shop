@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 192 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 193 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -166,6 +166,7 @@ PASA 192 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A146 | El System Admin da de alta un Manager y un System Admin con su paquete completo; el Manager nuevo entra y maneja el taller | PASA |
 | A147 | Un Manager no da de alta ni toca a un Manager o a un System Admin; sí al personal del taller | PASA |
 | A148 | El System Admin desactiva, reactiva y quita a un Manager (D31); el tipo no cambia; nadie se quita a sí mismo | PASA |
+| A149 | D49: dentro del geofence Home Office el camión está "In shop" desde la primera lectura adentro; sigue igual mientras no sale; en otro geofence está afuera; el filtro In shop lo sigue | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

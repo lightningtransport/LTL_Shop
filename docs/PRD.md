@@ -124,9 +124,9 @@ acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
 se recomiendan como Jobs, el sistema aprende el Job de cada código y sabe si la
 falla se fue o volvió.
-**Propuesto (D49, sin construir):** "In shop" cuando el camión está dentro del geofence
+**D49:** "In shop" cuando el camión está dentro del geofence
 de Samsara "Home Office" (el taller), con la hora de llegada (LTR-55).
-**Decisiones:** D35, D42, D49 (P12 cerrada) (P37 cerrada) · **Historias:** HU-M14, HU-M15, HU-M21.
+**Decisiones:** D35, D42, D49 (P12 y P37 cerradas) · **Historias:** HU-M14, HU-M15, HU-M21.
 
 ### 4.9 Demo & Landing — ✅
 Modo demo que cambia de usuario sin cerrar sesión, con guía, cursor y Play;

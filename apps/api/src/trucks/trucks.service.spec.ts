@@ -127,7 +127,7 @@ describe('TrucksService search', () => {
     expect(dto.samsara).toEqual({
       odometerMiles: 412_300, odometerSource: 'obd', odometerAt: '2026-10-14T14:58:00.000Z',
       address: 'I-10 W, Baytown, TX', latitude: 29.7355, longitude: -94.9774, speedMph: 62,
-      locationAt: '2026-10-14T14:58:00.000Z', syncedAt: '2026-10-14T15:00:00.000Z',
+      locationAt: '2026-10-14T14:58:00.000Z', geofenceId: null, geofenceName: null, inShopSince: null, syncedAt: '2026-10-14T15:00:00.000Z',
       lamps: { stop: false, warning: true, protect: false, emissions: true, at: '2026-10-14T15:00:00.000Z' },
     });
   });

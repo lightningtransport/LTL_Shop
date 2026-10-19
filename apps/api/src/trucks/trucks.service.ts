@@ -243,6 +243,9 @@ export function toTruckDto(truck: {
   samsaraLongitude?: number | null;
   samsaraSpeedMph?: number | null;
   samsaraLocationAt?: Date | null;
+  samsaraGeofenceId?: string | null;
+  samsaraGeofenceName?: string | null;
+  samsaraInShopSince?: Date | null;
   samsaraSyncedAt?: Date | null;
   samsaraStopLamp?: boolean | null;
   samsaraWarningLamp?: boolean | null;
@@ -278,6 +281,9 @@ export function toTruckDto(truck: {
           longitude: truck.samsaraLongitude ?? null,
           speedMph: truck.samsaraSpeedMph ?? null,
           locationAt: truck.samsaraLocationAt?.toISOString() ?? null,
+          geofenceId: truck.samsaraGeofenceId ?? null,
+          geofenceName: emptyToNull(truck.samsaraGeofenceName),
+          inShopSince: truck.samsaraInShopSince?.toISOString() ?? null,
           syncedAt: truck.samsaraSyncedAt.toISOString(),
           lamps: dashLamps(truck),
         }

@@ -65,6 +65,30 @@ describe('SamsaraClient.listOdometers', () => {
   });
 });
 
+describe('SamsaraClient.listOdometersAndLocations (D49 geofence)', () => {
+  it('keeps the Samsara geofence of each GPS point, and none when the point is in no geofence', async () => {
+    const gps = (extra: Record<string, unknown>) => ({ time: '2026-10-19T13:00:00Z', latitude: 27.99, longitude: -82.35, reverseGeo: { formattedLocation: '6015 US-301, Tampa, FL 33610' }, ...extra });
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse({
+        data: [
+          { id: '1', gps: gps({ address: { id: '12839282', name: 'Home Office' } }) },
+          { id: '2', gps: gps({}) },
+          { id: '3', gps: gps({ address: { id: 39543599, name: '  ' } }) },
+          { id: '4', gps: gps({ address: { name: 'No id' } }) },
+        ],
+        pagination: { endCursor: '', hasNextPage: false },
+      }),
+    );
+
+    const stats = await new SamsaraClient(config, fetchImpl as unknown as typeof fetch).listOdometersAndLocations();
+
+    expect(stats.get('1')?.location?.geofence).toEqual({ id: '12839282', name: 'Home Office' });
+    expect(stats.get('2')?.location?.geofence).toBeNull();
+    expect(stats.get('3')?.location?.geofence).toEqual({ id: '39543599', name: null });
+    expect(stats.get('4')?.location?.geofence).toBeNull();
+  });
+});
+
 describe('SamsaraClient.listVehicles', () => {
   it('follows the cursor and sends the token only as a Bearer header', async () => {
     const fetchImpl = vi
