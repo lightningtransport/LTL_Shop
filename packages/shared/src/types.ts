@@ -878,6 +878,32 @@ export interface YardWorkLocationItemDto {
   location: string | null;
 }
 
+/** D50: a truck Dispatch names that the Shop app does not have; `samsaraVehicleId` is Dispatch's own link, when it sends one. */
+export interface YardDispatchMissingTruckDto {
+  truckNumber: string;
+  samsaraVehicleId: string | null;
+}
+
+/** D50: one chip of "Where trucks are · Samsara". `dispatch` is what Dispatch typed, only when it disagrees with Samsara. */
+export interface YardSamsaraTruckDto {
+  truckNumber: string;
+  truckId: string;
+  inYardSince: string | null;
+  openWorkOrder: { id: string; displayId: string } | null;
+  dispatch: string | null;
+}
+
+/** D50: where our trucks are by Samsara (D49), read from our trucks, not from Dispatch. */
+export interface YardSamsaraPlacesDto {
+  inShop: YardSamsaraTruckDto[];
+  inYard: YardSamsaraTruckDto[];
+  /** Trucks with a Samsara point outside our yard, and trucks with none. */
+  outside: number;
+  noGps: number;
+  /** Trucks where Dispatch's typed location ("301 Yard", "Outside", a vendor) says the opposite of Samsara. */
+  dispatchDisagrees: Array<{ truckNumber: string; truckId: string; dispatch: string; samsara: 'in_yard' | 'outside' }>;
+}
+
 export interface YardIncomingTruckItemDto {
   truckNumber: string;
   returnDate: string | null;
@@ -915,7 +941,7 @@ export interface YardWorkLocationSectionDto extends YardDataBoundarySectionDto<Y
 
 /**
  * Server-side agent-reporting proxy for Admin Yard Phase 1 cards.
- * Presence / geofence is intentionally absent.
+ * D50: the place of each truck comes from Samsara (D49), sent next to Dispatch's lists.
  *
  * Card copy (PD 2026-09-21) lives in `YARD_DATA_BOUNDARY_COPY`:
  * labels, empty (`ok` + 0 rows), unavailable/error, and the UNAVAILABLE badge.
@@ -932,6 +958,10 @@ export interface YardDataBoundaryDto {
    * to the Truck and says when Dispatch and the shop disagree. Only Trucks the shop knows.
    */
   shop?: YardDispatchShopTruckDto[];
+  /** D50: Trucks Dispatch names that the Shop app does not have (Add from Samsara). */
+  missing?: YardDispatchMissingTruckDto[];
+  /** D50: "Where trucks are · Samsara" (replaces Dispatch status on screen). */
+  samsaraPlaces?: YardSamsaraPlacesDto;
 }
 
 export interface YardDispatchShopTruckDto {
@@ -944,6 +974,8 @@ export interface YardDispatchShopTruckDto {
   phase?: string | null;
   readyToGo?: boolean;
   jobsLeft?: number;
+  /** D50: the truck's Samsara reading, for the D49 place (In shop / In yard / city / no GPS). */
+  samsara?: TruckSamsaraDto | null;
 }
 
 export interface PmPartDto {

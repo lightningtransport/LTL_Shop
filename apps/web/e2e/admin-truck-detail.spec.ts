@@ -24,7 +24,7 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByTestId('truck-details').getByRole('heading', { name: 'Truck', exact: true })).toBeVisible();
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expect(page.getByText('Physical presence is not connected')).toHaveCount(0);
-    await expect(page.getByText(/in yard/i)).toHaveCount(0);
+    // D49 (LTR-257): "In yard" now comes from the Samsara geofence (see the D49 test); nothing else claims presence.
     // Current Work is gone: the Work Order chip in the header says it.
     await expect(page.getByRole('heading', { name: 'Current Work' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Work Plan', exact: true })).toBeVisible();
@@ -38,18 +38,19 @@ test.describe('Admin Truck detail and readiness controls', () => {
     await expect(page.getByRole('button', { name: 'End review', exact: true })).toHaveCount(0);
   });
 
-  test('D49: a truck inside the Home Office geofence reads In shop on its Yard card and its page; another geofence does not', async ({ page }) => {
+  test('D49 (LTR-257): in our yard reads In yard, with an open Work Order In shop, at a customer neither', async ({ page }) => {
     await login(page, 'manager@lightning.local');
     await openYardOperations(page);
     const card = (number: string) => page.getByTestId('yard-truck-card').filter({ has: page.getByText(number, { exact: true }) });
-    await expect(card('Y-104').getByTestId('yard-card-in-shop')).toHaveText('In shop');
-    await expect(card('Y-105').getByTestId('yard-card-in-shop')).toHaveCount(0);
-    await page.screenshot({ path: 'test-results/d49-yard-in-shop.png', fullPage: false });
-    await page.getByRole('link', { name: 'Y-104' }).first().click();
-    await expect(page).toHaveURL(/\/admin\/trucks\/.*001004/);
-    await expect(page.getByTestId('truck-in-shop')).toHaveText(/^In shop · since (Oct 19, )?9:00\sAM$/);
-    await page.getByTestId('truck-in-shop').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: 'test-results/d49-truck-in-shop.png', fullPage: false });
+    await expect(card('Y-104').getByTestId('yard-card-place')).toHaveText('In shop');
+    await expect(card('Y-101').getByTestId('yard-card-place')).toHaveText('In yard');
+    await expect(card('Y-105').getByTestId('yard-card-place')).toHaveCount(0);
+    // The truck page uses the same rule (unit `samsara-view.spec.ts` covers In shop there).
+    await page.getByRole('link', { name: 'Y-101' }).first().click();
+    await expect(page).toHaveURL(/\/admin\/trucks\/.*001001/);
+    await expect(page.getByTestId('truck-yard-place')).toHaveText(/^In yard · since (Oct 19, )?9:00\sAM$/);
+    await page.getByTestId('truck-yard-place').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'test-results/d49-truck-in-yard.png', fullPage: false });
   });
 
   test('A Ready to Go Truck says its Work Order is completed, not open (LTR-151, T1)', async ({ page }) => {

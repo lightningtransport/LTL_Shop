@@ -1,3 +1,4 @@
+import { truckPlace, type YardDispatchShopTruckDto } from '@ltl-shop/shared';
 import { fillPlaceholders } from './admin-next-step';
 /** Work Order age for a compact card: "5h" or "3d". */
 export function compactAge(fromIso: string, now = Date.now()) {
@@ -103,19 +104,26 @@ export function yardCardAlert(
   return null;
 }
 
-/**
- * Stage 6 (D8): Trucks Dispatch reports outside while the shop has an open Work Order for them (and
- * no Job sent the whole truck out, D24) — the two sources disagree, so the Dispatch tab says it.
- */
-export function dispatchShopConflicts(
-  workLocation: { status: string; items: { truckNumber: string; location: string | null }[] } | undefined,
-  shop: Array<{ truckNumber: string; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }> | undefined,
-) {
-  if (!workLocation || workLocation.status !== 'ok' || !shop?.length) return [];
-  const byNumber = new Map(shop.map((truck) => [truck.truckNumber, truck]));
-  return workLocation.items.flatMap((item) => {
-    const truck = byNumber.get(item.truckNumber);
-    if (!truck?.openWorkOrder || truck.outOfShop || !/outside/i.test(item.location ?? '')) return [];
-    return [{ truckNumber: item.truckNumber, truckId: truck.truckId, location: item.location!.trim(), workOrder: truck.openWorkOrder }];
-  });
+/** D50: what a Dispatch row says about the truck (D49 place), and whether it already arrived (Incoming) or left (Departures). */
+export type DispatchRowPlace = 'missing' | 'ready_to_go' | 'in_shop' | 'in_yard' | 'outside' | 'no_gps';
+
+export function dispatchRowPlace(
+  truck: Pick<YardDispatchShopTruckDto, 'readyToGo' | 'openWorkOrder' | 'samsara'> | undefined,
+  list: 'incoming' | 'departures',
+  day: string | null,
+  today: string | null,
+): { place: DispatchRowPlace; done: boolean } {
+  if (!truck) return { place: 'missing', done: false };
+  const yard = truckPlace(truck.samsara, Boolean(truck.openWorkOrder));
+  const place: DispatchRowPlace = truck.readyToGo ? 'ready_to_go' : yard ?? (truck.samsara?.locationAt ? 'outside' : 'no_gps');
+  // Arrived: Samsara already sees it in our yard. Left: its day came and Samsara sees it outside.
+  const done = list === 'incoming'
+    ? yard !== null
+    : yard === null && Boolean(truck.samsara?.locationAt) && Boolean(day && today && day <= today);
+  return { place, done };
+}
+
+/** D50: the rows still to happen first; arrived or left at the end, each group in the API order. */
+export function orderDispatchRows<T extends { done: boolean }>(rows: T[]): T[] {
+  return [...rows.filter((row) => !row.done), ...rows.filter((row) => row.done)];
 }

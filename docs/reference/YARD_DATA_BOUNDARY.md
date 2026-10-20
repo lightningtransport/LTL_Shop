@@ -1,7 +1,7 @@
 # Yard data-boundary proxy (LTR-70)
 
 **Classification:** CURRENT STATE / INTEGRATION BOUNDARY
-**Updated:** 2026-10-19 (LTR-254)
+**Updated:** 2026-10-19 (D50 / LTR-257: Samsara places, missing trucks, Add from Samsara; before LTR-254)
 **Capability:** `admin.access` (same as other Admin Yard reads)
 
 Admin Yard Phase 1 cards — **Incoming Trucks**, **Upcoming Departures**, and
@@ -9,7 +9,28 @@ Admin Yard Phase 1 cards — **Incoming Trucks**, **Upcoming Departures**, and
 `x-agent-key` stays on the API. It must never appear in `apps/web`, browser
 storage, or any `NEXT_PUBLIC_*` variable. **Presence / in-yard geofence is
 out of scope** for this proxy. Since D49 (2026-10-19, LTR-55) Presence comes from the
-Samsara sync (the geofence in `gps.address`, shop = "Home Office"), not from here.
+Samsara sync (the geofence in `gps.address`; our yard = Home Office and Lightning Transport
+and Logistics; "In shop" = in the yard with an open Work Order), not from here.
+
+## D50: Samsara places and trucks the Shop app lacks (2026-10-19)
+
+The same response now also carries, from our own `trucks` table (not from agent-reporting):
+
+- `shop[].samsara`: the truck's Samsara reading, so each Incoming / Departure row says the D49 place
+  (Ready to Go, In shop · step, In yard · since, the city, or No GPS). Incoming rows already in the yard read
+  **Arrived**; departures whose day came and that are outside read **Left**; both go to the end.
+- `missing[]`: numbers Dispatch names that the Shop app does not have. Numbers match normalized
+  (`normalizeTruckNumber`: "0975" is 975). `samsaraVehicleId` is Dispatch's own link from the `trucks`
+  report (`samsara_vehicle_id`, Ninox `E.BM`) when it sends one. The row says "Not in Shop app" and offers
+  **Add from Samsara** (`GET`/`POST /api/admin/trucks/from-samsara`, Manager writes), which creates the truck and
+  connects it (D44 §4).
+- `samsaraPlaces`: In shop and In yard (D49), how many are outside or without GPS, and `dispatchDisagrees`
+  (Dispatch's typed `yard_location` says yard and Samsara says outside, or the other way round). It is sent even
+  when agent-reporting is not configured.
+
+The third card shows `samsaraPlaces` as **Where trucks are · Samsara**. `workLocation` (Dispatch's typed
+`yard_location`, Ninox `E.X1`, e.g. "301 Yard") stays in the response but is no longer shown as a location.
+Source of these meanings: `lightningtransport/data-reporting-kit` `docs/data-dictionary.md` (`trucks` table).
 
 ## FE wiring
 

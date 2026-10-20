@@ -18,7 +18,7 @@ import { intlLocale } from '@/lib/shop-locale';
 import { isYardRelatedListKey } from '@/lib/swr-cache-keys';
 import { useAdminRepairHistory, useAdminTruck } from '@/lib/admin-data';
 import { formatAdminAgo, formatAdminDateOnly } from '@/lib/admin-format';
-import { inShopText, mapHref } from '@/lib/samsara-view';
+import { isOpenWorkOrderStatus, mapHref, yardPlaceText } from '@/lib/samsara-view';
 import { formatDay } from '@/lib/work-order-view';
 import { useCategories } from '@/lib/shop-data';
 import { formatVehicleYmm } from '@/lib/format';
@@ -260,8 +260,8 @@ function TruckDetailBody({
   const left = workPlan.remainingJobCount;
   const vehicle = formatVehicleYmm(data.truck);
   const samsara = data.truck.samsara ?? null;
-  // D49: the Samsara shop geofence says the truck is here.
-  const inShop = inShopText(samsara, locale, messages);
+  // D49 (LTR-257): in our yard (Samsara geofences), and in the shop when it also has an open Work Order.
+  const yardPlace = yardPlaceText(samsara, isOpenWorkOrderStatus(workOrder?.status), locale, messages);
   const subtitle = [vehicle, data.truck.company].filter(Boolean).join(' · ') || messages.noValue;
   const menuItems: MenuItem[] = [];
   if (workOrder && workOrderHref) menuItems.push({ key: 'open', label: fillPlaceholders(messages.truckMenuOpenWorkOrder, { workOrder: workOrder.displayId }), icon: ClipboardList, href: workOrderHref });
@@ -431,7 +431,7 @@ function TruckDetailBody({
           <div className="flex items-start gap-2.5 border-t px-4 py-3 text-muted-foreground">
             <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
             <p>
-              {inShop ? <><span className="font-medium text-success" data-testid="truck-in-shop">{inShop}</span><br /></> : null}
+              {yardPlace ? <><span className="font-medium text-success" data-testid="truck-yard-place">{yardPlace}</span><br /></> : null}
               <span className="sr-only">{messages.lastReportedLocation}: </span>
               <span className="text-foreground">{data.truck.location ?? messages.noValue}</span>
               {samsara?.locationAt ? (

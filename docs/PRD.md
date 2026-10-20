@@ -124,9 +124,11 @@ acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
 se recomiendan como Jobs, el sistema aprende el Job de cada código y sabe si la
 falla se fue o volvió.
-**D49:** "In shop" cuando el camión está dentro del geofence
-de Samsara "Home Office" (el taller), con la hora de llegada (LTR-55).
-**Decisiones:** D35, D42, D49 (P12 y P37 cerradas) · **Historias:** HU-M14, HU-M15, HU-M21.
+**D49:** "In yard" cuando el camión está dentro de un geofence de nuestra yard
+en Samsara (Home Office y Lightning Transport and Logistics), con la hora de llegada;
+"In shop" si además tiene Work Order abierta (LTR-55, LTR-257). D50: la pestaña Dispatch usa
+ese lugar, marca Arrived/Left y agrega desde Samsara los camiones que faltan.
+**Decisiones:** D35, D42, D49, D50 (P12 y P37 cerradas) · **Historias:** HU-M14, HU-M15, HU-M21, HU-M22.
 
 ### 4.9 Demo & Landing — ✅
 Modo demo que cambia de usuario sin cerrar sesión, con guía, cursor y Play;

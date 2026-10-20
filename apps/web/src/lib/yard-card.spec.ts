@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compactAge, dispatchShopConflicts, dispatchSignalsByTruck, fillYardText, groupWorkLocations, matchesTruckSearch, yardCardAlert } from './yard-card';
+import type { TruckSamsaraDto } from '@ltl-shop/shared';
+import { compactAge, dispatchRowPlace, dispatchSignalsByTruck, orderDispatchRows, fillYardText, groupWorkLocations, matchesTruckSearch, yardCardAlert } from './yard-card';
 
 describe('Yard card helpers (LTR-101, LTR-103)', () => {
   it('formats a compact age', () => {
@@ -70,17 +71,31 @@ describe('Yard card alert (stage 6 / UX-4-005)', () => {
   });
 });
 
-describe('Dispatch vs the shop (stage 6 / D8)', () => {
-  it('flags Trucks Dispatch reports outside while the shop has an open Work Order (not sent out)', () => {
-    const conflicts = dispatchShopConflicts(
-      { status: 'ok', items: [{ truckNumber: '277', location: 'Outside' }, { truckNumber: '905', location: 'Outside' }, { truckNumber: '601', location: '301 Yard' }, { truckNumber: '944', location: 'outside lot' }] },
-      [
-        { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'w1', displayId: 'WO-001' }, outOfShop: false },
-        { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false },
-        { truckNumber: '601', truckId: 't-601', openWorkOrder: { id: 'w2', displayId: 'WO-002' }, outOfShop: false },
-        { truckNumber: '944', truckId: 't-944', openWorkOrder: { id: 'w3', displayId: 'WO-003' }, outOfShop: true },
-      ],
-    );
-    expect(conflicts.map((item) => item.truckNumber)).toEqual(['277']);
+describe('D50: Dispatch rows with the Samsara place', () => {
+  const at = '2026-10-19T15:00:00.000Z';
+  const samsara = (geofenceId: string | null): TruckSamsaraDto => ({
+    odometerMiles: null, odometerSource: null, odometerAt: null, address: 'Ocala, FL', latitude: null, longitude: null, speedMph: null,
+    locationAt: at, geofenceId, geofenceName: null, inYardSince: geofenceId ? at : null, syncedAt: at, lamps: null,
+  });
+  const wo = { id: 'wo-1', displayId: 'WO-001' };
+
+  it('says the D49 place: In shop needs the yard and an open WO; outside with a WO is outside', () => {
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: wo, samsara: samsara('12839282') }, 'incoming', null, null).place).toBe('in_shop');
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('32418339') }, 'incoming', null, null).place).toBe('in_yard');
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: wo, samsara: samsara(null) }, 'incoming', null, null).place).toBe('outside');
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: null }, 'incoming', null, null).place).toBe('no_gps');
+    expect(dispatchRowPlace(undefined, 'incoming', null, null).place).toBe('missing');
+  });
+
+  it('Arrived when Samsara sees an incoming truck in the yard; Left when a departure day came and it is outside', () => {
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('12839282') }, 'incoming', '2026-10-20', '2026-10-19').done).toBe(true);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara(null) }, 'incoming', '2026-10-19', '2026-10-19').done).toBe(false);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara(null) }, 'departures', '2026-10-19', '2026-10-19').done).toBe(true);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara(null) }, 'departures', '2026-10-21', '2026-10-19').done).toBe(false);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('12839282') }, 'departures', '2026-10-19', '2026-10-19').done).toBe(false);
+  });
+
+  it('keeps the API order and moves arrived or left rows to the end', () => {
+    expect(orderDispatchRows([{ n: 1, done: true }, { n: 2, done: false }, { n: 3, done: true }, { n: 4, done: false }]).map((row) => row.n)).toEqual([2, 4, 1, 3]);
   });
 });

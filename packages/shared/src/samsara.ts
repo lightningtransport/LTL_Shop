@@ -240,21 +240,21 @@ export type TruckSamsaraDto = {
   /** D49: the Samsara geofence ("Address") the last GPS point was in, or null when it was in none. */
   geofenceId: string | null;
   geofenceName: string | null;
-  /** D49: when the truck entered the shop geofence (the first reading inside after being outside); null outside. */
-  inShopSince: string | null;
+  /** D49: when the truck entered our yard (the first reading inside after being outside); null outside. */
+  inYardSince: string | null;
   syncedAt: string | null;
   /** S3-4: the dash lights, or null before the first fault reading. */
   lamps: TruckDashLampsDto | null;
 };
 
 /**
- * D49 / P37: the Samsara geofences that are the shop. "Home Office" (6015 US-301, Tampa, FL 33610; type Yard). Compared
- * by id, so renaming it in Samsara changes nothing.
+ * D49 / P37: the Samsara geofences that are our yard: "Home Office" (6015 US-301, Tampa, FL 33610), "Lightning Transport
+ * and Logistics" and "Lightning Transport and Logistics LLC". Compared by id, so renaming one in Samsara changes nothing.
  */
-export const SAMSARA_SHOP_GEOFENCE_IDS: readonly string[] = ['12839282'];
+export const SAMSARA_YARD_GEOFENCE_IDS: readonly string[] = ['12839282', '32418339', '39543599'];
 
-export function isShopGeofence(geofenceId: string | null | undefined): boolean {
-  return Boolean(geofenceId) && SAMSARA_SHOP_GEOFENCE_IDS.includes(geofenceId as string);
+export function isYardGeofence(geofenceId: string | null | undefined): boolean {
+  return Boolean(geofenceId) && SAMSARA_YARD_GEOFENCE_IDS.includes(geofenceId as string);
 }
 
 /** D44 §3: a Samsara vehicle no other truck has, for Connect Samsara on the truck. */
@@ -286,12 +286,36 @@ export type SamsaraConnectResultDto = {
 };
 
 /**
- * D49: is the truck in the shop? Only from the Samsara geofence of its last GPS point (never from the address text, the
+ * D49: is the truck in our yard? Only from the Samsara geofence of its last GPS point (never from the address text, the
  * coordinates or Ninox). An old reading keeps its answer: a parked truck with the engine off stops reporting.
  */
-export function truckPresence(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofenceId' | 'inShopSince'> | null | undefined): YardPresenceDto {
+export function truckPresence(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofenceId' | 'inYardSince'> | null | undefined): YardPresenceDto {
   if (!samsara?.locationAt) return { state: YardPresenceState.UNKNOWN, provenance: 'phase_1_unavailable' };
-  return isShopGeofence(samsara.geofenceId)
-    ? { state: YardPresenceState.IN_YARD, provenance: 'samsara_geofence', since: samsara.inShopSince, at: samsara.locationAt }
+  return isYardGeofence(samsara.geofenceId)
+    ? { state: YardPresenceState.IN_YARD, provenance: 'samsara_geofence', since: samsara.inYardSince, at: samsara.locationAt }
     : { state: YardPresenceState.OUTSIDE_YARD, provenance: 'samsara_geofence', since: null, at: samsara.locationAt };
 }
+
+/** D49 (LTR-257): "in_shop" is in our yard with an open Work Order; "in_yard" is in the yard without one; null is outside or unknown. */
+export type TruckPlace = 'in_shop' | 'in_yard';
+
+export function truckPlace(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofenceId' | 'inYardSince'> | null | undefined, hasOpenWorkOrder: boolean): TruckPlace | null {
+  if (truckPresence(samsara).state !== YardPresenceState.IN_YARD) return null;
+  return hasOpenWorkOrder ? 'in_shop' : 'in_yard';
+}
+
+/** D50: what Add from Samsara would create for a truck number Dispatch has and the Shop app does not. */
+export type SamsaraTruckPreviewDto = {
+  truckNumber: string;
+  /** The truck already exists in the Shop app (for example it was just added): open it instead. */
+  existingTruckId: string | null;
+  /** The Samsara vehicle with that number (or the one Dispatch links), not taken by another truck; null when Samsara has none. */
+  vehicle: SamsaraCandidateDto | null;
+};
+
+/** D50: Add from Samsara created the truck and connected it. */
+export type SamsaraTruckCreatedDto = {
+  truckId: string;
+  truckNumber: string;
+  connect: SamsaraConnectResultDto;
+};

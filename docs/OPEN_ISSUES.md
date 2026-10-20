@@ -1,6 +1,6 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-19 (D49 construida: "In shop" desde el geofence Home Office de Samsara, LTR-55; P37 cerrada); antes 2026-10-18
+**Actualizado:** 2026-10-19 (D49 ajustada, LTR-257: "In yard" por los geofences de nuestra yard, "In shop" con Work Order abierta; P37 cerrada); antes 2026-10-18
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
@@ -31,7 +31,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (el shop es Home Office).
+(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics).
 
 ## Demo congelada (desde 2026-10-16)
 

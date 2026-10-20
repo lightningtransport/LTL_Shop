@@ -16,7 +16,7 @@ import { workOrderStatusLabel } from '@/lib/status-chips';
 import { formatAdminAgo } from '@/lib/admin-format';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { formatVehicleYmm } from '@/lib/format';
-import { faultSeverityLabel, faultSeverityVariant, inShopText, isStaleLocation, shortLocation } from '@/lib/samsara-view';
+import { faultSeverityLabel, faultSeverityVariant, isOpenWorkOrderStatus, isStaleLocation, shortLocation, yardPlaceText } from '@/lib/samsara-view';
 import { cn } from '@/lib/utils';
 
 /**
@@ -35,9 +35,12 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
     return value === 'inactive' || value === 'all' ? value : 'active';
   };
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>(statusFrom(searchParams));
-  // D49: only the trucks inside the shop geofence.
-  const placeFrom = (params: URLSearchParams) => (params.get('place') === 'in_shop' ? 'in_shop' : '');
-  const [place, setPlace] = useState<'' | 'in_shop'>(placeFrom(searchParams));
+  // D49 (LTR-257): only the trucks in our yard, or in the yard with an open Work Order (the shop).
+  const placeFrom = (params: URLSearchParams) => {
+    const value = params.get('place');
+    return value === 'in_yard' || value === 'in_shop' ? value : '';
+  };
+  const [place, setPlace] = useState<'' | 'in_yard' | 'in_shop'>(placeFrom(searchParams));
   const [addOpen, setAddOpen] = useState(false);
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
@@ -85,6 +88,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
               {messages.trucksWhere}
               <Select value={place} onChange={(event) => setPlace(event.target.value as typeof place)} className="w-auto" data-testid="trucks-place-filter">
                 <option value="">{messages.trucksWhereAnywhere}</option>
+                <option value="in_yard">{messages.trucksWhereInYard}</option>
                 <option value="in_shop">{messages.trucksWhereInShop}</option>
               </Select>
             </label>
@@ -221,13 +225,13 @@ function LocationCell({ item, locale, messages }: { item: AdminTruckSummaryDto; 
   if (!at) return <span className="text-muted-foreground" title={messages.trucksNotInSamsara}>—</span>;
   const ago = formatAdminAgo(at, locale);
   const stale = isStaleLocation(at);
-  const inShop = inShopText(item.truck.samsara, locale, messages);
+  const yardPlace = yardPlaceText(item.truck.samsara, isOpenWorkOrderStatus(item.openWorkOrder?.status), locale, messages);
   // TL-4, TL-7: city and state, how old; older than a day reads "No signal" in amber. Full address in the title.
-  // D49: inside the shop geofence it reads "In shop · since …"; inside another geofence, that geofence's name.
+  // D49: in our yard it reads "In yard · since …" ("In shop" with an open Work Order); in another geofence, its name.
   return (
     <div title={item.truck.location ?? undefined}>
-      {inShop
-        ? <p className="font-medium text-success" data-testid="truck-in-shop">{inShop}</p>
+      {yardPlace
+        ? <p className="font-medium text-success" data-testid="truck-yard-place">{yardPlace}</p>
         : <p>{item.truck.samsara?.geofenceName ?? shortLocation(item.truck.location) ?? '—'}</p>}
       <p className={cn('text-xs', stale ? 'font-medium text-warning-foreground' : 'text-muted-foreground')}>
         {stale ? fillPlaceholders(messages.trucksLocationNoSignal, { ago }) : ago}
