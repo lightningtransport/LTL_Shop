@@ -2434,6 +2434,7 @@ export class AdminService {
     // D49: the yard is the geofence of the last Samsara point, however old it is; the shop is the yard with an open Work Order.
     if (query.place) filters.push({ samsaraGeofenceId: { in: [...SAMSARA_YARD_GEOFENCE_IDS] } });
     if (query.place === 'in_shop') filters.push({ workOrders: { some: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } } });
+    if (query.place === 'in_yard_no_wo') filters.push({ workOrders: { none: { status: { in: OPEN_WORK_ORDER_STATUSES as WorkOrderStatus[] } } } });
     if (query.search) {
       const contains = { contains: query.search, mode: 'insensitive' as const };
       filters.push({

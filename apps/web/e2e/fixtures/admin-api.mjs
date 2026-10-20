@@ -1146,6 +1146,8 @@ createServer(async (request, response) => {
       shop: [
         { truckNumber: 'Y-101', truckId: '00000000-0000-4000-8000-000000001001', openWorkOrder: null, outOfShop: false, phase: 'inspection', readyToGo: false, jobsLeft: 0, samsara: samsaraOf('Y-101') },
         { truckNumber: 'Y-103', truckId: '00000000-0000-4000-8000-000000001003', openWorkOrder: { id: '00000000-0000-4000-8000-000000002003', displayId: 'WO-103' }, outOfShop: false, phase: 'shop_work', readyToGo: false, jobsLeft: 2, samsara: null },
+        { truckNumber: 'Y-104', truckId: '00000000-0000-4000-8000-000000001004', openWorkOrder: { id: '00000000-0000-4000-8000-000000002004', displayId: 'WO-104' }, outOfShop: false, phase: 'pm', readyToGo: false, jobsLeft: 3, samsara: samsaraOf('Y-104') },
+        { truckNumber: 'Y-105', truckId: '00000000-0000-4000-8000-000000001005', openWorkOrder: null, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0, samsara: samsaraOf('Y-105') },
       ],
       // D50: numbers Dispatch has and the Shop app does not.
       missing: [
@@ -1170,7 +1172,12 @@ createServer(async (request, response) => {
       },
       upcomingDepartures: {
         status: 'ok',
-        items: [],
+        // D51: Y-105 already left; Y-104 and Y-103 are leaving with work left (not ready).
+        items: [
+          { truckNumber: 'Y-105', outDate: '2026-09-22', window: 'this_week' },
+          { truckNumber: 'Y-104', outDate: '2026-09-29', window: 'next_week' },
+          { truckNumber: 'Y-103', outDate: '2026-09-29', window: 'next_week' },
+        ],
       },
     });
     return;

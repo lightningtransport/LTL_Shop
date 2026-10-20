@@ -24,7 +24,6 @@ async function expectDataBoundaryRequested() {
 async function expectPdBoundaryCards(page: Page, locale: YardDataBoundaryLocale) {
   const copy = YARD_DATA_BOUNDARY_COPY[locale];
   const cards = [
-    ['yard-data-boundary-workLocation', copy.workLocation],
     ['yard-data-boundary-incomingTrucks', copy.incomingTrucks],
     ['yard-data-boundary-upcomingDepartures', copy.upcomingDepartures],
   ] as const;
@@ -74,7 +73,7 @@ test.describe('Yard Operations Phase 1', () => {
     // UX-6-008: the time is when the app checked Dispatch (Dispatch sends no time of its own).
     await expect(page.getByTestId('yard-movement-source')).toHaveText(/^Dispatch checked /);
     // LTR-102: external statuses are labeled as reported by Dispatch, not the Shop's Ready to Go.
-    await expect(page.getByText(/^Dispatch reports the expected arrivals and departures\./)).toBeVisible();
+    await expect(page.getByText(/^The week Dispatch planned\./)).toBeVisible();
     await expect(page.getByText(/in the yard|en el patio/i)).toHaveCount(0);
     await expect(page.getByText('Presence unknown')).toHaveCount(0);
     await expectDataBoundaryRequested();
@@ -121,46 +120,52 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('heading', { name: 'Yard movement' })).toBeVisible();
   });
 
-  test('D50: Dispatch rows say where the truck is by Samsara, arrived ones go last, and a truck the app lacks is added from Samsara', async ({ page }) => {
+  test('D51: Dispatch plans the week by day — what asks for action first; Samsara counters sit above the Shop board', async ({ page }) => {
+    // The Shop board: Samsara counters open Trucks filtered; Dispatch's disagreement is one line.
+    const counters = page.getByTestId('yard-samsara-counters');
+    await expect(counters.getByTestId('yard-counter-in_shop')).toContainText('1In shop');
+    await expect(counters.getByTestId('yard-counter-in_yard_no_wo')).toHaveAttribute('href', '/admin/trucks?place=in_yard_no_wo');
+    await counters.getByText('Dispatch says otherwise for 1 truck').click();
+    await expect(counters.getByTestId('yard-dispatch-disagrees')).toContainText('Y-105 · Dispatch: 301 Yard · Samsara: outside');
+
     await openMovementTab(page);
-    await expect(page.getByText('Where each truck is comes from Samsara GPS.', { exact: false })).toBeVisible();
-    const samsara = page.getByTestId('yard-data-boundary-workLocation');
-    await expect(samsara.getByRole('heading', { name: 'Where trucks are · Samsara' })).toBeVisible();
-    const inShop = samsara.getByTestId('yard-samsara-in_shop');
-    await expect(inShop.getByText(/^In shop · 1$/)).toBeVisible();
-    await expect(inShop.getByRole('link', { name: 'Y-104' })).toHaveAttribute('data-in-shop', 'true');
-    await expect(samsara.getByTestId('yard-samsara-in_yard').getByRole('link', { name: 'Y-101' })).toHaveAttribute('href', /\/admin\/trucks\/00000000-0000-4000-8000-000000001001\?from=/);
-    await expect(samsara.getByTestId('yard-samsara-outside')).toContainText('3 outside · 5 without GPS');
-    await samsara.getByText('Dispatch says otherwise for 1 truck').click();
-    await expect(samsara.getByTestId('yard-dispatch-disagrees')).toContainText('Y-105 · Dispatch: 301 Yard · Samsara: outside');
-    // The old "301 Yard · 2" groups and the Outside-with-WO warning are gone.
-    await expect(samsara.getByText(/^301 Yard · \d+$/)).toHaveCount(0);
-
-    const incoming = page.getByTestId('yard-data-boundary-incomingTrucks').getByTestId('yard-movement-row');
-    await expect(incoming).toHaveCount(4);
-    await expect(incoming.nth(0)).toContainText('277');
-    await expect(incoming.nth(0).getByTestId('yard-not-in-app')).toHaveText('Not in Shop app');
-    await expect(incoming.nth(2)).toContainText('No GPS');
-    // Y-101 is already in the yard: Arrived, at the end.
-    await expect(incoming.nth(3)).toHaveAttribute('data-done', 'true');
-    await expect(incoming.nth(3)).toContainText(/Arrived · In yard · since/);
-
-    await incoming.nth(1).getByTestId('yard-add-from-samsara').click();
+    await expect(page.getByText(/^The week Dispatch planned\./)).toBeVisible();
+    await expect(page.getByTestId('yard-data-boundary-workLocation')).toHaveCount(0);
+    const incoming = page.getByTestId('yard-data-boundary-incomingTrucks');
+    await expect(incoming.getByTestId('yard-need-wo-count')).toHaveText('1 needs a Work Order');
+    const days = incoming.getByTestId('yard-day');
+    await expect(days).toHaveCount(3);
+    // The first day is open: 277 is not in the app and can be added from Samsara.
+    await expect(days.nth(0).getByTestId('yard-not-in-app')).toHaveText('Not in Shop app');
+    await days.nth(1).locator('summary').click();
+    await days.nth(1).getByTestId('yard-add-from-samsara').click();
     const dialog = page.getByTestId('add-from-samsara-dialog');
     await expect(dialog).toContainText('1XKYD49X0RJ000975');
-    await expect(dialog).toContainText('2024 Kenworth T680');
-    await page.screenshot({ path: 'test-results/d50-add-from-samsara.png', fullPage: false });
     await dialog.getByRole('button', { name: 'Add truck 975' }).click();
     await expect(page.getByText('Truck 975 added and connected to Samsara.')).toBeVisible();
+
+    // Sep 28: Y-101 arrived without a Work Order comes first, with Create WO; Y-103 has not arrived.
+    await days.nth(2).locator('summary').click();
+    const rows = days.nth(2).getByTestId('yard-movement-row');
+    await expect(rows.nth(0)).toContainText('Y-101');
+    await expect(rows.nth(0).getByTestId('yard-needs-wo')).toHaveText('Needs a Work Order');
+    await expect(rows.nth(1)).toContainText(/Y-103.*Not here yet.*No GPS/);
+    await expect(days.nth(2).locator('summary')).toContainText('1 here · 1 still coming');
+    await rows.nth(0).getByTestId('yard-create-wo').click();
+    await expect(page.getByRole('dialog')).toContainText('Y-101');
+    await page.keyboard.press('Escape');
+
+    const leaving = page.getByTestId('yard-data-boundary-upcomingDepartures');
+    await expect(leaving.getByTestId('yard-not-ready-count')).toHaveText('2 not ready');
+    await expect(leaving.getByTestId('yard-day').nth(0).getByTestId('yard-movement-row')).toContainText(/Left ·.*Monat Global/);
+    await leaving.getByTestId('yard-day').nth(1).locator('summary').click();
+    await expect(leaving.getByTestId('yard-day').nth(1).getByTestId('yard-not-ready').first()).toHaveText('Not ready · 3 Jobs left');
 
     const nestedScroll = await page.getByRole('region', { name: 'Yard movement' }).evaluate((element) => (
       [...element.querySelectorAll('*')].some((node) => ['auto', 'scroll'].includes(getComputedStyle(node).overflowY))
     ));
     expect(nestedScroll).toBe(false);
-    await page.getByLabel('Filter Yard movement by Truck').fill('Y-101');
-    await expect(inShop.getByRole('link', { name: 'Y-104' })).toHaveCount(0);
-    await expect(samsara.getByTestId('yard-samsara-in_yard').getByRole('link', { name: 'Y-101' })).toBeVisible();
-    await page.screenshot({ path: 'test-results/d50-dispatch.png', fullPage: true });
+    await page.screenshot({ path: 'test-results/d51-dispatch.png', fullPage: true });
   });
 
   test('Kanban: one column per step on desktop, a foldable list on phones, the page never scrolls sideways (D33)', async ({ page }) => {
@@ -282,10 +287,8 @@ test.describe('Yard Operations Phase 1', () => {
       await page.getByRole('tab', { name: 'Dispatch', exact: true }).click();
 
       const copy = YARD_DATA_BOUNDARY_COPY.en;
-      const workLocation = page.getByTestId('yard-data-boundary-workLocation').getByText(copy.workLocation.label, { exact: true });
       const incoming = page.getByTestId('yard-data-boundary-incomingTrucks').getByText(copy.incomingTrucks.label, { exact: true });
       const departures = page.getByTestId('yard-data-boundary-upcomingDepartures').getByText(copy.upcomingDepartures.label, { exact: true });
-      await assertLabelUnclipped(workLocation, 'Where trucks are · Samsara', width);
       await assertLabelUnclipped(incoming, 'Incoming Trucks', width);
       await assertLabelUnclipped(departures, 'Upcoming Departures', width);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

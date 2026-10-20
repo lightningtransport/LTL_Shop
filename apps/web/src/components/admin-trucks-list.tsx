@@ -38,9 +38,9 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
   // D49 (LTR-257): only the trucks in our yard, or in the yard with an open Work Order (the shop).
   const placeFrom = (params: URLSearchParams) => {
     const value = params.get('place');
-    return value === 'in_yard' || value === 'in_shop' ? value : '';
+    return value === 'in_yard' || value === 'in_shop' || value === 'in_yard_no_wo' ? value : '';
   };
-  const [place, setPlace] = useState<'' | 'in_yard' | 'in_shop'>(placeFrom(searchParams));
+  const [place, setPlace] = useState<'' | 'in_yard' | 'in_shop' | 'in_yard_no_wo'>(placeFrom(searchParams));
   const [addOpen, setAddOpen] = useState(false);
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
@@ -90,6 +90,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
                 <option value="">{messages.trucksWhereAnywhere}</option>
                 <option value="in_yard">{messages.trucksWhereInYard}</option>
                 <option value="in_shop">{messages.trucksWhereInShop}</option>
+                <option value="in_yard_no_wo">{messages.trucksWhereInYardNoWo}</option>
               </Select>
             </label>
           </>

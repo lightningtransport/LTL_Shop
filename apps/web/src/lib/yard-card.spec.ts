@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TruckSamsaraDto } from '@ltl-shop/shared';
-import { compactAge, dispatchRowPlace, dispatchSignalsByTruck, orderDispatchRows, fillYardText, groupWorkLocations, matchesTruckSearch, yardCardAlert } from './yard-card';
+import { compactAge, dispatchRowPlace, dispatchSignalsByTruck, groupDispatchDays, orderDispatchRows, fillYardText, groupWorkLocations, matchesTruckSearch, yardCardAlert } from './yard-card';
 
 describe('Yard card helpers (LTR-101, LTR-103)', () => {
   it('formats a compact age', () => {
@@ -95,7 +95,20 @@ describe('D50: Dispatch rows with the Samsara place', () => {
     expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('12839282') }, 'departures', '2026-10-19', '2026-10-19').done).toBe(false);
   });
 
-  it('keeps the API order and moves arrived or left rows to the end', () => {
-    expect(orderDispatchRows([{ n: 1, done: true }, { n: 2, done: false }, { n: 3, done: true }, { n: 4, done: false }]).map((row) => row.n)).toEqual([2, 4, 1, 3]);
+  it('D51: a day starts with what asks for action — arrived without a WO, leaving not ready', () => {
+    const arrivedNoWo = dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('12839282') }, 'incoming', '2026-10-19', '2026-10-19');
+    expect([arrivedNoWo.rank, arrivedNoWo.needsWorkOrder]).toEqual([0, true]);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara(null) }, 'incoming', '2026-10-19', '2026-10-19').rank).toBe(1);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: wo, samsara: samsara('12839282') }, 'incoming', '2026-10-19', '2026-10-19').rank).toBe(2);
+    const notReady = dispatchRowPlace({ readyToGo: false, openWorkOrder: wo, samsara: samsara(null) }, 'departures', '2026-10-19', '2026-10-19');
+    expect([notReady.rank, notReady.notReady, notReady.done]).toEqual([0, true, false]);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara('12839282') }, 'departures', '2026-10-19', '2026-10-19').rank).toBe(1);
+    expect(dispatchRowPlace({ readyToGo: false, openWorkOrder: null, samsara: samsara(null) }, 'departures', '2026-10-19', '2026-10-19').rank).toBe(3);
+    expect(dispatchRowPlace(undefined, 'departures', '2026-10-19', '2026-10-19').rank).toBe(2);
+  });
+
+  it('orders by rank, keeping the API order inside a rank, and groups by day with undated last', () => {
+    expect(orderDispatchRows([{ n: 1, rank: 2 }, { n: 2, rank: 0 }, { n: 3, rank: 1 }, { n: 4, rank: 0 }]).map((row) => row.n)).toEqual([2, 4, 3, 1]);
+    expect(groupDispatchDays([{ day: '2026-10-26' }, { day: null }, { day: '2026-10-19' }, { day: '2026-10-26' }]).map((group) => [group.day, group.rows.length])).toEqual([['2026-10-19', 1], ['2026-10-26', 2], [null, 1]]);
   });
 });
