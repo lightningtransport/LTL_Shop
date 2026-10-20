@@ -9,7 +9,8 @@ Admin Yard Phase 1 cards — **Incoming Trucks**, **Upcoming Departures**, and
 `x-agent-key` stays on the API. It must never appear in `apps/web`, browser
 storage, or any `NEXT_PUBLIC_*` variable. **Presence / in-yard geofence is
 out of scope** for this proxy. Since D49 (2026-10-19, LTR-55) Presence comes from the
-Samsara sync (the geofence in `gps.address`, shop = "Home Office"), not from here.
+Samsara sync (the geofence in `gps.address`; our yard = Home Office and Lightning Transport
+and Logistics; "In shop" = in the yard with an open Work Order), not from here.
 
 ## FE wiring
 

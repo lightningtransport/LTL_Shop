@@ -1,4 +1,4 @@
-import { YardPresenceState, truckPresence, type TruckFaultSeverity, type TruckSamsaraDto } from '@ltl-shop/shared';
+import { OPEN_WORK_ORDER_STATUSES, truckPlace, type TruckFaultSeverity, type TruckSamsaraDto } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from './admin-messages';
 import { fillPlaceholders } from './admin-next-step';
 import { formatDay, formatShortDateTime, formatTime } from './work-order-view';
@@ -45,13 +45,26 @@ export function isStaleLocation(at: string | null | undefined, now = Date.now())
 }
 
 /**
- * D49: "In shop · since 9:00 AM" (today) or "In shop · since Oct 18, 9:00 AM" when the truck is inside the shop geofence;
- * null otherwise. Only the Samsara geofence decides it (`truckPresence`).
+ * D49 (LTR-257): "In yard · since 9:00 AM" in our yard, "In shop · in yard since 9:00 AM" when it also has an open Work
+ * Order (the date too when it arrived another day); null outside the yard or with no Samsara point.
  */
-export function inShopText(samsara: TruckSamsaraDto | null | undefined, locale: AdminLocale, messages: AdminMessages, now = new Date()): string | null {
-  const presence = truckPresence(samsara);
-  if (presence.state !== YardPresenceState.IN_YARD) return null;
-  if (!presence.since) return messages.presenceInShop;
-  const sameDay = formatDay(presence.since, locale) === formatDay(now.toISOString(), locale);
-  return fillPlaceholders(messages.presenceInShopSince, { since: sameDay ? formatTime(presence.since, locale) : formatShortDateTime(presence.since, locale) });
+export function yardPlaceText(
+  samsara: TruckSamsaraDto | null | undefined,
+  hasOpenWorkOrder: boolean,
+  locale: AdminLocale,
+  messages: AdminMessages,
+  now = new Date(),
+): string | null {
+  const place = truckPlace(samsara, hasOpenWorkOrder);
+  if (!place) return null;
+  const since = samsara?.inYardSince ?? null;
+  if (!since) return place === 'in_shop' ? messages.presenceInShop : messages.presenceInYard;
+  const sameDay = formatDay(since, locale) === formatDay(now.toISOString(), locale);
+  const when = sameDay ? formatTime(since, locale) : formatShortDateTime(since, locale);
+  return fillPlaceholders(place === 'in_shop' ? messages.presenceInShopSince : messages.presenceInYardSince, { since: when });
+}
+
+/** D49: an open Work Order (created, in progress or paused); a completed one waiting for Return to Service is not. */
+export function isOpenWorkOrderStatus(status: string | null | undefined) {
+  return Boolean(status) && (OPEN_WORK_ORDER_STATUSES as string[]).includes(status as string);
 }

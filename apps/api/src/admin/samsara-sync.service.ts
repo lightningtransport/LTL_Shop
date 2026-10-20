@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type SamsaraSyncState } from '@prisma/client';
-import { SAMSARA_SHOP_GEOFENCE_IDS, type SamsaraSyncResultDto, type SamsaraSyncStateDto } from '@ltl-shop/shared';
+import { SAMSARA_YARD_GEOFENCE_IDS, type SamsaraSyncResultDto, type SamsaraSyncStateDto } from '@ltl-shop/shared';
 import { parseFaultReading, type DashLamps, type ParsedFault } from '../integrations/samsara/samsara-faults';
 import { PAIRING_TRUCK_SELECT, pairTrucks, toPairingTruck } from '../integrations/samsara/samsara-pairing';
 import {
@@ -161,7 +161,7 @@ export class SamsaraSyncService {
       ${lamps ? lamps.stop : null}::boolean, ${lamps ? lamps.warning : null}::boolean,
       ${lamps ? lamps.protect : null}::boolean, ${lamps ? lamps.emissions : null}::boolean)`);
     // D49: SET reads the old row, so `t.samsara_geofence_id` is where the truck was before this reading.
-    const shop = Prisma.sql`${[...SAMSARA_SHOP_GEOFENCE_IDS]}::text[]`;
+    const yard = Prisma.sql`${[...SAMSARA_YARD_GEOFENCE_IDS]}::text[]`;
     const updated = new Set<string>();
     for (let index = 0; index < rows.length; index += 200) {
       const written = await tx.$queryRaw<Array<{ id: string }>>`
@@ -178,13 +178,13 @@ export class SamsaraSyncService {
           "samsara_longitude" = CASE WHEN v.location_at IS NULL THEN t."samsara_longitude" ELSE v.longitude END,
           "samsara_speed_mph" = CASE WHEN v.location_at IS NULL THEN t."samsara_speed_mph" ELSE v.speed_mph END,
           "samsara_location_at" = COALESCE(v.location_at AT TIME ZONE 'UTC', t."samsara_location_at"),
-          -- D49: the geofence moves with the GPS point; arriving at the shop stamps the time, staying keeps it, leaving clears it.
+          -- D49: the geofence moves with the GPS point; arriving at the yard stamps the time, staying keeps it, leaving clears it.
           "samsara_geofence_id" = CASE WHEN v.location_at IS NULL THEN t."samsara_geofence_id" ELSE v.geofence_id END,
           "samsara_geofence_name" = CASE WHEN v.location_at IS NULL THEN t."samsara_geofence_name" ELSE v.geofence_name END,
           "samsara_in_shop_since" = CASE
             WHEN v.location_at IS NULL THEN t."samsara_in_shop_since"
-            WHEN v.geofence_id = ANY(${shop}) THEN COALESCE(
-              CASE WHEN t."samsara_geofence_id" = ANY(${shop}) THEN t."samsara_in_shop_since" END,
+            WHEN v.geofence_id = ANY(${yard}) THEN COALESCE(
+              CASE WHEN t."samsara_geofence_id" = ANY(${yard}) THEN t."samsara_in_shop_since" END,
               v.location_at AT TIME ZONE 'UTC')
             ELSE NULL END,
           -- S3-4: the dash lights move together; no fault reading this time keeps the last ones.

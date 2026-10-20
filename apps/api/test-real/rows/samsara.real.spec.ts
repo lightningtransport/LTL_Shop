@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, inject, it } from 'vitest';
 import { REAL_CRON_SECRET } from '../env';
 import { randomUUID } from 'node:crypto';
-import { USERS, Json, adminCompleteJob, as, catalogJob, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
+import { USERS, Json, adminCompleteJob, as, catalogJob, createWo, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
 import { EMPTY_SAMSARA_FIXTURE, type SamsaraFixture } from '../samsara-mock';
 
 /** OPEN_ISSUES §1w and §1x (D35, D42): Samsara pairing, sync of miles and location, and faults. Never the real Samsara. */
@@ -30,9 +30,10 @@ function stat(miles: number, address: string, at = '2026-10-14T15:00:00Z', geofe
   };
 }
 
-/** D49 / P37: the shop's Samsara geofence, and another company geofence that is not the shop. */
+/** D49 / P37 (LTR-257): two of our yard's Samsara geofences, and a customer's that is not ours. */
 const HOME_OFFICE = { id: '12839282', name: 'Home Office' };
-const OTHER_YARD = { id: '32418339', name: 'Lightning Transport and Logistics' };
+const LIGHTNING_YARD = { id: '32418339', name: 'Lightning Transport and Logistics' };
+const CUSTOMER = { id: '87934134', name: 'Monat Global' };
 
 /** S3-4: J1939 as Samsara sends it: lights per truck, `milStatus` per code (1 = check engine). */
 function j1939(lights: { stop?: boolean; warning?: boolean; emissions?: boolean }, ...codes: Array<{ spn: number; fmi: number; mil?: number; count?: number }>) {
@@ -58,7 +59,7 @@ async function cleanSamsara() {
       samsaraVehicleId: null, samsaraVehicleName: null, samsaraProposedVehicleId: null, samsaraId: null,
       samsaraOdometerMiles: null, samsaraOdometerSource: null, samsaraOdometerAt: null, samsaraAddress: null,
       samsaraLatitude: null, samsaraLongitude: null, samsaraSpeedMph: null, samsaraLocationAt: null, samsaraSyncedAt: null,
-      samsaraGeofenceId: null, samsaraGeofenceName: null, samsaraInShopSince: null,
+      samsaraGeofenceId: null, samsaraGeofenceName: null, samsaraInYardSince: null,
     },
   });
   await setSamsara(EMPTY_SAMSARA_FIXTURE);
@@ -121,34 +122,37 @@ describe('Manager: Samsara (D35, D42)', () => {
     same('estado de la última corrida', [pairing.sync.lastError, pairing.sync.trucksUpdated], [null, 1]);
   });
 
-  it('A149 | D49: dentro del geofence Home Office el camión está "In shop" desde la primera lectura adentro; sigue igual mientras no sale; en otro geofence está afuera; el filtro In shop lo sigue', async () => {
+  it('A149 | D49: en un geofence de nuestra yard el camión está "In yard" desde la primera lectura adentro; con Work Order abierta está "In shop"; pasar de un geofence de la yard a otro no cambia la llegada; afuera no es ni uno ni otro, aunque tenga WO', async () => {
+    await resetDb();
     const { id } = await truckRow();
-    const inShop = async () => ((ok('Trucks → In shop', await manager.get('/admin/trucks?place=in_shop')) as Json).items as Json[]).map((item) => item.truck.truckNumber);
+    const listed = async (place: 'in_yard' | 'in_shop') => ((ok(`Trucks → ${place}`, await manager.get(`/admin/trucks?place=${place}`)) as Json).items as Json[]).map((item) => item.truck.truckNumber);
+    const sync = async (label: string, stats: unknown[]) => {
+      await setSamsara({ vehicles: [vehicle()], stats: stats as Array<Record<string, unknown>> });
+      ok(label, await manager.post('/admin/integrations/samsara/sync'));
+      return (ok('ficha del camión', await manager.get(`/admin/trucks/${id}`)) as Json).truck.samsara as Json;
+    };
 
-    await setSamsara({ vehicles: [vehicle()], stats: [stat(418_612, '6015 US-301, Tampa, FL 33610', '2026-10-19T13:00:00Z', HOME_OFFICE)] });
-    ok('sync: llega al shop', await manager.post('/admin/integrations/samsara/sync'));
-    let detail = ok('ficha del camión', await manager.get(`/admin/trucks/${id}`)) as Json;
-    same('guarda el geofence y la hora de llegada', [detail.truck.samsara.geofenceId, detail.truck.samsara.geofenceName, detail.truck.samsara.inShopSince], ['12839282', 'Home Office', '2026-10-19T13:00:00.000Z']);
-    truthy('el filtro In shop lo trae', (await inShop()).includes(TRUCK));
+    let samsara = await sync('sync: llega a Home Office', [stat(418_612, '6015 US-301, Tampa, FL 33610', '2026-10-19T13:00:00Z', HOME_OFFICE)]);
+    same('guarda el geofence y la hora de llegada a la yard', [samsara.geofenceId, samsara.geofenceName, samsara.inYardSince], ['12839282', 'Home Office', '2026-10-19T13:00:00.000Z']);
+    same('sin Work Order está en la yard, no en el shop', [(await listed('in_yard')).includes(TRUCK), (await listed('in_shop')).includes(TRUCK)], [true, false]);
 
-    await setSamsara({ vehicles: [vehicle()], stats: [stat(418_612, '6015 US-301, Tampa, FL 33610', '2026-10-19T15:00:00Z', HOME_OFFICE)] });
-    ok('sync: sigue en el shop', await manager.post('/admin/integrations/samsara/sync'));
-    detail = ok('ficha del camión', await manager.get(`/admin/trucks/${id}`)) as Json;
-    same('la hora de llegada no cambia mientras sigue adentro', detail.truck.samsara.inShopSince, '2026-10-19T13:00:00.000Z');
+    await createWo(TRUCK);
+    same('con Work Order abierta está en el shop (y sigue en la yard)', [(await listed('in_yard')).includes(TRUCK), (await listed('in_shop')).includes(TRUCK)], [true, true]);
 
-    await setSamsara({ vehicles: [vehicle()], stats: [] });
-    ok('sync sin lectura nueva', await manager.post('/admin/integrations/samsara/sync'));
-    same('sin lectura nueva sigue en el shop', (await truckRow()).samsaraGeofenceId, '12839282');
+    samsara = await sync('sync: pasa al otro geofence de la yard', [stat(418_615, 'Tampa, FL', '2026-10-19T15:00:00Z', LIGHTNING_YARD)]);
+    same('sigue en la yard y la llegada no cambia', [samsara.geofenceName, samsara.inYardSince], ['Lightning Transport and Logistics', '2026-10-19T13:00:00.000Z']);
 
-    await setSamsara({ vehicles: [vehicle()], stats: [stat(418_640, 'Tampa, FL', '2026-10-19T17:00:00Z', OTHER_YARD)] });
-    ok('sync: está en otro patio', await manager.post('/admin/integrations/samsara/sync'));
-    detail = ok('ficha del camión', await manager.get(`/admin/trucks/${id}`)) as Json;
-    same('otro geofence no es el shop: se guarda su nombre y se borra la llegada', [detail.truck.samsara.geofenceName, detail.truck.samsara.inShopSince], ['Lightning Transport and Logistics', null]);
-    truthy('el filtro In shop ya no lo trae', !(await inShop()).includes(TRUCK));
+    await sync('sync sin lectura nueva', []);
+    same('sin lectura nueva sigue en la yard', (await truckRow()).samsaraGeofenceId, '32418339');
 
-    await setSamsara({ vehicles: [vehicle()], stats: [stat(418_700, 'I-75 N, Ocala, FL', '2026-10-19T19:00:00Z')] });
-    ok('sync: en la carretera', await manager.post('/admin/integrations/samsara/sync'));
-    same('fuera de todo geofence no hay geofence', [(await truckRow()).samsaraGeofenceId, (await truckRow()).samsaraInShopSince], [null, null]);
+    samsara = await sync('sync: está donde un cliente', [stat(418_640, 'Orlando, FL', '2026-10-19T17:00:00Z', CUSTOMER)]);
+    same('el geofence de un cliente no es la yard: se guarda su nombre y se borra la llegada', [samsara.geofenceName, samsara.inYardSince], ['Monat Global', null]);
+    same('con WO abierta pero afuera no sale ni en la yard ni en el shop', [(await listed('in_yard')).includes(TRUCK), (await listed('in_shop')).includes(TRUCK)], [false, false]);
+
+    await sync('sync: en la carretera', [stat(418_700, 'I-75 N, Ocala, FL', '2026-10-19T19:00:00Z')]);
+    const row = await truckRow();
+    same('fuera de todo geofence no hay geofence', [row.samsaraGeofenceId, row.samsaraInYardSince], [null, null]);
+    await resetDb();
   });
 
   it('A93 | S-3, S3-4: las luces del tablero (STOP, advertencia) y los códigos que encendieron check engine se ven en Trucks y en Faults; una falla sigue abierta sin duplicarse y se cierra cuando Samsara deja de reportarla; si la lectura de fallas falla no se cierra nada', async () => {

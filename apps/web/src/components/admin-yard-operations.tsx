@@ -33,6 +33,7 @@ import { nextShopDay, shopDay } from '@/lib/dashboard-queue';
 import { adminPriorityLabel } from '@/lib/status-chips';
 import { formatVehicleYmm } from '@/lib/format';
 import { formatAdminDateOnly } from '@/lib/admin-format';
+import { isOpenWorkOrderStatus } from '@/lib/samsara-view';
 import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardAlert, type YardCardAlert, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, KanbanOpenBoardLink, useBrowserFullscreen } from './kanban';
@@ -413,8 +414,12 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
         <div className="flex items-start justify-between gap-2">
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>
-            {/* D49: inside the shop geofence (Samsara). */}
-            {item.presence.state === YardPresenceState.IN_YARD ? <span className="shrink-0 text-xs font-medium text-success" data-testid="yard-card-in-shop">{messages.presenceInShop}</span> : null}
+            {/* D49 (LTR-257): in our yard (Samsara); in the shop when it also has an open Work Order. */}
+            {item.presence.state === YardPresenceState.IN_YARD ? (
+              <span className="shrink-0 text-xs font-medium text-success" data-testid="yard-card-place">
+                {isOpenWorkOrderStatus(workOrder?.status) ? messages.presenceInShop : messages.presenceInYard}
+              </span>
+            ) : null}
           </span>
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
         </div>
