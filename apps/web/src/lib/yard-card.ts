@@ -104,26 +104,47 @@ export function yardCardAlert(
   return null;
 }
 
-/** D50: what a Dispatch row says about the truck (D49 place), and whether it already arrived (Incoming) or left (Departures). */
+/** D50: what a Dispatch row says about the truck (D49 place). */
 export type DispatchRowPlace = 'missing' | 'ready_to_go' | 'in_shop' | 'in_yard' | 'outside' | 'no_gps';
 
+/**
+ * D50/D51: one Dispatch row. `done`: arrived (Incoming) or left (Departures). `rank` orders a day by what asks for action:
+ * Incoming — arrived without a Work Order (0), still coming (1), arrived and in the shop (2);
+ * Departures — not ready, an open Work Order (0), ready (1), not in the app (2), already left (3).
+ */
 export function dispatchRowPlace(
   truck: Pick<YardDispatchShopTruckDto, 'readyToGo' | 'openWorkOrder' | 'samsara'> | undefined,
   list: 'incoming' | 'departures',
   day: string | null,
   today: string | null,
-): { place: DispatchRowPlace; done: boolean } {
-  if (!truck) return { place: 'missing', done: false };
-  const yard = truckPlace(truck.samsara, Boolean(truck.openWorkOrder));
+): { place: DispatchRowPlace; done: boolean; rank: number; needsWorkOrder: boolean; notReady: boolean } {
+  if (!truck) return { place: 'missing', done: false, rank: list === 'incoming' ? 1 : 2, needsWorkOrder: false, notReady: false };
+  const open = Boolean(truck.openWorkOrder);
+  const yard = truckPlace(truck.samsara, open);
   const place: DispatchRowPlace = truck.readyToGo ? 'ready_to_go' : yard ?? (truck.samsara?.locationAt ? 'outside' : 'no_gps');
-  // Arrived: Samsara already sees it in our yard. Left: its day came and Samsara sees it outside.
-  const done = list === 'incoming'
-    ? yard !== null
-    : yard === null && Boolean(truck.samsara?.locationAt) && Boolean(day && today && day <= today);
-  return { place, done };
+  if (list === 'incoming') {
+    const needsWorkOrder = yard === 'in_yard' && !truck.readyToGo;
+    return { place, done: yard !== null, rank: needsWorkOrder ? 0 : yard ? 2 : 1, needsWorkOrder, notReady: false };
+  }
+  const notReady = open && !truck.readyToGo;
+  // Left: its day came and Samsara sees it outside (with nothing open: an open Work Order stays "not ready").
+  const done = !notReady && yard === null && Boolean(truck.samsara?.locationAt) && Boolean(day && today && day <= today);
+  return { place, done, rank: notReady ? 0 : done ? 3 : 1, needsWorkOrder: false, notReady };
 }
 
-/** D50: the rows still to happen first; arrived or left at the end, each group in the API order. */
-export function orderDispatchRows<T extends { done: boolean }>(rows: T[]): T[] {
-  return [...rows.filter((row) => !row.done), ...rows.filter((row) => row.done)];
+/** D51: a day's rows by `rank`, each rank in the API order. */
+export function orderDispatchRows<T extends { rank: number }>(rows: T[]): T[] {
+  return rows.map((row, index) => ({ row, index })).sort((a, b) => a.row.rank - b.row.rank || a.index - b.index).map(({ row }) => row);
+}
+
+/** D51: rows grouped by their day (YYYY-MM-DD), earliest first; undated rows last. */
+export function groupDispatchDays<T extends { day: string | null }>(rows: T[]): Array<{ day: string | null; rows: T[] }> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = row.day ?? '';
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+    .map(([day, items]) => ({ day: day || null, rows: items }));
 }

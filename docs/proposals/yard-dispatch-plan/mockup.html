@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dispatch Week Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((n) => [n, tok(n)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as apps/web/src/app/globals.css (copied from docs/proposals/inspection-checklist/mockup.html). */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s14 { width: 14px; height: 14px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border-radius: 6px; border-width: 1px; padding: 2px 8px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .b-stop { border-color: color-mix(in oklch, var(--destructive) 50%, transparent); background: color-mix(in oklch, var(--destructive) 20%, transparent); color: var(--destructive-text); }
+  .b-warn { border-color: color-mix(in oklch, var(--warning) 40%, transparent); background: color-mix(in oklch, var(--warning) 10%, transparent); color: var(--warning-foreground); }
+  .b-ok { border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); color: var(--success); }
+  .b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary); }
+  .b-out { color: var(--muted-foreground); }
+  .screen { display: none; }
+  .screen.on { display: block; }
+</style>
+</head>
+<body class="font-sans antialiased">
+
+<header class="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
+    <span class="mr-2 text-sm font-semibold">Yard → Dispatch · propuesta (D51)</span>
+    <nav id="nav" class="flex flex-wrap gap-1 text-sm"></nav>
+    <button id="width" class="ml-auto rounded-md border px-2 py-1 text-xs text-muted-foreground">Ver como teléfono</button>
+    <button id="theme" class="rounded-md border px-2 py-1 text-xs text-muted-foreground">Dark</button>
+  </div>
+</header>
+
+<main id="frame" class="mx-auto max-w-6xl px-4 py-6 transition-all">
+
+<div class="mb-5 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+  <p><b class="text-foreground">Qué cambia.</b> Orden de cada día: primero lo que pide acción (llegó sin Work Order · sale sin estar listo), luego lo que falta, y al final lo que ya pasó. Dispatch sirve para <b>planear la semana</b>: quién llega y quién sale, agrupados por día. Cada fila dice qué falta hacer. "Dónde están los camiones" sale de esta pestaña y pasa a contadores sobre el tablero Shop.</p>
+  <p class="mt-1">Números y fechas: los de Dispatch de hoy (lunes 19 de octubre): 44 llegadas y 15 salidas. <b>El lugar es ilustrativo</b>: aquí se tomó de lo que escribe Dispatch ("301 Yard"); la versión real usa Samsara.</p>
+</div>
+
+<!-- 1. Dispatch -->
+<section class="screen" data-name="Dispatch">
+  <h1 class="text-2xl font-semibold tracking-tight">Yard Operations</h1>
+  <div class="mt-3 flex gap-6 border-b text-sm"><span class="pb-2 text-muted-foreground">Shop</span><span class="border-b-2 border-primary pb-2 font-medium">Dispatch</span></div>
+  <p class="mt-3 text-sm text-muted-foreground">The week Dispatch planned. Where each truck is comes from Samsara GPS · checked 10:27 PM</p>
+  <div class="relative mt-3 max-w-sm"><i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i><input class="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-sm" placeholder="Find a truck" oninput="render(this.value)"></div>
+  <div id="cols" class="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(330px,1fr))]"></div>
+</section>
+
+<!-- 2. Shop counters -->
+<section class="screen" data-name="Tablero Shop (contadores)">
+  <h1 class="text-2xl font-semibold tracking-tight">Yard Operations</h1>
+  <div class="mt-3 flex gap-6 border-b text-sm"><span class="border-b-2 border-primary pb-2 font-medium">Shop</span><span class="pb-2 text-muted-foreground">Dispatch</span></div>
+  <p class="mt-3 text-xs text-muted-foreground">Samsara · now</p>
+  <div class="mt-1 flex flex-wrap gap-2">
+    <a class="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent" href="#"><i data-lucide="wrench" class="text-primary"></i><b class="tnum">9</b> In shop</a>
+    <a class="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent" href="#"><i data-lucide="map-pin" class="text-success"></i><b class="tnum">73</b> In yard</a>
+    <a class="flex min-h-11 items-center gap-2 rounded-lg border border-warning/40 bg-warning-surface/50 px-3 py-2 text-sm hover:bg-accent" href="#"><i data-lucide="file-plus" class="text-warning-foreground"></i><b class="tnum">26</b> In yard without a Work Order</a>
+  </div>
+  <p class="mt-2 text-xs text-muted-foreground">Cada contador abre Trucks con ese filtro (Where: In shop / In yard / In yard sin WO). El tablero de pasos sigue igual debajo.</p>
+  <div class="mt-4 grid gap-3 opacity-60 sm:grid-cols-3">
+    <div class="rounded-lg border p-3 text-sm"><p class="font-semibold">Inspection · 2</p><div class="mt-2 h-14 rounded-md border bg-card"></div></div>
+    <div class="rounded-lg border p-3 text-sm"><p class="font-semibold">Shop Work · 4</p><div class="mt-2 h-14 rounded-md border bg-card"></div></div>
+    <div class="rounded-lg border p-3 text-sm"><p class="font-semibold">Ready to Go · 1</p><div class="mt-2 h-14 rounded-md border bg-card"></div></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+const DATA = {"incoming":[["608","2026-10-19"],["822","2026-10-19"],["823","2026-10-19"],["836","2026-10-19"],["838","2026-10-19"],["842","2026-10-19"],["845","2026-10-19"],["861","2026-10-19"],["863","2026-10-19"],["866","2026-10-19"],["876","2026-10-19"],["881","2026-10-19"],["883","2026-10-19"],["887","2026-10-19"],["898","2026-10-19"],["903","2026-10-19"],["909","2026-10-19"],["917","2026-10-19"],["927","2026-10-19"],["942","2026-10-19"],["975","2026-10-19"],["921","2026-10-25"],["843","2026-10-26"],["860","2026-10-26"],["871","2026-10-26"],["888","2026-10-26"],["889","2026-10-26"],["891","2026-10-26"],["905","2026-10-26"],["906","2026-10-26"],["907","2026-10-26"],["910","2026-10-26"],["913","2026-10-26"],["919","2026-10-26"],["929","2026-10-26"],["941","2026-10-26"],["943","2026-10-26"],["950","2026-10-26"],["957","2026-10-26"],["968","2026-10-26"],["972","2026-10-26"],["974","2026-10-26"],["835","2026-10-30"],["940","2026-10-30"]],"departures":[["613","2026-10-19"],["615","2026-10-19"],["812","2026-10-19"],["814","2026-10-19"],["870","2026-10-19"],["880","2026-10-19"],["885","2026-10-19"],["894","2026-10-19"],["897","2026-10-19"],["926","2026-10-19"],["938","2026-10-19"],["953","2026-10-19"],["960","2026-10-19"],["963","2026-10-19"],["967","2026-10-19"]],"dispatch":{"277":"Outside","602":"301 Yard","603":"301 Yard","608":"301 Yard","613":"301 Yard","818":"301 Yard","825":"301 Yard","828":"301 Yard","830":"301 Yard","832":"301 Yard","834":"301 Yard","836":"301 Yard","838":"301 Yard","845":"301 Yard","856":"301 Yard","857":"301 Yard","866":"301 Yard","878":"301 Yard","879":"301 Yard","886":"301 Yard","895":"301 Yard","896":"Outside","898":"301 Yard","903":"301 Yard","911":"301 Yard","914":"Outside","934":"301 Yard","939":"301 Yard","943":"301 Yard","948":"Outside","957":"301 Yard","964":"Freightliner","965":"Outside","970":"301 Yard"}};
+const WO = { '608': 'WO-0031 · Shop Work · 3 Jobs left', '907': 'WO-0029 · PM', '943': 'WO-0027 · Shop Work · 1 Job left' };
+const MISSING = new Set(['975', '972', '974']);
+const TODAY = '2026-10-19';
+const inYard = (n) => /yard/i.test(DATA.dispatch[n] || '');
+const DAY = (d) => d === TODAY ? 'Today · Mon Oct 19' : d === '2026-10-20' ? 'Tomorrow · Tue Oct 20' : new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+function arrivingRow(n, d) {
+  if (MISSING.has(n)) return { rank: 1, done: false, html: `<span class="text-muted-foreground">Not in Shop app</span> <button class="ml-1 rounded-md border px-2 py-1 text-xs font-medium text-primary">Add from Samsara</button>` };
+  if (!inYard(n)) return { rank: 1, done: false, html: d <= TODAY ? `<span class="badge b-warn">Not here yet</span> <span class="text-muted-foreground">· Jacksonville, FL</span>` : `<span class="text-muted-foreground">On the road · Atlanta, GA</span>` };
+  if (WO[n]) return { rank: 2, done: true, html: `<span class="badge b-info">In shop</span> <span class="text-muted-foreground">${WO[n]}</span>` };
+  return { rank: 0, done: true, html: `<span class="badge b-ok">Arrived 8:10 AM</span> <span class="badge b-warn">Needs a Work Order</span> <button class="ml-1 rounded-md border px-2 py-1 text-xs font-medium text-primary">Create WO</button>` };
+}
+function leavingRow(n, d) {
+  if (MISSING.has(n)) return { rank: 2, done: false, html: `<span class="text-muted-foreground">Not in Shop app</span>` };
+  if (WO[n]) return { rank: 0, done: false, html: `<span class="badge b-stop">Not ready · ${WO[n].split(' · ').slice(-1)}</span>` };
+  if (inYard(n)) return { rank: 1, done: false, html: `<span class="badge b-ok">Ready · nothing open</span> <span class="text-muted-foreground">In yard</span>` };
+  return { rank: 3, done: true, html: `<span class="font-semibold">Left</span> <span class="text-muted-foreground">· I-75 N, Ocala, FL</span>` };
+}
+function card(title, icon, items, rowOf, summary) {
+  const days = [...new Set(items.map(([, d]) => d))].sort();
+  return `<section class="rounded-xl border bg-card">
+    <h2 class="flex items-center gap-2 border-b px-4 py-3 font-semibold"><i data-lucide="${icon}" class="text-muted-foreground"></i>${title}<span class="ml-auto text-xs font-normal text-muted-foreground">${summary}</span></h2>
+    ${days.map((d, i) => {
+      const rows = items.filter(([, x]) => x === d).map(([n]) => ({ n, ...rowOf(n, d) }));
+      const ordered = [...rows].sort((a, b) => a.rank - b.rank);
+      const doneCount = rows.filter((r) => r.done).length;
+      return `<details ${i === 0 ? 'open' : ''} class="border-b last:border-b-0">
+        <summary class="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-medium">${DAY(d)} <span class="text-muted-foreground">· ${rows.length}</span>${doneCount ? `<span class="ml-auto text-xs text-muted-foreground">${title === 'Arriving' ? `${doneCount} here · ${rows.length - doneCount} still coming` : `${doneCount} left · ${rows.length - doneCount} still here`}</span>` : ''}</summary>
+        <ul class="divide-y border-t">${ordered.map((r) => `<li class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm ${r.done ? 'bg-sunken' : ''}">
+          <a class="w-12 font-semibold ${MISSING.has(r.n) ? 'text-muted-foreground' : 'text-primary'}" href="#">${r.n}</a><span class="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-xs">${r.html}</span></li>`).join('')}</ul>
+      </details>`;
+    }).join('')}
+  </section>`;
+}
+function render(q = '') {
+  const f = (list) => list.filter(([n]) => n.includes(q.trim()));
+  const inc = f(DATA.incoming), out = f(DATA.departures);
+  const needWo = inc.filter(([n, d]) => d <= TODAY && inYard(n) && !WO[n] && !MISSING.has(n)).length;
+  document.getElementById('cols').innerHTML =
+    card('Arriving', 'arrow-down-to-line', inc, arrivingRow, needWo ? `<span class="badge b-warn">${needWo} need a Work Order</span>` : '') +
+    card('Leaving', 'arrow-up-from-line', out, leavingRow, `${out.filter(([n]) => WO[n]).length} not ready`);
+  lucide.createIcons();
+}
+const screens = [...document.querySelectorAll('.screen')];
+const nav = document.getElementById('nav');
+screens.forEach((s, i) => { const b = document.createElement('button'); b.textContent = `${i + 1}. ${s.dataset.name}`; b.className = 'rounded-md px-2 py-1 hover:bg-accent'; b.onclick = () => show(i); nav.append(b); });
+function show(i) { screens.forEach((s, j) => s.classList.toggle('on', i === j)); [...nav.children].forEach((b, j) => b.classList.toggle('bg-accent', i === j)); }
+show(0); render();
+document.getElementById('theme').onclick = () => document.documentElement.classList.toggle('dark');
+document.getElementById('width').onclick = (e) => { const f = document.getElementById('frame'); const phone = f.classList.toggle('max-w-[390px]'); f.classList.toggle('max-w-6xl', !phone); e.target.textContent = phone ? 'Ver como computadora' : 'Ver como teléfono'; };
+</script>
+</body>
+</html>

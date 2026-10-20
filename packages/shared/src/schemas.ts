@@ -236,8 +236,11 @@ export const adminHistoryQuerySchema = z.object({
 /** D44: Trucks → Inactive shows the deactivated trucks (they are hidden by default). */
 export const adminTrucksQuerySchema = adminNamedListQuerySchema.extend({
   status: z.enum(['active', 'inactive', 'all']).default('active'),
-  /** D49: only the trucks in our yard (`in_yard`, with or without Work Order) or in the yard with an open one (`in_shop`). */
-  place: z.enum(['in_yard', 'in_shop']).optional(),
+  /**
+   * D49: only the trucks in our yard (`in_yard`, with or without Work Order) or in the yard with an open one (`in_shop`).
+   * D51: `in_yard_no_wo` is in the yard without an open Work Order (it arrived and nobody opened one).
+   */
+  place: z.enum(['in_yard', 'in_shop', 'in_yard_no_wo']).optional(),
 });
 /** D50: Add from Samsara (a truck number Dispatch has; the vehicle the preview showed). */
 export const adminTruckFromSamsaraSchema = z.object({

@@ -66,10 +66,10 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'Dispatch reports the expected arrivals and departures. Where each truck is comes from Samsara GPS.',
+      'The week Dispatch planned. Where each truck is comes from Samsara GPS.',
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'Dispatch reporta las llegadas y salidas esperadas. Dónde está cada camión sale del GPS de Samsara.',
+      'La semana que planeó Dispatch. Dónde está cada camión sale del GPS de Samsara.',
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');

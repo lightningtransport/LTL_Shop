@@ -36,6 +36,7 @@ import { formatAdminDateOnly } from '@/lib/admin-format';
 import { isOpenWorkOrderStatus } from '@/lib/samsara-view';
 import { compactAge, dispatchSignalsByTruck, fillYardText, yardCardAlert, type YardCardAlert, type YardDispatchSignal } from '@/lib/yard-card';
 import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
+import { YardSamsaraCounters } from './admin-yard-samsara-counters';
 import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, KanbanOpenBoardLink, useBrowserFullscreen } from './kanban';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
 
@@ -208,7 +209,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             <> <span data-testid="yard-movement-source">{fillYardText(messages.yardMovementSource, { time: formatShortDateTime(yardBoundary.asOf, locale) })}</span></>
           ) : null}
         </p>
-        {yardBoundary && [yardBoundary.workLocation, yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? (
+        {yardBoundary && [yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? (
           <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 lg:w-72">
             <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
             <span className="sr-only">{messages.yardMovementSearch}</span>
@@ -255,6 +256,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         data-board-view={boardView || undefined}
       >
         {boardView ? <p className="text-lg font-semibold" aria-hidden="true">{messages.yardOperationsTitle}</p> : null}
+        {/* D51: where the trucks are by Samsara, as counters that open Trucks filtered. */}
+        {!boardView && yardBoundary?.samsaraPlaces ? <YardSamsaraCounters messages={messages} places={yardBoundary.samsaraPlaces} /> : null}
         {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
             still accepts readiness, phase, Work Order status and priority from links on other screens. */}
         <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>

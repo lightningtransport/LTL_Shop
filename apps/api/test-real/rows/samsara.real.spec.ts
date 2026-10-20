@@ -125,7 +125,7 @@ describe('Manager: Samsara (D35, D42)', () => {
   it('A149 | D49: en un geofence de nuestra yard el camión está "In yard" desde la primera lectura adentro; con Work Order abierta está "In shop"; pasar de un geofence de la yard a otro no cambia la llegada; afuera no es ni uno ni otro, aunque tenga WO', async () => {
     await resetDb();
     const { id } = await truckRow();
-    const listed = async (place: 'in_yard' | 'in_shop') => ((ok(`Trucks → ${place}`, await manager.get(`/admin/trucks?place=${place}`)) as Json).items as Json[]).map((item) => item.truck.truckNumber);
+    const listed = async (place: 'in_yard' | 'in_shop' | 'in_yard_no_wo') => ((ok(`Trucks → ${place}`, await manager.get(`/admin/trucks?place=${place}`)) as Json).items as Json[]).map((item) => item.truck.truckNumber);
     const sync = async (label: string, stats: unknown[]) => {
       await setSamsara({ vehicles: [vehicle()], stats: stats as Array<Record<string, unknown>> });
       ok(label, await manager.post('/admin/integrations/samsara/sync'));
@@ -135,9 +135,11 @@ describe('Manager: Samsara (D35, D42)', () => {
     let samsara = await sync('sync: llega a Home Office', [stat(418_612, '6015 US-301, Tampa, FL 33610', '2026-10-19T13:00:00Z', HOME_OFFICE)]);
     same('guarda el geofence y la hora de llegada a la yard', [samsara.geofenceId, samsara.geofenceName, samsara.inYardSince], ['12839282', 'Home Office', '2026-10-19T13:00:00.000Z']);
     same('sin Work Order está en la yard, no en el shop', [(await listed('in_yard')).includes(TRUCK), (await listed('in_shop')).includes(TRUCK)], [true, false]);
+    truthy('D51: sale en "In yard without a Work Order"', (await listed('in_yard_no_wo')).includes(TRUCK));
 
     await createWo(TRUCK);
     same('con Work Order abierta está en el shop (y sigue en la yard)', [(await listed('in_yard')).includes(TRUCK), (await listed('in_shop')).includes(TRUCK)], [true, true]);
+    truthy('D51: con WO ya no sale en "In yard without a Work Order"', !(await listed('in_yard_no_wo')).includes(TRUCK));
 
     samsara = await sync('sync: pasa al otro geofence de la yard', [stat(418_615, 'Tampa, FL', '2026-10-19T15:00:00Z', LIGHTNING_YARD)]);
     same('sigue en la yard y la llegada no cambia', [samsara.geofenceName, samsara.inYardSince], ['Lightning Transport and Logistics', '2026-10-19T13:00:00.000Z']);
