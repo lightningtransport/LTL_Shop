@@ -241,6 +241,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             search={movementSearch}
             today={today}
             soonUntil={soonUntil}
+            onTruckAdded={() => void retryBoundary()}
           />
         )}
       </section>

@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-19 (D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-19 (D50: HU-M22 la pestaña Dispatch con el lugar de Samsara, fila A151; D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -244,8 +244,8 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | "Needs attention" | Ordena: pausados, bloqueados, con Jobs sin dueño, abiertos hace más de 24 h, y al final el resto. Cada uno con su siguiente paso | ✅ | A20 |
 | Prioridad crítica | Sube al principio | ✅ | E17 |
 | Yard por fase | Cada camión con trabajo aparece en su fase. Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subgrupo | ✅ | A21 |
-| Presencia física | Siempre "desconocida"; no se inventa | ✅ | A21 |
-| Pestaña Movement | Dice "sin conexión"; no muestra listas falsas | ✅ | A21 |
+| Presencia física | Desde D49 sale de Samsara: In shop / In yard / la ciudad; sin Samsara, nada (no se inventa) | ✅ | A149 |
+| Pestaña Dispatch | Llegadas y salidas de Dispatch con el lugar de Samsara (D50, HU-M22); si Dispatch no responde, lo dice y no muestra listas falsas | ✅ | A21, e2e `yard-operations` |
 | Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa, incluida Ready to Go | ✅ | A19, A19b |
 | Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos (se marcan ahí mismo) | ✅ | A22 |
 | Cola del Dashboard (Etapa 3) | Todo lo que espera al Manager, agrupado por acción, incluidos los Ready to Go, sin corte en 8; cada fila se hace ahí (D26). Contadores que filtran | 👁 | e2e `next-step-in-place`, `admin-shell` |
@@ -915,6 +915,29 @@ La fila A149 está en `apps/api/test-real/rows/samsara.real.spec.ts`; la pantall
 | El camión no está conectado a Samsara | "Unknown", como antes (sin etiqueta) | ✅ | unit `samsara-presence.spec.ts` |
 | La última lectura tiene más de 24 h | Sigue en la yard; debajo, "No signal · hace N" en ámbar (Trucks) | ✅ | unit `samsara-presence.spec.ts` |
 | El camión ya estaba adentro el día que se activó D49 | "Since" es la hora del primer sync después del deploy, no la llegada real | 👁 | — |
+
+### HU-M22 · Cruzar llegadas y salidas de Dispatch con dónde está cada camión (J5, J27) — ✅ construido (D50, LTR-257)
+
+**Quién:** el Manager. **Por qué:** la pestaña Dispatch decía "In shop" por tener WO aunque el camión estuviera afuera, listaba como "por llegar" camiones que ya estaban aquí, mostraba números sin link sin decir por qué y una "Dispatch status" que era texto escrito a mano (auditoría `ux-audit/admin-yard-dispatch-2026-10`).
+
+**Historia:** como Manager, quiero ver qué camión llega y cuál sale según Dispatch, y dónde está cada uno según Samsara, para saber quién falta, quién ya llegó y qué tengo en la yard y en el shop.
+
+**Flujo** (D50):
+1. Yard Operations → **Dispatch**. Arriba: "Dispatch reports the expected arrivals and departures. Where each truck is comes from Samsara GPS."
+2. **Incoming Trucks:** primero los que faltan por llegar, con su fecha y su lugar (ciudad); al final los que ya llegaron: **Arrived · In yard since 8:10 AM** o **Arrived · In shop · fase**.
+3. **Upcoming Departures:** los que salen, con su lugar; al final los que ya salieron: **Left · ciudad**.
+4. **Where trucks are · Samsara:** chips In shop (con la llave de la WO) e In yard; "Outside: N" lleva a Trucks. Si Dispatch dice otra cosa, el chip lo cita y una línea dice en cuántos no coincide.
+5. Un número que no está en la app dice **Not in Shop app**; con **Add from Samsara** se crea con los datos de Samsara y queda conectado.
+
+| ¿Qué pasa si…? | Debería | Estado | Fila |
+|---|---|---|---|
+| Un camión de Incoming ya está en la yard | "Arrived · In yard since…" y baja al final | ✅ | unit `yard-card.spec.ts`, e2e `yard-operations` |
+| Tiene WO abierta pero está afuera | Su ciudad, no "In shop" | ✅ | unit `yard-card.spec.ts` |
+| El número de Dispatch no está en la app y Samsara sí lo tiene | "Not in Shop app" + Add from Samsara; al agregarlo queda conectado con VIN, marca, modelo, año y placa | ✅ | A151 |
+| El número no está ni en la app ni en Samsara | "Not in Shop app" sin botón | ✅ | A151 |
+| Un mecánico intenta Add from Samsara | No puede (403) | ✅ | A151 |
+| Dispatch escribe "301 Yard" y Samsara lo ve afuera | El chip no sale en la yard; la línea "Dispatch disagrees" lo cuenta y cita a Dispatch | ✅ | unit `yard-data-boundary.service.spec.ts` |
+| Dispatch no responde | Las tarjetas de Dispatch dicen que no respondió; la de Samsara sigue | ✅ | unit `yard-data-boundary.service.spec.ts` |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
 

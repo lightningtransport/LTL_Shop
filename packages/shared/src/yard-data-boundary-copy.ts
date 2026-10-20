@@ -7,7 +7,7 @@
  * Do not send empty-state or live labels from the API.
  *
  * Canonical English in ES UI (same as nav): Work Order, Jobs, Incoming Trucks.
- * Presence / geofence stays out of scope.
+ * D50: the third card is "Where trucks are · Samsara" (D49 places), no longer Dispatch's typed location.
  */
 export type YardDataBoundaryLocale = 'en' | 'es';
 
@@ -26,8 +26,8 @@ export const YARD_DATA_BOUNDARY_COPY = {
     unavailable: 'Dispatch did not answer. The shop board is not affected; try again in a minute.',
     badge: 'No data',
     workLocation: {
-      label: 'Dispatch status',
-      empty: 'No Dispatch status yet.',
+      label: 'Where trucks are · Samsara',
+      empty: 'No truck in our yard right now.',
     },
     incomingTrucks: {
       label: 'Incoming Trucks',
@@ -42,8 +42,8 @@ export const YARD_DATA_BOUNDARY_COPY = {
     unavailable: 'Dispatch no respondió. El tablero del taller no se afecta; inténtalo de nuevo en un minuto.',
     badge: 'Sin datos',
     workLocation: {
-      label: 'Estado de Dispatch',
-      empty: 'Aún no hay estado de Dispatch.',
+      label: 'Dónde están · Samsara',
+      empty: 'Ningún camión en nuestra yard ahora.',
     },
     incomingTrucks: {
       label: 'Incoming Trucks',

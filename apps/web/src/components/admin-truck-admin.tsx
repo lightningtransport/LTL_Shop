@@ -29,7 +29,7 @@ import { needsComparison, samsaraFieldRows, type SamsaraFieldRow } from '@/lib/s
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { cn } from '@/lib/utils';
 
-const truckCopy = (messages: AdminMessages) => ({
+export const truckCopy = (messages: AdminMessages) => ({
   locale: messages.locale,
   apiError: messages.apiError,
   forbidden: messages.truckWriteForbidden,

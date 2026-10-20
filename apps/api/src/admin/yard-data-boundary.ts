@@ -210,3 +210,26 @@ export function mapUpcomingDepartures(
     );
 }
 
+
+/** D50: what Dispatch's `trucks` report says per truck: the typed location and its own Samsara link, by normalized number. */
+export type DispatchTruckLink = { truckNumber: string; location: string | null; samsaraVehicleId: string | null };
+
+export function mapDispatchTruckLinks(rows: Record<string, unknown>[], normalize: (value: string) => string | null): Map<string, DispatchTruckLink> {
+  const links = new Map<string, DispatchTruckLink>();
+  for (const row of rows) {
+    const truckNumber = pickField(row, ['truck_number', 'Truck_Number', 'Truck', 'truck']);
+    const key = normalize(truckNumber);
+    if (!key) continue;
+    links.set(key, {
+      truckNumber,
+      location: pickField(row, ['yard_location', 'yardLocation']) || null,
+      samsaraVehicleId: pickField(row, ['samsara_vehicle_id', 'Samsara_Truck_ID', 'samsaraVehicleId']) || null,
+    });
+  }
+  return links;
+}
+
+/** D50: Dispatch's typed location puts the truck in our yard ("301 Yard"); "Outside" and vendors do not. */
+export function dispatchSaysYard(location: string | null | undefined): boolean {
+  return /\byard\b/i.test(location ?? '');
+}

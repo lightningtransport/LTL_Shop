@@ -66,10 +66,10 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
     expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      "Reported by Dispatch: Truck status, expected arrivals, and departures. These are not the Shop's Ready to Go, GPS presence, or dispatch confirmation.",
+      'Dispatch reports the expected arrivals and departures. Where each truck is comes from Samsara GPS.',
     );
     expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'Reportado por Dispatch: estado del Truck, llegadas y salidas esperadas. No es el Ready to Go del Shop, ni presencia GPS, ni confirmación de despacho.',
+      'Dispatch reporta las llegadas y salidas esperadas. Dónde está cada camión sale del GPS de Samsara.',
     );
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');

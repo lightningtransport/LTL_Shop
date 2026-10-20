@@ -1123,6 +1123,9 @@ createServer(async (request, response) => {
     return;
   }
   if (request.url?.split('?')[0] === '/api/admin/yard/data-boundary') {
+    // D50: the place of each truck comes from Samsara (Y-101 in the Lightning yard, Y-104 in Home Office with a WO).
+    const samsaraOf = (number) => yardOperations.find((candidate) => candidate.truck.truckNumber === number)?.truck.samsara ?? null;
+    const yardTruck = (number, extra = {}) => ({ truckNumber: number, truckId: yardOperations.find((candidate) => candidate.truck.truckNumber === number).truck.id, inYardSince: samsaraOf(number)?.inYardSince ?? null, openWorkOrder: null, dispatch: null, ...extra });
     json(response, 200, {
       asOf: '2026-09-21T16:00:00.000Z',
       windows: {
@@ -1136,20 +1139,33 @@ createServer(async (request, response) => {
         items: [
           { truckNumber: '277', location: '301 Yard' },
           { truckNumber: '905', location: '301 Yard' },
-          // Stage 6 (D8): Dispatch says outside while the shop works on Y-103.
           { truckNumber: 'Y-103', location: 'Outside' },
         ],
       },
-      // Stage 6: the shop's side of the Trucks Dispatch names.
+      // Stage 6 / D50: the shop's side of the Trucks Dispatch names, with their Samsara reading.
       shop: [
-        { truckNumber: 'Y-101', truckId: '00000000-0000-4000-8000-000000001001', openWorkOrder: null, outOfShop: false, phase: 'inspection', readyToGo: false, jobsLeft: 0 },
-        { truckNumber: 'Y-103', truckId: '00000000-0000-4000-8000-000000001003', openWorkOrder: { id: '00000000-0000-4000-8000-000000002003', displayId: 'WO-103' }, outOfShop: false, phase: 'shop_work', readyToGo: false, jobsLeft: 1 },
+        { truckNumber: 'Y-101', truckId: '00000000-0000-4000-8000-000000001001', openWorkOrder: null, outOfShop: false, phase: 'inspection', readyToGo: false, jobsLeft: 0, samsara: samsaraOf('Y-101') },
+        { truckNumber: 'Y-103', truckId: '00000000-0000-4000-8000-000000001003', openWorkOrder: { id: '00000000-0000-4000-8000-000000002003', displayId: 'WO-103' }, outOfShop: false, phase: 'shop_work', readyToGo: false, jobsLeft: 2, samsara: null },
       ],
+      // D50: numbers Dispatch has and the Shop app does not.
+      missing: [
+        { truckNumber: '277', samsaraVehicleId: null },
+        { truckNumber: '975', samsaraVehicleId: 'v-975' },
+      ],
+      samsaraPlaces: {
+        inShop: [yardTruck('Y-104', { openWorkOrder: { id: '00000000-0000-4000-8000-000000002004', displayId: 'WO-104' } })],
+        inYard: [yardTruck('Y-101')],
+        outside: 3,
+        noGps: 5,
+        dispatchDisagrees: [{ truckNumber: 'Y-105', truckId: '00000000-0000-4000-8000-000000001005', dispatch: '301 Yard', samsara: 'outside' }],
+      },
       incomingTrucks: {
         status: 'ok',
         items: [
-          { truckNumber: '277', returnDate: '2026-09-22', window: 'this_week', drivers: ['Ana', 'Luis'] },
           { truckNumber: 'Y-101', returnDate: '2026-09-28', window: 'next_week' },
+          { truckNumber: '277', returnDate: '2026-09-22', window: 'this_week', drivers: ['Ana', 'Luis'] },
+          { truckNumber: '975', returnDate: '2026-09-23', window: 'this_week' },
+          { truckNumber: 'Y-103', returnDate: '2026-09-28', window: 'next_week' },
         ],
       },
       upcomingDepartures: {
@@ -1157,6 +1173,20 @@ createServer(async (request, response) => {
         items: [],
       },
     });
+    return;
+  }
+  // D50: Add from Samsara (Yard → Dispatch). Samsara has 975; nothing else.
+  if (request.url?.split('?')[0] === '/api/admin/trucks/from-samsara') {
+    if (request.method === 'GET') {
+      const number = new URL(request.url, 'http://fixture.local').searchParams.get('truckNumber');
+      json(response, 200, {
+        truckNumber: number,
+        existingTruckId: null,
+        vehicle: number === '975' ? { id: 'v-975', name: 'Truck 975', vin: '1XKYD49X0RJ000975', make: 'Kenworth', model: 'T680', year: 2024, licensePlate: 'FL-975', suggested: null } : null,
+      });
+    } else {
+      json(response, 201, { truckId: '00000000-0000-4000-8000-000000009750', truckNumber: '975', connect: { connectedVehicleId: 'v-975', connectedVehicleName: 'Truck 975', updatedFields: ['vin', 'make', 'model', 'year', 'licensePlate'], synced: true } });
+    }
     return;
   }
   if (request.url?.startsWith('/api/admin/yard-operations')) {

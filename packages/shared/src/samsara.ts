@@ -303,3 +303,19 @@ export function truckPlace(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofen
   if (truckPresence(samsara).state !== YardPresenceState.IN_YARD) return null;
   return hasOpenWorkOrder ? 'in_shop' : 'in_yard';
 }
+
+/** D50: what Add from Samsara would create for a truck number Dispatch has and the Shop app does not. */
+export type SamsaraTruckPreviewDto = {
+  truckNumber: string;
+  /** The truck already exists in the Shop app (for example it was just added): open it instead. */
+  existingTruckId: string | null;
+  /** The Samsara vehicle with that number (or the one Dispatch links), not taken by another truck; null when Samsara has none. */
+  vehicle: SamsaraCandidateDto | null;
+};
+
+/** D50: Add from Samsara created the truck and connected it. */
+export type SamsaraTruckCreatedDto = {
+  truckId: string;
+  truckNumber: string;
+  connect: SamsaraConnectResultDto;
+};

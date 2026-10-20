@@ -490,6 +490,19 @@ export class AdminController {
     return this.trucksAdmin.delete(id);
   }
 
+  /** D50: Add from Samsara (Yard → Dispatch): what would be created for a number the Shop app does not have. */
+  @Get('trucks/from-samsara')
+  @UseGuards(ManagerWritesGuard)
+  truckFromSamsaraPreview(@Query() query: Record<string, unknown>) {
+    return this.truckSamsara.fromSamsaraPreview(query);
+  }
+
+  @Post('trucks/from-samsara')
+  @UseGuards(ManagerWritesGuard)
+  createTruckFromSamsara(@Body() body: unknown) {
+    return this.truckSamsara.createFromSamsara(body);
+  }
+
   /** D44 §3: Samsara vehicles no other truck has, the VIN or number match first (live from Samsara). */
   @Get('trucks/:id/samsara/candidates')
   @UseGuards(ManagerWritesGuard)

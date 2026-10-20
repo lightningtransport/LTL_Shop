@@ -5,14 +5,20 @@ import { useState, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpFromLine, MapPin, TriangleAlert, Wrench, type LucideIcon } from 'lucide-react';
 import type {
   YardDataBoundaryDto,
+  YardDispatchMissingTruckDto,
   YardDispatchShopTruckDto,
   YardIncomingTruckItemDto,
+  YardSamsaraPlacesDto,
+  YardSamsaraTruckDto,
   YardUpcomingDepartureItemDto,
-  YardWorkLocationItemDto,
 } from '@ltl-shop/shared';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { cn } from '@/lib/utils';
-import { dispatchShopConflicts, fillYardText, groupWorkLocations, matchesTruckSearch } from '@/lib/yard-card';
+import { useCanShowManagerWrites } from '@/lib/admin-actor';
+import { formatShortDateTime } from '@/lib/work-order-view';
+import { shortLocation, yardPlaceText } from '@/lib/samsara-view';
+import { dispatchRowPlace, fillYardText, matchesTruckSearch, orderDispatchRows } from '@/lib/yard-card';
+import { AddFromSamsaraDialog } from './admin-add-from-samsara';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { formatAdminDateOnly } from '@/lib/admin-format';
 import {
@@ -41,9 +47,10 @@ const PHASE_KEY: Record<string, keyof AdminMessages> = {
 };
 
 /**
- * LTR-120 / Stage 6 (D8) / Stage 8 (mockup): the Dispatch tab — three columns: arrivals and departures as rows
- * (the Truck, where the shop has it and the date; a Truck leaving soon with work left is flagged) and where
- * Dispatch has each Truck (chips; a wrench marks an open Work Order). Disagreements with the shop come first.
+ * LTR-120 / Stage 8 / D50: the Dispatch tab — Dispatch's arrivals and departures as rows (the Truck, where it is by
+ * Samsara with the D49 rule, and the date; arrived or left at the end; a Truck leaving soon with work left is flagged),
+ * and "Where trucks are · Samsara" (In shop and In yard chips; a wrench marks an open Work Order). A number the Shop
+ * app does not have says so and can be added from Samsara.
  */
 export function AdminYardDataBoundaryCards({
   locale,
@@ -55,6 +62,7 @@ export function AdminYardDataBoundaryCards({
   search = '',
   today = null,
   soonUntil = null,
+  onTruckAdded,
 }: {
   locale: AdminLocale;
   messages: AdminMessages;
@@ -67,35 +75,24 @@ export function AdminYardDataBoundaryCards({
   /** "Leaving soon" window (YYYY-MM-DD): a departure inside it with work left is flagged. */
   today?: string | null;
   soonUntil?: string | null;
+  /** D50: Add from Samsara created a truck; reload Dispatch so its row links to it. */
+  onTruckAdded?: () => void;
 }) {
   const copy = yardDataBoundaryCopy(locale);
+  const canAdd = useCanShowManagerWrites();
+  const [adding, setAdding] = useState<YardDispatchMissingTruckDto | null>(null);
   const options = { loading, fetchFailed };
-  const workLocationItems = (boundary?.workLocation.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
   const incomingItems = (boundary?.incomingTrucks.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
   const departureItems = (boundary?.upcomingDepartures.items ?? []).filter((item) => matchesTruckSearch(item.truckNumber, search));
-  // Stage 6 (D8): the shop's side of each Truck — rows and chips open the Truck; open Work Orders are marked.
+  // Stage 6 / D50: the shop's side of each Truck — rows open the Truck; numbers the Shop app lacks can be added.
   const shop = new Map((boundary?.shop ?? []).map((truck) => [truck.truckNumber, truck]));
-  const conflicts = dispatchShopConflicts(boundary?.workLocation, boundary?.shop);
+  const missing = new Map((boundary?.missing ?? []).map((truck) => [truck.truckNumber, truck]));
+  const add = canAdd ? setAdding : null;
+  const places = boundary?.samsaraPlaces;
+  const placesKind: YardDataBoundaryCardKind = places ? 'ok' : loading ? 'loading' : 'unavailable';
 
   return (
     <div className="space-y-4">
-      {conflicts.length ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning-surface/50 px-4 py-3" role="status" data-testid="yard-dispatch-conflicts">
-          <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning-foreground dark:text-warning" />
-          <div className="min-w-0">
-            <p className="font-medium">{messages.yardDispatchConflictTitle}</p>
-            <ul className="mt-1 space-y-1">
-              {conflicts.map((conflict) => (
-                <li key={conflict.truckNumber}>
-                  <Link className="underline underline-offset-2" href={adminTruckHref(conflict.truckId, DISPATCH_FROM)}>
-                    {fillYardText(messages.yardDispatchConflict, { truck: conflict.truckNumber, location: conflict.location, workOrder: conflict.workOrder.displayId })}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ) : null}
       <div className="grid min-w-0 gap-4 lg:grid-cols-3">
         <BoundaryCard
           cardId="incomingTrucks"
@@ -108,7 +105,7 @@ export function AdminYardDataBoundaryCards({
           expanded={expanded}
           preview={movementPreview(locale, boundary?.incomingTrucks.items ?? [], 'returnDate')}
         >
-          {boundary?.incomingTrucks.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={incomingItems} dateKey="returnDate" shop={shop} /> : null}
+          {boundary?.incomingTrucks.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={incomingItems} dateKey="returnDate" shop={shop} missing={missing} onAdd={add} today={today} /> : null}
         </BoundaryCard>
         <BoundaryCard
           cardId="upcomingDepartures"
@@ -121,22 +118,23 @@ export function AdminYardDataBoundaryCards({
           expanded={expanded}
           preview={movementPreview(locale, boundary?.upcomingDepartures.items ?? [], 'outDate')}
         >
-          {boundary?.upcomingDepartures.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={departureItems} dateKey="outDate" shop={shop} today={today} soonUntil={soonUntil} /> : null}
+          {boundary?.upcomingDepartures.status === 'ok' ? <MovementRows locale={locale} messages={messages} items={departureItems} dateKey="outDate" shop={shop} missing={missing} onAdd={add} today={today} soonUntil={soonUntil} /> : null}
         </BoundaryCard>
         <BoundaryCard
           cardId="workLocation"
           icon={ICONS.workLocation}
           label={copy.workLocation.label}
-          kind={yardDataBoundaryCardKind(boundary?.workLocation, options)}
+          kind={placesKind}
           empty={copy.workLocation.empty}
           unavailable={copy.unavailable}
           badge={copy.badge}
           expanded={expanded}
-          preview={workLocationPreview(boundary?.workLocation.items ?? [], boundary?.workLocation.summary)}
+          preview={places ? `${messages.presenceInShop} ${places.inShop.length} · ${messages.presenceInYard} ${places.inYard.length}` : ''}
         >
-          {boundary?.workLocation.status === 'ok' ? <WorkLocationItems locale={locale} messages={messages} items={workLocationItems} shop={shop} /> : null}
+          {places ? <SamsaraPlaces locale={locale} messages={messages} places={places} search={search} /> : null}
         </BoundaryCard>
       </div>
+      <AddFromSamsaraDialog target={adding} from={DISPATCH_FROM} messages={messages} onClose={() => setAdding(null)} onAdded={() => onTruckAdded?.()} />
     </div>
   );
 }
@@ -194,13 +192,6 @@ function BoundaryCard({
   );
 }
 
-function workLocationPreview(items: YardWorkLocationItemDto[], summary?: string) {
-  if (summary) return summary;
-  const first = items[0];
-  if (!first) return '';
-  return first.location ? `${first.truckNumber} · ${first.location}` : first.truckNumber;
-}
-
 function movementPreview(
   locale: AdminLocale,
   items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>,
@@ -222,54 +213,68 @@ const DISPATCH_FROM = '/admin/yard-operations?tab=dispatch';
 type Chip = { key: string; label: string; title?: string; href?: string; inShop?: boolean };
 type ShopByNumber = Map<string, YardDispatchShopTruckDto>;
 
-/** Stage 6: a chip opens its Truck when the shop knows it; an open Work Order marks it (and sorts it first). */
-function shopChip(truckNumber: string, chip: Omit<Chip, 'href' | 'inShop'>, shop: ShopByNumber, messages: AdminMessages): Chip {
-  const truck = shop.get(truckNumber);
-  if (!truck) return chip;
-  return {
-    ...chip,
+/** D50: "Where trucks are · Samsara" — In shop and In yard chips (D49), how many are outside, and where Dispatch disagrees. */
+function SamsaraPlaces({ locale, messages, places, search }: { locale: AdminLocale; messages: AdminMessages; places: YardSamsaraPlacesDto; search: string }) {
+  const chip = (truck: YardSamsaraTruckDto, inShop: boolean): Chip => ({
+    key: truck.truckId,
+    label: truck.truckNumber,
     href: adminTruckHref(truck.truckId, DISPATCH_FROM),
-    inShop: Boolean(truck.openWorkOrder),
-    title: [chip.title, truck.openWorkOrder ? fillYardText(messages.yardDispatchInShop, { workOrder: truck.openWorkOrder.displayId }) : null].filter(Boolean).join(' · ') || undefined,
-  };
-}
-
-function WorkLocationItems({
-  locale,
-  messages,
-  items,
-  shop,
-}: {
-  locale: AdminLocale;
-  messages: AdminMessages;
-  items: YardWorkLocationItemDto[];
-  shop: ShopByNumber;
-}) {
-  if (!items.length) return <p className="px-4 py-3 text-muted-foreground">{messages.yardNoTrucksMatch}</p>;
-  // LTR-103: group by reported status so 50+ rows read as a few lines.
-  const groups = groupWorkLocations(items, messages.yardNoReportedLocation);
+    inShop,
+    title: [
+      truck.openWorkOrder ? fillYardText(messages.yardDispatchInShop, { workOrder: truck.openWorkOrder.displayId }) : null,
+      truck.inYardSince ? fillYardText(messages.presenceInYardSince, { since: formatShortDateTime(truck.inYardSince, locale) }) : null,
+      truck.dispatch ? fillYardText(messages.yardDispatchSays, { location: truck.dispatch }) : null,
+    ].filter(Boolean).join(' · ') || undefined,
+  });
+  const groups = [
+    { key: 'in_shop', label: messages.presenceInShop, trucks: places.inShop, inShop: true },
+    { key: 'in_yard', label: messages.presenceInYard, trucks: places.inYard, inShop: false },
+  ].map((group) => ({ ...group, trucks: group.trucks.filter((truck) => matchesTruckSearch(truck.truckNumber, search)) }));
+  const disagrees = places.dispatchDisagrees.filter((row) => matchesTruckSearch(row.truckNumber, search));
   return (
     <>
       <ul>
         {groups.map((group) => (
-          <li key={group.location} className="min-w-0 border-b px-4 py-3 last:border-b-0">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">{group.location} · {group.trucks.length}</p>
-            <ChipList messages={messages} chips={group.trucks.map((truck) => shopChip(truck, { key: truck, label: truck }, shop, messages))} />
+          <li key={group.key} className="min-w-0 border-b px-4 py-3" data-testid={`yard-samsara-${group.key}`}>
+            <p className={cn('text-xs font-medium text-muted-foreground', group.trucks.length && 'mb-2')}>{group.label} · {group.trucks.length}</p>
+            {group.trucks.length ? <ChipList messages={messages} chips={group.trucks.map((truck) => chip(truck, group.inShop))} /> : null}
           </li>
         ))}
+        <li className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 text-xs text-muted-foreground" data-testid="yard-samsara-outside">
+          <span>{fillYardText(messages.yardSamsaraOutside, { outside: String(places.outside), noGps: String(places.noGps) })}</span>
+          <Link className="tap-inline text-primary underline-offset-2 hover:underline" href="/admin/trucks">{messages.yardSamsaraSeeTrucks}</Link>
+        </li>
       </ul>
-      <p className="flex items-center gap-1 border-t px-4 py-3 text-xs text-muted-foreground"><Wrench aria-hidden="true" className="size-3.5" />{messages.yardHasOpenWo}</p>
+      {disagrees.length ? (
+        <details className="border-b px-4 py-3 text-xs" data-testid="yard-dispatch-disagrees">
+          <summary className="cursor-pointer text-warning-foreground dark:text-warning">
+            <TriangleAlert aria-hidden="true" className="mr-1 inline size-3.5 align-[-2px]" />
+            {fillYardText(messages.yardDispatchDisagrees, { count: String(disagrees.length) })}
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {disagrees.map((row) => (
+              <li key={row.truckId}>
+                <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(row.truckId, DISPATCH_FROM)}>{row.truckNumber}</Link>
+                <span className="text-muted-foreground"> · {fillYardText(messages.yardDispatchSays, { location: row.dispatch })} · {row.samsara === 'in_yard' ? messages.yardSamsaraInYardShort : messages.yardSamsaraOutsideShort}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      <p className="flex items-center gap-1 px-4 py-3 text-xs text-muted-foreground"><Wrench aria-hidden="true" className="size-3.5" />{messages.yardHasOpenWo}</p>
     </>
   );
 }
 
-/** Arrivals and departures: the Truck, where the shop has it, and the date. */
+/** Arrivals and departures: the Truck, where it is by Samsara (D49), and the date; arrived or left at the end (D50). */
 function MovementRows({
   locale,
   messages,
   items,
   dateKey,
   shop,
+  missing,
+  onAdd,
   today = null,
   soonUntil = null,
 }: {
@@ -278,36 +283,67 @@ function MovementRows({
   items: Array<YardIncomingTruckItemDto | YardUpcomingDepartureItemDto>;
   dateKey: 'returnDate' | 'outDate';
   shop: ShopByNumber;
+  missing: Map<string, YardDispatchMissingTruckDto>;
+  /** Null when this person cannot add trucks. */
+  onAdd: ((truck: YardDispatchMissingTruckDto) => void) | null;
   today?: string | null;
   soonUntil?: string | null;
 }) {
   const [showAll, setShowAll] = useState(false);
   if (!items.length) return <p className="px-4 py-3 text-muted-foreground">{messages.yardNoTrucksMatch}</p>;
-  // LTR-254: the API order (date, then truck number); a truck the shop has not loaded yet keeps its place.
-  const rows = items.map((item, index) => ({ item, index, truck: shop.get(item.truckNumber) }));
+  const list = dateKey === 'returnDate' ? 'incoming' : 'departures';
+  // LTR-254: the API order (date, then truck number); D50: arrived or left go to the end.
+  const rows = orderDispatchRows(items.map((item, index) => {
+    const truck = shop.get(item.truckNumber);
+    const date = dateKey === 'returnDate' ? (item as YardIncomingTruckItemDto).returnDate : (item as YardUpcomingDepartureItemDto).outDate;
+    const day = date?.slice(0, 10) ?? null;
+    return { item, index, truck, date, day, ...dispatchRowPlace(truck, list, day, today) };
+  }));
   const visible = showAll ? rows : rows.slice(0, LIST_PREVIEW);
   return (
     <>
       <ul className="divide-y">
-        {visible.map(({ item, index, truck }) => {
-          const date = dateKey === 'returnDate' ? (item as YardIncomingTruckItemDto).returnDate : (item as YardUpcomingDepartureItemDto).outDate;
-          const day = date?.slice(0, 10) ?? null;
+        {visible.map(({ item, index, truck, date, day, place, done }) => {
           const soon = Boolean(truck && !truck.readyToGo && truck.openWorkOrder && day && today && soonUntil && day >= today && day <= soonUntil && (truck.jobsLeft ?? 0) > 0);
           const drivers = formatYardBoundaryDrivers(item.drivers);
           const phase = truck?.phase && PHASE_KEY[truck.phase] ? (messages[PHASE_KEY[truck.phase]] as string) : null;
+          const lack = place === 'missing' ? missing.get(item.truckNumber) ?? { truckNumber: item.truckNumber, samsaraVehicleId: null } : null;
+          const where = truck?.samsara?.geofenceName ?? shortLocation(truck?.samsara?.address) ?? null;
+          const yardText = truck ? yardPlaceText(truck.samsara, Boolean(truck.openWorkOrder), locale, messages) : null;
           return (
-            <li key={`${item.truckNumber}-${date ?? 'undated'}-${index}`} className="flex items-center gap-3 px-4 py-2.5" title={drivers || undefined}>
+            <li
+              key={`${item.truckNumber}-${date ?? 'undated'}-${index}`}
+              className={cn('flex items-center gap-3 px-4 py-2.5', done && 'bg-muted/30')}
+              title={drivers || undefined}
+              data-testid="yard-movement-row"
+              data-place={place}
+              data-done={done ? 'true' : undefined}
+            >
               {truck ? (
-                <Link href={adminTruckHref(truck.truckId, DISPATCH_FROM)} data-in-shop={truck.openWorkOrder ? 'true' : undefined} className="w-16 shrink-0 truncate font-semibold text-primary hover:underline">{item.truckNumber}</Link>
-              ) : <span className="w-16 shrink-0 truncate font-semibold">{item.truckNumber}</span>}
-              <span className="min-w-0 flex-1">
-                {truck?.readyToGo ? (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-success/40 px-1.5 py-px text-xs text-success">{messages.readyToGo}</span>
-                ) : truck?.openWorkOrder ? (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-1.5 py-px text-xs text-primary">{phase ? fillYardText(messages.yardInShopPhase, { phase }) : fillYardText(messages.yardDispatchInShop, { workOrder: truck.openWorkOrder.displayId })}</span>
-                ) : <span className="text-xs text-muted-foreground">{messages.yardNotInShop}</span>}
+                <Link href={adminTruckHref(truck.truckId, DISPATCH_FROM)} data-in-shop={place === 'in_shop' ? 'true' : undefined} className="tap-inline w-16 shrink-0 truncate font-semibold text-primary hover:underline">{item.truckNumber}</Link>
+              ) : <span className="w-16 shrink-0 truncate font-semibold text-muted-foreground">{item.truckNumber}</span>}
+              <span className="min-w-0 flex-1 text-xs">
+                {done ? <span className="font-semibold text-foreground">{`${list === 'incoming' ? messages.yardArrived : messages.yardLeft} · `}</span> : null}
+                {place === 'ready_to_go' ? (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-success/40 px-1.5 py-px text-success">{messages.readyToGo}</span>
+                ) : place === 'in_shop' ? (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-1.5 py-px text-primary">{phase ? fillYardText(messages.yardInShopPhase, { phase }) : messages.presenceInShop}</span>
+                ) : place === 'in_yard' ? (
+                  <span className="font-medium text-success">{yardText ?? messages.presenceInYard}</span>
+                ) : place === 'outside' ? (
+                  <span className="text-muted-foreground">{where ?? messages.noValue}</span>
+                ) : place === 'no_gps' ? (
+                  <span className="text-muted-foreground">{messages.yardNoGps}</span>
+                ) : (
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-muted-foreground" title={messages.yardNotInShopAppHint} data-testid="yard-not-in-app">{messages.yardNotInShopApp}</span>
+                    {onAdd && lack ? (
+                      <button type="button" className="inline-flex h-8 items-center rounded-md border px-2 font-medium text-primary hover:bg-accent [@media(pointer:coarse)]:h-11" onClick={() => onAdd(lack)} data-testid="yard-add-from-samsara">{messages.yardAddFromSamsara}</button>
+                    ) : null}
+                  </span>
+                )}
                 {soon ? (
-                  <span className="ml-1 inline-flex items-center gap-1 text-xs text-warning-foreground dark:text-warning">
+                  <span className="ml-1 inline-flex items-center gap-1 text-warning-foreground dark:text-warning">
                     <TriangleAlert aria-hidden="true" className="size-3.5" />{fillYardText(messages.dashJobsLeft, { count: String(truck?.jobsLeft ?? 0) })}
                   </span>
                 ) : null}
@@ -341,7 +377,7 @@ function ChipList({ messages, chips }: { messages: AdminMessages; chips: Chip[] 
             href={chip.href}
             title={chip.title}
             data-in-shop={chip.inShop ? 'true' : undefined}
-            className={cn('inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs hover:bg-accent', chip.inShop ? 'border-primary/40 text-primary' : 'text-muted-foreground')}
+            className={cn('inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs hover:bg-accent [@media(pointer:coarse)]:h-11', chip.inShop ? 'border-primary/40 text-primary' : 'text-muted-foreground')}
           >
             {body}
           </Link>

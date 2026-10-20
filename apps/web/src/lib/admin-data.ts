@@ -9,6 +9,8 @@ import type {
   AdminConnectSamsaraInput,
   SamsaraCandidatesDto,
   SamsaraConnectResultDto,
+  SamsaraTruckCreatedDto,
+  SamsaraTruckPreviewDto,
   TruckDto,
   ShopWorkflowStepDto,
   ShopHoursDto,
@@ -1186,6 +1188,17 @@ export function useAdminTruckSamsaraCandidates(truckId: string | null) {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   });
+}
+
+/** D50: what Add from Samsara would create for a number Dispatch has (Yard → Dispatch). */
+export function fetchAdminTruckFromSamsara(truckNumber: string, vehicleId: string | null) {
+  const query = new URLSearchParams({ truckNumber, ...(vehicleId ? { vehicleId } : {}) });
+  return apiFetch<SamsaraTruckPreviewDto>(`/api/admin/trucks/from-samsara?${query}`);
+}
+
+/** D50: create the truck with that number and connect it to the Samsara vehicle the preview showed. */
+export function createAdminTruckFromSamsara(truckNumber: string, vehicleId: string) {
+  return apiFetch<SamsaraTruckCreatedDto>('/api/admin/trucks/from-samsara', { method: 'POST', body: JSON.stringify({ truckNumber, vehicleId }) });
 }
 
 /** D44 §4: connect; `choose` only where the card and Samsara differ. */

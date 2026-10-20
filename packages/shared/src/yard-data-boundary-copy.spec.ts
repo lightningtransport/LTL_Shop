@@ -9,14 +9,14 @@ describe('Yard data-boundary PD copy', () => {
     expect(YARD_DATA_BOUNDARY_COPY.en).toEqual({
       unavailable: 'Dispatch did not answer. The shop board is not affected; try again in a minute.',
       badge: 'No data',
-      workLocation: { label: 'Dispatch status', empty: 'No Dispatch status yet.' },
+      workLocation: { label: 'Where trucks are · Samsara', empty: 'No truck in our yard right now.' },
       incomingTrucks: { label: 'Incoming Trucks', empty: 'No incoming trucks.' },
       upcomingDepartures: { label: 'Upcoming Departures', empty: 'No upcoming departures.' },
     });
     expect(YARD_DATA_BOUNDARY_COPY.es).toEqual({
       unavailable: 'Dispatch no respondió. El tablero del taller no se afecta; inténtalo de nuevo en un minuto.',
       badge: 'Sin datos',
-      workLocation: { label: 'Estado de Dispatch', empty: 'Aún no hay estado de Dispatch.' },
+      workLocation: { label: 'Dónde están · Samsara', empty: 'Ningún camión en nuestra yard ahora.' },
       incomingTrucks: { label: 'Incoming Trucks', empty: 'No hay Incoming Trucks.' },
       upcomingDepartures: { label: 'Salidas próximas', empty: 'No hay salidas próximas.' },
     });

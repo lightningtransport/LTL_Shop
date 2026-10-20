@@ -10,6 +10,10 @@ import { ConfigService } from '@nestjs/config';
 import {
   SAMSARA_CONNECT_FIELDS,
   adminConnectSamsaraSchema,
+  adminTruckFromSamsaraPreviewSchema,
+  adminTruckFromSamsaraSchema,
+  type SamsaraTruckCreatedDto,
+  type SamsaraTruckPreviewDto,
   normalizeMakeModel,
   type SamsaraCandidateDto,
   type SamsaraCandidatesDto,
@@ -129,6 +133,71 @@ export class TruckSamsaraService {
     return { connectedVehicleId: vehicle.id, connectedVehicleName: vehicle.name, updatedFields, synced };
   }
 
+  /**
+   * D50: before Add from Samsara. Says whether the Shop app already has this number, and which Samsara vehicle would be
+   * used: the one Dispatch links (`vehicleId`) when no other truck has it, else the one named with this number.
+   */
+  async fromSamsaraPreview(raw: unknown, fetchImpl: typeof fetch = fetch): Promise<SamsaraTruckPreviewDto> {
+    const parsed = adminTruckFromSamsaraPreviewSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const { truckNumber, vehicleId } = parsed.data;
+    const existing = await this.truckByNumber(truckNumber);
+    if (existing) return { truckNumber, existingTruckId: existing.id, vehicle: null };
+    const [vehicles, taken] = await Promise.all([this.vehicles(fetchImpl), this.takenVehicleIds(null)]);
+    const free = vehicles.filter((vehicle) => !taken.has(vehicle.id));
+    const number = normalizeTruckNumber(truckNumber);
+    const byLink = vehicleId ? free.find((vehicle) => vehicle.id === vehicleId) : undefined;
+    const byNumber = free.filter((vehicle) => number && normalizeTruckNumber(vehicle.name) === number);
+    // Two Samsara vehicles with the same number: do not guess (D44), the Manager connects it from the truck.
+    const vehicle = byLink ?? (byNumber.length === 1 ? byNumber[0] : undefined);
+    return {
+      truckNumber,
+      existingTruckId: null,
+      vehicle: vehicle
+        ? {
+            id: vehicle.id,
+            name: vehicle.name,
+            vin: vehicle.vin,
+            make: vehicle.make ?? null,
+            model: vehicle.model ?? null,
+            year: vehicle.year ?? null,
+            licensePlate: vehicle.licensePlate ?? null,
+            suggested: byLink ? null : 'number',
+          }
+        : null,
+    };
+  }
+
+  /**
+   * D50: Add from Samsara. Creates the truck with Dispatch's number and connects it (D44 §4 fills VIN, make, model, year
+   * and plate from Samsara and syncs). If connecting fails, the truck just created is removed so nothing is left half done.
+   */
+  async createFromSamsara(raw: unknown, fetchImpl: typeof fetch = fetch): Promise<SamsaraTruckCreatedDto> {
+    const parsed = adminTruckFromSamsaraSchema.safeParse(raw);
+    if (!parsed.success) throw new BadRequestException(parsed.error.flatten());
+    const { truckNumber, vehicleId } = parsed.data;
+    const existing = await this.truckByNumber(truckNumber);
+    if (existing) {
+      throw new ConflictException({ code: 'TRUCK_NUMBER_TAKEN', message: `Truck ${existing.truckNumber} is already in the Shop app.`, truck: { id: existing.id, truckNumber: existing.truckNumber } });
+    }
+    const created = await this.trucksAdmin.create({ truckNumber });
+    try {
+      const connect = await this.connect(created.id, { vehicleId }, fetchImpl);
+      return { truckId: created.id, truckNumber: created.truckNumber, connect };
+    } catch (error) {
+      await this.trucksAdmin.delete(created.id).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  /** "0975" and "975" are the same truck (normalized like the Samsara pairing). */
+  private async truckByNumber(truckNumber: string) {
+    const key = normalizeTruckNumber(truckNumber);
+    if (!key) return null;
+    const rows = await this.prisma.truck.findMany({ select: { id: true, truckNumber: true } });
+    return rows.find((row) => normalizeTruckNumber(row.truckNumber) === key) ?? null;
+  }
+
   /** The legacy Ninox Samsara id goes too, or the next sync would connect the truck again by it. */
   async disconnect(truckId: string) {
     await this.truck(truckId);
@@ -150,9 +219,9 @@ export class TruckSamsaraService {
   }
 
   /** Vehicles another truck has: stored connections, and Ninox Samsara ids the next sync will store. */
-  private async takenVehicleIds(exceptTruckId: string) {
+  private async takenVehicleIds(exceptTruckId: string | null) {
     const rows = await this.prisma.truck.findMany({
-      where: { id: { not: exceptTruckId }, OR: [{ samsaraVehicleId: { not: null } }, { samsaraId: { not: null } }] },
+      where: { ...(exceptTruckId ? { id: { not: exceptTruckId } } : {}), OR: [{ samsaraVehicleId: { not: null } }, { samsaraId: { not: null } }] },
       select: { samsaraVehicleId: true, samsaraId: true },
     });
     return new Set(rows.map((row) => row.samsaraVehicleId ?? row.samsaraId?.toFixed(0)).filter((id): id is string => Boolean(id)));

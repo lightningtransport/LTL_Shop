@@ -16,6 +16,7 @@ const OUT = process.env.MOBILE_WALK_OUT ?? 'test-results/mobile-walk';
 const PAGES: Array<[string, string]> = [
   ['dashboard', '/admin'],
   ['yard', '/admin/yard-operations'],
+  ['yard-dispatch', '/admin/yard-operations?tab=dispatch'],
   ['work-orders', '/admin/work-orders'],
   ['wo-detail', '/admin/work-orders/00000000-0000-4000-8000-000000000106'],
   ['trucks', '/admin/trucks'],

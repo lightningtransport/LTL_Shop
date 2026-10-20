@@ -239,6 +239,15 @@ export const adminTrucksQuerySchema = adminNamedListQuerySchema.extend({
   /** D49: only the trucks in our yard (`in_yard`, with or without Work Order) or in the yard with an open one (`in_shop`). */
   place: z.enum(['in_yard', 'in_shop']).optional(),
 });
+/** D50: Add from Samsara (a truck number Dispatch has; the vehicle the preview showed). */
+export const adminTruckFromSamsaraSchema = z.object({
+  truckNumber: z.string().trim().min(1).max(40),
+  vehicleId: z.string().trim().min(1).max(64),
+}).strict();
+export const adminTruckFromSamsaraPreviewSchema = z.object({
+  truckNumber: z.string().trim().min(1).max(40),
+  vehicleId: z.string().trim().min(1).max(64).optional(),
+});
 export const adminTruckCursorSchema = z.object({
   direction: z.enum(['asc', 'desc']),
   truckNumber: z.string().min(1).max(120),

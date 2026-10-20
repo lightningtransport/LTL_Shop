@@ -188,6 +188,27 @@ describe('Manager: Samsara (D35, D42)', () => {
     same('Trucks no marca nada: un código info no enciende ninguna luz', (list.items as Json[]).find((item) => item.truck.truckNumber === TRUCK)?.faults, { active: 1, worst: null });
   });
 
+  it('A151 | D50: un camión que Dispatch tiene y la app no se agrega desde Samsara: crea el camión con VIN, marca, modelo, año y placa y lo deja conectado; sin vehículo en Samsara no ofrece nada; un mecánico no puede', async () => {
+    const NEW = '9751';
+    await prisma.truck.deleteMany({ where: { truckNumber: NEW } });
+    const samsaraTruck = { id: 'v-9751', name: `Truck ${NEW}`, vin: '1XKYD49X0RJ009751', make: 'KENWORTH', model: 'T680', year: '2024', licensePlate: 'FL-9751' };
+    await setSamsara({ vehicles: [vehicle(), samsaraTruck] });
+
+    const preview = ok('ver qué se agregaría', await manager.get(`/admin/trucks/from-samsara?truckNumber=${NEW}`)) as Json;
+    same('Samsara tiene el vehículo con ese número', [preview.existingTruckId, preview.vehicle?.id, preview.vehicle?.vin], [null, 'v-9751', '1XKYD49X0RJ009751']);
+    const none = ok('número que Samsara no tiene', await manager.get('/admin/trucks/from-samsara?truckNumber=9752')) as Json;
+    same('sin vehículo en Samsara no ofrece nada', none.vehicle, null);
+    refused('un mecánico no puede agregar', await as(USERS.alignment).post('/admin/trucks/from-samsara', { truckNumber: NEW, vehicleId: 'v-9751' }), 403);
+
+    const created = ok('Add from Samsara', await manager.post('/admin/trucks/from-samsara', { truckNumber: NEW, vehicleId: 'v-9751' })) as Json;
+    const row = await prisma.truck.findUniqueOrThrow({ where: { id: created.truckId } });
+    same('el camión nuevo trae los datos de Samsara y queda conectado', [row.truckNumber, row.vin, row.make, row.model, row.year, row.licensePlate, row.samsaraVehicleId], [NEW, '1XKYD49X0RJ009751', 'Kenworth', 'T680', 2024, 'FL-9751', 'v-9751']);
+    const again = ok('ver de nuevo', await manager.get(`/admin/trucks/from-samsara?truckNumber=${NEW}`)) as Json;
+    same('ya está en la app: lleva al camión', again.existingTruckId, created.truckId);
+    refused('agregarlo dos veces no duplica', await manager.post('/admin/trucks/from-samsara', { truckNumber: NEW, vehicleId: 'v-9751' }), 409);
+    await prisma.truck.deleteMany({ where: { truckNumber: NEW } });
+  });
+
   it('A94 | S-2: GitHub Actions corre la sincronización con el secreto de cron; sin secreto 401; un mecánico no puede Sync now', async () => {
     await setSamsara({ vehicles: [vehicle()], stats: [stat(500_000, 'Laredo, TX')] });
     same('sin secreto', (await cron('POST')).status, 401);
