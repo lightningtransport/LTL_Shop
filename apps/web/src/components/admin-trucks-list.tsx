@@ -76,17 +76,17 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         activeFilterCount={(statusFrom(searchParams) === 'active' ? 0 : 1) + (placeFrom(searchParams) ? 1 : 0)}
         filters={(
           <>
-            <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-              {messages.trucksShow}
-              <Select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-auto" data-testid="trucks-status-filter">
+            <label className="block min-w-[12rem] flex-1 space-y-2 text-sm font-medium">
+              <span className="block">{messages.trucksShow}</span>
+              <Select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} data-testid="trucks-status-filter">
                 <option value="active">{messages.trucksShowActive}</option>
                 <option value="inactive">{messages.trucksShowInactive}</option>
                 <option value="all">{messages.trucksShowAll}</option>
               </Select>
             </label>
-            <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-              {messages.trucksWhere}
-              <Select value={place} onChange={(event) => setPlace(event.target.value as typeof place)} className="w-auto" data-testid="trucks-place-filter">
+            <label className="block min-w-[12rem] flex-1 space-y-2 text-sm font-medium">
+              <span className="block">{messages.trucksWhere}</span>
+              <Select value={place} onChange={(event) => setPlace(event.target.value as typeof place)} data-testid="trucks-place-filter">
                 <option value="">{messages.trucksWhereAnywhere}</option>
                 <option value="in_yard">{messages.trucksWhereInYard}</option>
                 <option value="in_shop">{messages.trucksWhereInShop}</option>

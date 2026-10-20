@@ -89,7 +89,7 @@ describe('LTR-33 Work Plan copy helpers', () => {
   it('keeps Truck / Work Order / Ready to Go in Spanish Work Plan copy', () => {
     expect(es.workPlanDescription).toContain('Truck');
     expect(es.workPlanDescription).toContain('Work Order');
-    expect(es.workPlanDescription).toContain('Ready to Go');
+    expect(es.workPlanReadyAutomatic).toContain('Ready to Go');
     expect(es.workPlanOpenWorkOrder).toContain('Work Order');
     expect(es.workPlanReady).toBe('Ready to Go');
     expect(es.workPlanIssuesFoundHelp).toContain('Truck');

@@ -387,7 +387,7 @@ export function AdminWorkOrderDetail({
     />
 
     {/* LTR-109 / LTR-174: operational work first (Jobs, notes); context on the side on desktop. */}
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
         <SectionCard
           title={messages.jobs}

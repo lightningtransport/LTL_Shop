@@ -199,7 +199,7 @@ export function AdminNewWorkOrder({
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <AdminBackLink href="/admin/work-orders">{messages.backToWorkOrders}</AdminBackLink>
       <PageHeader title={messages.newWorkOrderTitle} subtitle={messages.newWorkOrderSubtitle} />
 
@@ -356,7 +356,7 @@ export function AdminNewWorkOrder({
           {error ? <InlineAlert className="sm:col-span-2">{error}</InlineAlert> : null}
         </CardContent>
         <CardFooter className="border-t pt-4">
-          <Button type="button" className="w-full" disabled={!canSubmit} onClick={submit}>
+          <Button type="button" className="w-full sm:ml-auto sm:w-auto" disabled={!canSubmit} onClick={submit}>
             {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
           </Button>
         </CardFooter>

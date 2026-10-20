@@ -97,7 +97,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
-    await expect(page.getByText('What needs you now, in order. Each action happens here.')).toBeVisible();
+    await expect(page.getByText('What needs you now, in order.')).toBeVisible();
     await expect(page.getByText(/^Live · updated /)).toHaveCount(1);
     await expect(page.getByText(/supabase|postgres|Source:|Generated/i)).toHaveCount(0);
     // Stage 3: four counters, one queue grouped by the action; history counts are links.
@@ -142,7 +142,7 @@ test.describe('Shop Admin Phase 2A', () => {
 
     await switchLanguage(page, 'es');
     await expect(page.getByRole('heading', { name: 'Panel', exact: true })).toBeVisible();
-    await expect(page.getByText('Lo que te necesita ahora, en orden. Cada acción se hace aquí.')).toBeVisible();
+    await expect(page.getByText('Lo que te necesita ahora, en orden.')).toBeVisible();
     await expect(page.getByRole('heading', { name: /^Te necesita/ })).toBeVisible();
     await expect(page.getByTestId('dashboard-group-close')).toContainText('Listos para cerrar');
     await expect(page.getByText(/^En vivo · actualizado /)).toHaveCount(1);
@@ -444,13 +444,14 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('button', { name: /Filters \(1\)/ })).toBeVisible();
     await expect(page.getByRole('link', { name: 'WO-0101' }).first()).toBeInViewport();
 
-    // UX-4-001 (PR 338): the Work Orders bar (search, four selects, Clear, Apply) goes inline when its card is 68rem
-    // wide. With the sidebar from lg that is about 1440 px; tablets and 1280–1366 px laptops keep the sheet.
-    for (const width of [768, 1280, 1366]) {
+    // UX-4-001 (PR 338) + LTR-259: from a 44rem card (an iPad Pro in landscape, 1280–1366 px laptops) the four selects
+    // show on a second row under the search; from 68rem (about 1440 px with the sidebar) everything sits on one row.
+    // Narrower cards keep the sheet.
+    for (const width of [768]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON }), `sheet at ${width}px`).toBeVisible();
     }
-    for (const width of [1440, 1536, 1920]) {
+    for (const width of [1194, 1280, 1366, 1440, 1536, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.getByRole('button', { name: WORK_ORDER_FILTERS_BUTTON })).toBeHidden();
       const toolbar = page.getByRole('search');
@@ -461,7 +462,7 @@ test.describe('Shop Admin Phase 2A', () => {
       await expect(toolbar.getByRole('button', { name: 'Clear' })).toBeVisible();
       await expect(toolbar.getByRole('button', { name: 'Apply filters' })).toBeVisible();
       const box = await toolbar.boundingBox();
-      expect(box?.height, `desktop toolbar wraps at ${width}px`).toBeLessThan(110);
+      expect(box?.height, `toolbar rows at ${width}px`).toBeLessThan(width >= 1440 ? 110 : 190);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflow, `horizontal overflow at ${width}px`).toBe(false);
     }

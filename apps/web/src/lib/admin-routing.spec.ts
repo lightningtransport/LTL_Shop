@@ -65,12 +65,8 @@ describe('Shop Admin routing and messages', () => {
     expect(getAdminMessages('es').locationUpdatedOn.toLowerCase()).not.toContain('en el yard');
     expect(getAdminMessages('en').lastReportedLocation.toLowerCase()).not.toContain('presence');
     expect(getAdminMessages('es').lastReportedLocation.toLowerCase()).not.toContain('presencia');
-    expect(getAdminMessages('en').yardOperationsPhase1Body).toBe(
-      'The week Dispatch planned. Where each truck is comes from Samsara GPS.',
-    );
-    expect(getAdminMessages('es').yardOperationsPhase1Body).toBe(
-      'La semana que planeó Dispatch. Dónde está cada camión sale del GPS de Samsara.',
-    );
+    expect(getAdminMessages('en').yardOperationsPhase1Body).toBe('The week Dispatch planned.');
+    expect(getAdminMessages('es').yardOperationsPhase1Body).toBe('La semana que planeó Dispatch.');
     expect(getAdminMessages('en').yardOperationsPhase1Body.toLowerCase()).not.toContain('in the yard');
     expect(getAdminMessages('es').yardOperationsPhase1Body.toLowerCase()).not.toContain('en el patio');
     expect(adminPauseReasonLabel('waiting_for_parts', getAdminMessages('en'))).toBe('Waiting for Parts');

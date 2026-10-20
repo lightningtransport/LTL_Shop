@@ -90,9 +90,10 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
     <Card className="min-w-0 p-3 [container-type:inline-size]">
       {/* UX-4-005: five filters fit inline only when the card has the room (container, not window). */}
       <form role="search" className="min-w-0" onSubmit={applyFilters}>
-        <div className="flex min-w-0 items-end gap-2 [@container(min-width:68rem)]:flex-nowrap [@container(min-width:68rem)]:gap-1.5">
+        {/* LTR-259: from 44rem (iPad) the filters show on a second row under the search instead of behind "Filters". */}
+        <div className="flex min-w-0 items-end gap-2 [@container(min-width:44rem)]:flex-wrap [@container(min-width:68rem)]:flex-nowrap [@container(min-width:68rem)]:gap-1.5">
           {/* UX-4-005: the search keeps 14rem next to the inline filters; short placeholder, full aria-label. */}
-          <label className="min-w-0 flex-1 space-y-1 [@container(min-width:68rem)]:min-w-[14rem] [@container(min-width:68rem)]:flex-[1.35]">
+          <label className="min-w-0 flex-1 space-y-1 [@container(min-width:44rem)]:basis-full [@container(min-width:68rem)]:min-w-[14rem] [@container(min-width:68rem)]:flex-[1.35] [@container(min-width:68rem)]:basis-0">
             <span className="sr-only [@container(min-width:68rem)]:not-sr-only [@container(min-width:68rem)]:block [@container(min-width:68rem)]:truncate [@container(min-width:68rem)]:text-xs [@container(min-width:68rem)]:font-medium" title={messages.search}>{messages.search}</span>
             <Input
               type="search"
@@ -100,12 +101,12 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
               enterKeyHint="search"
               aria-label={messages.search}
               placeholder={messages.searchPlaceholder}
-              className="[@container(min-width:68rem)]:min-h-9 [@container(min-width:68rem)]:px-3"
+              className="[@container(min-width:68rem)]:px-3 [@container(min-width:68rem)]:[@media(pointer:fine)]:min-h-9"
               value={filters.search}
               onChange={(event) => updateFilter('search', event.target.value)}
             />
           </label>
-          <div className="hidden min-w-0 [@container(min-width:68rem)]:contents">
+          <div className="hidden min-w-0 [@container(min-width:44rem)]:flex [@container(min-width:44rem)]:flex-1 [@container(min-width:44rem)]:flex-wrap [@container(min-width:44rem)]:items-end [@container(min-width:44rem)]:gap-2 [@container(min-width:68rem)]:contents">
             <WorkOrderFilterFields filters={filters} messages={messages} onChange={updateFilter} compact />
             <div className="flex shrink-0 gap-1.5">
               <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={clearFilters}>{messages.clearFilters}</Button>
@@ -115,7 +116,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
           <Button
             type="button"
             variant="outline"
-            className="shrink-0 [@container(min-width:68rem)]:hidden"
+            className="shrink-0 [@container(min-width:44rem)]:hidden"
             aria-label={filtersButtonLabel}
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen(true)}
@@ -129,7 +130,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
             ) : null}
           </Button>
         </div>
-        {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground [@container(min-width:68rem)]:block">{messages.dashboardRangeActive}</p> : null}
+        {hasDashboardRange ? <p className="mt-2 hidden rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground [@container(min-width:44rem)]:block">{messages.dashboardRangeActive}</p> : null}
       </form>
     </Card>
     <Modal
@@ -170,9 +171,10 @@ function WorkOrderFilterFields({
   compact?: boolean;
 }) {
   // LTR-169: block, or the sheet's space-y never reaches the inline <label> (4px between fields).
-  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1' : 'block space-y-2';
+  const fieldClass = compact ? 'min-w-0 flex-1 space-y-1 [@container(min-width:44rem)]:min-w-[9rem]' : 'block space-y-2';
   const labelClass = compact ? 'block truncate text-xs font-medium' : 'text-sm font-medium';
-  const controlClass = compact ? 'min-h-9 px-3 pr-9' : undefined;
+  // LTR-259: compact boxes only on a mouse; a touch tablet keeps the 44px field.
+  const controlClass = compact ? 'px-3 pr-9 [@media(pointer:fine)]:min-h-9' : undefined;
 
   return <>
     <label className={fieldClass}><span className={labelClass} title={messages.status}>{messages.status}</span><Select className={controlClass} aria-label={messages.status} value={filters.status} onChange={(event) => onChange('status', event.target.value)}>

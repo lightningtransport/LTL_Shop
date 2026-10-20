@@ -187,6 +187,8 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
               {(data?.truckMakes ?? []).map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
           </div>
+          {/* LTR-259: the three checkboxes wrap as one group, so none ends up alone on a row. */}
+          <div className="flex flex-wrap items-center gap-x-4">
           <label className="flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" checked={filters.inStock} onChange={(event) => set('inStock', event.target.checked)} />
             {messages.pcInStockOnly}
@@ -199,6 +201,7 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
             <input type="checkbox" checked={filters.includeInactive} onChange={(event) => set('includeInactive', event.target.checked)} />
             {messages.pcShowInactive}
           </label>
+          </div>
         </CardContent>
       </Card>
       {stockData ? (
@@ -352,25 +355,27 @@ function PartsTable({ category, stock, canWrite, locale, messages, onEdit, onCha
             </div>
           ),
         },
-        { key: 'fits', header: messages.pcFits, cell: (part) => fitsLabel(part.fits, messages) },
+        { key: 'fits', header: messages.pcFits, className: 'whitespace-nowrap', cell: (part) => fitsLabel(part.fits, messages) },
         {
           key: 'inStock',
           header: messages.pcInStockCol,
+          className: 'whitespace-nowrap',
+          // LTR-259: the minimum sits under the count (no own column), so the table fits an iPad in portrait.
           cell: (part) => {
             const item = stock.get(part.id);
             return (
               <span className="tabular-nums" data-testid="part-in-stock">
                 {stockQty(item?.onHand ?? 0)}
                 {item?.low ? <Badge variant="secondary" className="ml-2 border-warning/50 bg-warning/15 text-warning-foreground">{messages.pcStockLow}</Badge> : null}
+                {part.minStock !== null && part.minStock !== undefined ? <span className="block text-xs text-muted-foreground" data-testid="part-min">{messages.pcStockMin} {part.minStock}</span> : null}
               </span>
             );
           },
         },
-        { key: 'min', header: messages.pcStockMin, cell: (part) => <span className="tabular-nums text-muted-foreground">{part.minStock ?? '—'}</span> },
         {
           key: 'cost',
           // D47 / HU-M20 (UX-10-008): one cost — the average when there is stock, else the reference cost ("ref").
-          header: `${messages.pcCostCol} (${messages.pcCostColHint})`,
+          header: messages.pcCostCol,
           cell: (part) => {
             const cost = stockCost(stock.get(part.id) ?? { avgCostCents: null }, part.unitCostCents);
             return (
@@ -390,11 +395,13 @@ function PartsTable({ category, stock, canWrite, locale, messages, onEdit, onCha
         {
           key: 'vendor',
           header: messages.pcUsualVendor,
+          className: 'whitespace-nowrap',
           cell: (part) => part.defaultVendor?.name ?? <span className="text-muted-foreground">{messages.pcNoVendor}</span>,
         },
         ...(category.kind === 'pm' ? [{
           key: 'used',
           header: messages.pcUsedInPms,
+          className: 'whitespace-nowrap',
           cell: (part: AdminPartDto) => (
             <span className="tabular-nums" title={part.lastUsedAt ? formatShortDateTime(part.lastUsedAt, locale) : undefined}>{part.usedInPmCount}</span>
           ),

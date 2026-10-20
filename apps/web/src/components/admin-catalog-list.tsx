@@ -6,8 +6,7 @@ import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { AddCategoryButton, CatalogSearchResults, CategoryMenu, CategoryStatusNote } from './admin-catalog-manage';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import { AdminWriteTip } from './admin-write-tip';
-import { DataTable, PageHeader, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
+import { Button, DataTable, PageHeader, Card, CardContent, EmptyState, Input, LoadFailure, PageSkeleton } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories, useAdminCustomJobs } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
@@ -36,17 +35,20 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       <PageHeader
         title={messages.catalogTitle}
         subtitle={canWrite ? messages.catalogWriteDescription : messages.catalogDescription}
-        actions={canWrite ? <div className="flex flex-wrap gap-2"><AddCategoryButton messages={messages} onAdded={() => void mutate()} />{addJobButton()}</div> : null}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            {/* LTR-259: with nothing to review the inbox is a quiet header button, not a stray link row. */}
+            {!toReview ? <Button asChild variant="outline"><AdminNavLink href="/admin/catalog/review">{messages.cjInbox}</AdminNavLink></Button> : null}
+            {canWrite ? <><AddCategoryButton messages={messages} onAdded={() => void mutate()} />{addJobButton()}</> : null}
+          </div>
+        )}
       />
-      {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       {toReview ? (
         <AdminNavLink className="tap-inline flex items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning-surface px-4 py-3 text-sm text-warning-foreground hover:underline" href="/admin/catalog/review" data-testid="custom-jobs-to-review">
           {fillPlaceholders(messages.cjInboxCount, { count: String(toReview) })}
           <span aria-hidden="true">›</span>
         </AdminNavLink>
-      ) : (
-        <AdminNavLink className="tap-inline text-sm text-primary hover:underline" href="/admin/catalog/review">{messages.cjInbox}</AdminNavLink>
-      )}
+      ) : null}
       <Card className="p-3">
         <CardContent>
           <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={messages.searchCatalog} aria-label={messages.searchCatalog} />

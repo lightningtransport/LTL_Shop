@@ -49,3 +49,9 @@ cd apps/web && MOBILE_WALK=1 MOBILE_WALK_OUT=/tmp/walk ADMIN_E2E_FIXTURE=1 ../..
 ## 5. Verify
 - `apps/web/e2e/mobile-frame.spec.ts`: the document is never taller than the screen, and the Parts header actions stay on screen. Run it on both projects.
 - Re-run the walk. Then run `npm test` and `tsc` in `apps/web`.
+
+## 6. Tablet (iPad Pro 11", LTR-259)
+- Admin only: the mechanic, PM and Safety apps stay a phone column on a tablet on purpose.
+- Run `TABLET_WALK=1 ADMIN_E2E_FIXTURE=1 node ../../node_modules/@playwright/test/cli.js test e2e/tablet-walk.spec.ts` in `apps/web`. `TABLET_WALK=1` swaps the projects for `ipad-portrait` (834×1194, no sidebar) and `ipad-landscape` (1194×834, sidebar at `lg`, about 954 px of content). `TABLET_WALK_ONLY=trucks,purchases` walks a subset.
+- `report.json` per screen: `overflow` (`main` scrolls sideways), `overlap` (two controls cover each other), `gutter` (capped boxes or content that stops 120 px short of the column), `copy` (text over 120 characters or team words: D34, LTR-, Vercel, GitHub, npm, token, Activity Log).
+- House rules for tablet: filter bars wrap before they overlap (`flex-wrap`, search `flex-1 min-w-…`, no `whitespace-nowrap shrink-0` around controls); side columns of detail pages start at `xl`; no `max-w-2xl` forms or fixed-width Kanban columns inside list pages.

@@ -52,8 +52,8 @@ type JobDialog =
   | { kind: 'return'; jobId: string };
 
 // Stage 8 (mockup): Job (grows) · Mechanic 200px · Status 130px · Action 150px; two lines on phones.
-const GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_200px_130px_150px] lg:gap-4';
-const STATUS = 'inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap max-lg:order-1 max-lg:text-xs lg:justify-self-start';
+const GRID = 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 [@container(min-width:44rem)]:grid-cols-[minmax(12rem,1fr)_minmax(9rem,200px)_130px_150px] [@container(min-width:44rem)]:gap-4';
+const STATUS = 'inline-flex items-center gap-1.5 justify-self-end whitespace-nowrap [@container(width<44rem)]:order-1 [@container(width<44rem)]:text-xs [@container(min-width:44rem)]:justify-self-start';
 
 /**
  * LTR-174 / Stage 5 (R3, R5) / Stage 8 (mockup): the Jobs of a Work Order — Job · Mechanic · Status · Action,
@@ -144,7 +144,7 @@ export function AdminJobTable({
   if (!data.jobs.length) return <p className="px-4 py-6 text-center text-muted-foreground">{messages.jobsEmpty}</p>;
 
   function rowMenu(job: Job, name: string, items: MenuItem[]) {
-    if (!items.length) return <span aria-hidden="true" className="hidden size-8 shrink-0 lg:block" />;
+    if (!items.length) return <span aria-hidden="true" className="hidden size-8 shrink-0 [@container(min-width:44rem)]:block" />;
     return (
       <ResponsiveMenu
         label={name}
@@ -152,7 +152,7 @@ export function AdminJobTable({
         trigger={(
           <button
             type="button"
-            className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 lg:size-8"
+            className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50 [@container(min-width:44rem)]:size-8"
             aria-label={fillPlaceholders(messages.jobRowActions, { job: name })}
             disabled={pending}
           >
@@ -209,14 +209,14 @@ export function AdminJobTable({
     if (isExternal && job.external) {
       const Icon = job.external.kind === 'truck' ? Truck : Package;
       mechanic = (
-        <span className="flex h-10 min-w-0 items-center gap-2 text-muted-foreground max-lg:order-2 lg:h-9" title={job.external.note} data-testid="admin-wo-job-external-where">
+        <span className="flex h-10 min-w-0 items-center gap-2 text-muted-foreground [@container(width<44rem)]:order-2 [@container(min-width:44rem)]:h-9" title={job.external.note} data-testid="admin-wo-job-external-where">
           <Icon aria-hidden="true" className="size-3.5 shrink-0" />
           <span className="truncate">{job.external.kind === 'truck' ? messages.jobTruckOut : messages.jobPartOut} · {job.external.note}</span>
         </span>
       );
     } else if (isQualityCheck) {
       mechanic = (
-        <span className="flex h-10 items-center gap-2 px-2 text-muted-foreground max-lg:order-2 max-lg:-ml-2 lg:h-9" title={messages.workPlanQcHint}>
+        <span className="flex h-10 items-center gap-2 px-2 text-muted-foreground [@container(width<44rem)]:order-2 [@container(width<44rem)]:-ml-2 [@container(min-width:44rem)]:h-9" title={messages.workPlanQcHint}>
           <span className="grid size-6 place-items-center rounded-full border border-dashed border-muted-foreground/60"><ShieldCheck aria-hidden="true" className="size-3.5" /></span>
           Safety
         </span>
@@ -235,7 +235,7 @@ export function AdminJobTable({
           trigger={(
             <button
               type="button"
-              className={cn('flex h-11 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent disabled:opacity-60 max-lg:order-2 max-lg:-ml-2 max-lg:justify-self-start lg:h-9', pendingAction === `assign-job-${job.id}` && 'opacity-60')}
+              className={cn('flex h-11 min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-accent disabled:opacity-60 [@container(width<44rem)]:order-2 [@container(width<44rem)]:-ml-2 [@container(width<44rem)]:justify-self-start [@container(min-width:44rem)]:h-9', pendingAction === `assign-job-${job.id}` && 'opacity-60')}
               aria-label={fillPlaceholders(messages.assignJobMechanicFor, { job: job.displayName })}
               disabled={pending}
             >
@@ -257,7 +257,7 @@ export function AdminJobTable({
       );
     } else {
       mechanic = (
-        <span className="flex h-10 min-w-0 items-center gap-2 max-lg:order-2 lg:h-9">
+        <span className="flex h-10 min-w-0 items-center gap-2 [@container(width<44rem)]:order-2 [@container(min-width:44rem)]:h-9">
           {job.assignedMechanic ? (
             <><MechanicAvatar id={job.assignedMechanic.id} name={job.assignedMechanic.name} size="sm" /><span className="truncate">{job.assignedMechanic.name}</span></>
           ) : <span className="text-muted-foreground">{job.workflowStepKey ? messages.jobInTeamQueue : isPmJob ? messages.pmJobUnassigned : messages.jobUnassigned}</span>}
@@ -277,7 +277,7 @@ export function AdminJobTable({
     if (canEdit) {
       if (isExternal) {
         action = onReturnExternal ? (
-          <Button type="button" size="sm" variant="outline" className="h-10 lg:h-8" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
+          <Button type="button" size="sm" variant="outline" className="h-10 [@container(min-width:44rem)]:h-8" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
             <PackageCheck aria-hidden="true" />
             {pendingAction === `return-external-${job.id}` ? messages.saving : messages.externalReturnedAction}
           </Button>
@@ -293,7 +293,7 @@ export function AdminJobTable({
             type="button"
             size="sm"
             variant={isQualityCheck ? 'default' : 'outline'}
-            className="h-10 lg:h-8"
+            className="h-10 [@container(min-width:44rem)]:h-8"
             disabled={pending}
             aria-label={`${messages.completeJobAction}: ${name}`}
             onClick={() => onComplete(job.id)}
@@ -404,7 +404,7 @@ export function AdminJobTable({
         </div>
         {mechanic}
         {status}
-        <div className="flex items-center justify-end gap-1 max-lg:order-3">
+        <div className="flex items-center justify-end gap-1 [@container(width<44rem)]:order-3">
           {action}
           {rowMenu(job, name, items)}
         </div>
@@ -444,23 +444,23 @@ export function AdminJobTable({
             {pmSummary ? ` · ${pmSummary}` : ''}
           </p>
         </div>
-        <span className="max-lg:order-2 max-lg:text-xs lg:px-2">
-          {cancelled ? '—' : job.completedBy ? <><span className="lg:sr-only">{messages.completedByLabel} </span>{job.completedBy.name}</> : '—'}
+        <span className="[@container(width<44rem)]:order-2 [@container(width<44rem)]:text-xs [@container(min-width:44rem)]:px-2">
+          {cancelled ? '—' : job.completedBy ? <><span className="[@container(min-width:44rem)]:sr-only">{messages.completedByLabel} </span>{job.completedBy.name}</> : '—'}
         </span>
         {cancelled ? (
           <span className={cn(STATUS, 'text-muted-foreground')} data-status="cancelled"><CircleSlash aria-hidden="true" className="size-3.5" />{messages.jobStatusCancelled}</span>
         ) : (
           <span className={cn(STATUS, 'text-success')} data-status="completed"><Check aria-hidden="true" className="size-3.5" />{fillPlaceholders(messages.jobDone, { time: formatTime(job.completedAt, locale) })}</span>
         )}
-        <div className="flex justify-end max-lg:order-3">{items.length ? rowMenu(job, name, items) : null}</div>
+        <div className="flex justify-end [@container(width<44rem)]:order-3">{items.length ? rowMenu(job, name, items) : null}</div>
       </li>
     );
   }
 
   const closedLabel = fillPlaceholders(messages.jobsClosedGroup, { count: String(closed.length) });
   return (
-    <div>
-      <div className="hidden grid-cols-[minmax(0,1fr)_200px_130px_150px] gap-4 border-b bg-sunken px-4 py-2 text-xs text-muted-foreground lg:grid" aria-hidden="true">
+    <div className="[container-type:inline-size]">
+      <div className="hidden grid-cols-[minmax(12rem,1fr)_minmax(9rem,200px)_130px_150px] gap-4 border-b bg-sunken px-4 py-2 text-xs text-muted-foreground [@container(min-width:44rem)]:grid" aria-hidden="true">
         <span>{messages.jobTableJob}</span>
         <span>{messages.jobTableMechanic}</span>
         <span>{messages.jobTableStatus}</span>
@@ -700,7 +700,7 @@ function PmServiceMenu({ job, messages, disabled, onChange }: {
         onSelect: () => { if (item.id !== job.catalogJobId) onChange(item.id); },
       }))}
       trigger={(
-        <Button type="button" size="sm" variant="outline" className="h-10 lg:h-8" aria-label={messages.pmServiceVariant} title={messages.pmJobCompletedFromPmService} disabled={disabled}>
+        <Button type="button" size="sm" variant="outline" className="h-10 [@container(min-width:44rem)]:h-8" aria-label={messages.pmServiceVariant} title={messages.pmJobCompletedFromPmService} disabled={disabled}>
           {short(job.displayName)}
           <ChevronDown aria-hidden="true" className="text-muted-foreground" />
         </Button>

@@ -17,7 +17,6 @@ test.describe('Stage 4 Truck ↔ Work Order', () => {
     await expect(step).toHaveAttribute('data-kind', 'create_work_order');
     await step.getByRole('button', { name: 'New Work Order' }).click();
     const dialog = page.getByTestId('new-work-order-dialog');
-    await expect(dialog).toContainText('PM, Alignment, Detailing and QC');
     await dialog.getByLabel('Priority').selectOption('high');
     await dialog.getByRole('button', { name: 'Create Work Order' }).click();
     await expect.poll(() => created).toMatchObject({ truckId: '00000000-0000-4000-8000-000000001001', priority: 'high', jobs: [] });

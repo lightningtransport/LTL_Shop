@@ -7,7 +7,6 @@ import { useActionToast } from './action-toast';
 import { MechanicAccessCard, MechanicCapabilityEditor } from './admin-mechanic-roster';
 import { personTypeLabel } from './admin-mechanics-list';
 import { stepLabel } from './admin-shop-workflow';
-import { AdminWriteTip } from './admin-write-tip';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { MechanicAvatar } from './mechanic-avatar';
 import { AdminBackLink, PageHeader, Badge, Button, CompactEmpty, EmptyState, InlineAlert, LoadFailure, PageSkeleton, SectionCard } from './ui';
@@ -93,7 +92,6 @@ export function AdminMechanicDetail({ id, locale, messages }: { id: string; loca
         </div>
       </SectionCard>
 
-      {canEditRoster && !staff ? <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip> : null}
       {canWrite && staff && !canManage ? <p className="text-sm text-muted-foreground" data-testid="person-staff-read-only">{messages.peopleStaffReadOnly}</p> : null}
       {canEditRoster ? <MechanicCapabilityEditor mechanic={data} messages={messages} onSaved={() => void mutate()} /> : null}
       {canEditRoster ? <InspectPermissionCard person={data} messages={messages} onSaved={() => void mutate()} /> : null}
