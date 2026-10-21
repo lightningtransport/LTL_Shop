@@ -45,7 +45,7 @@ describe('D41 tire rule', () => {
   });
 });
 
-describe('tireFindingReason (D53)', () => {
+describe('tireFindingReason (D54)', () => {
   const reading = (psi: number, tread: number) => ({ psi, tread, targetPsi: 110, minTread: 4 });
   it('says worn when the tread is under the minimum, even if the pressure is off too', () => {
     expect(tireFindingReason(reading(110, 3))).toBe('worn');

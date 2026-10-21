@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type HTMLAttributes, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui';
@@ -13,6 +13,10 @@ import { Button } from './ui';
  *
  * LTR-227: with a mouse (no trackpad swipe) the board moves sideways like Trello: a scrollbar always shown at the
  * bottom, and dragging the empty board (not a card, link or button) pans it. Shift + wheel works as in any browser.
+ *
+ * D53 (LTR-266): `fit` is the board on a TV (the Full screen tab), where nobody can scroll. The lists share the
+ * screen width (no 18 rem minimum, no sideways scroll), each one is as tall as the board, and a list whose cards
+ * don't fit turns compact (`data-compact` on the list; cards style themselves with `group-data-[compact=true]/lane:`).
  */
 
 /** Pressed on these, a drag is theirs (a click, a text selection), not the board's. */
@@ -63,11 +67,13 @@ function useKanbanPan() {
   };
 }
 
-export function KanbanBoard({ children, label, labelId, className, ...rest }: {
+export function KanbanBoard({ children, label, labelId, fit = false, className, ...rest }: {
   children: ReactNode;
   /** Visually hidden heading of the board. */
   label: string;
   labelId: string;
+  /** D53: every list fits the screen, nothing scrolls (a TV). */
+  fit?: boolean;
   className?: string;
 } & Omit<HTMLAttributes<HTMLElement>, 'children'>) {
   const { panning, handlers } = useKanbanPan();
@@ -76,14 +82,19 @@ export function KanbanBoard({ children, label, labelId, className, ...rest }: {
       aria-labelledby={labelId}
       className={cn(
         'space-y-4',
-        'lg:flex lg:items-start lg:gap-3 lg:space-y-0 lg:overflow-x-auto lg:overflow-y-hidden lg:overscroll-x-contain lg:pb-3',
-        // LTR-227: the sideways scrollbar is always shown (globals.css), so a mouse reaches every list.
-        'kanban-scrollbar',
+        fit
+          ? 'lg:flex lg:items-stretch lg:gap-2 lg:space-y-0 lg:overflow-hidden'
+          : cn(
+            'lg:flex lg:items-start lg:gap-3 lg:space-y-0 lg:overflow-x-auto lg:overflow-y-hidden lg:overscroll-x-contain lg:pb-3',
+            // LTR-227: the sideways scrollbar is always shown (globals.css), so a mouse reaches every list.
+            'kanban-scrollbar',
+          ),
         panning && 'cursor-grabbing select-none',
         className,
       )}
       data-panning={panning || undefined}
-      {...handlers}
+      data-fit={fit || undefined}
+      {...(fit ? {} : handlers)}
       {...rest}
     >
       <h2 id={labelId} className="sr-only">{label}</h2>
@@ -92,7 +103,49 @@ export function KanbanBoard({ children, label, labelId, className, ...rest }: {
   );
 }
 
-export function KanbanColumn({ id, index, title, count, emptyLabel, open = true, onToggle, children, ...props }: {
+/**
+ * D53: a fitted list turns compact when its cards don't fit its height, and back when the normal cards fit again.
+ * It remembers how tall the normal cards were, so the compact cards (shorter) don't flip it straight back.
+ */
+function useFitCompact(enabled: boolean, count: number) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  const compactRef = useRef(false);
+  const normalHeight = useRef(0);
+  compactRef.current = compact;
+
+  const measure = useCallback(() => {
+    const body = bodyRef.current;
+    if (!enabled || !body) return;
+    if (!compactRef.current) {
+      if (body.scrollHeight > body.clientHeight + 1) {
+        normalHeight.current = body.scrollHeight;
+        setCompact(true);
+      }
+    } else if (body.clientHeight >= normalHeight.current) {
+      setCompact(false);
+    }
+  }, [enabled]);
+
+  // Cards came or went: measure the normal cards again (before paint, so nothing flashes).
+  useLayoutEffect(() => {
+    normalHeight.current = 0;
+    setCompact(false);
+  }, [count, enabled]);
+  // A card's text can change its height (the board refreshes every 30 s).
+  useLayoutEffect(measure);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!enabled || !body) return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [enabled, measure]);
+
+  return { bodyRef, compact: enabled && compact };
+}
+
+export function KanbanColumn({ id, index, title, count, emptyLabel, open = true, onToggle, fit = false, children, ...props }: {
   id: string;
   /** 1-based position shown before the title. */
   index?: number;
@@ -103,19 +156,25 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
   /** Phones only: the column folds. */
   open?: boolean;
   onToggle?: () => void;
+  /** D53: shares the board width, as tall as the board, compact cards when full. */
+  fit?: boolean;
   children?: ReactNode;
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'id' | 'title'>) {
   const headingId = `kanban-column-${id}`;
   const empty = count === 0;
+  const { bodyRef, compact } = useFitCompact(fit, count);
 
   return (
     <section
       aria-labelledby={headingId}
       className={cn(
-        // LTR-259: columns share the board width (never under 18rem); more than fit scroll sideways.
-        'lg:flex lg:max-h-full lg:min-w-72 lg:flex-[1_0_18rem] lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
+        'group/lane lg:flex lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
+        // LTR-259: columns share the board width (never under 18rem); more than fit scroll sideways. D53: on a TV
+        // they share it with no minimum.
+        fit ? 'lg:min-w-0 lg:flex-[1_1_0%]' : 'lg:max-h-full lg:min-w-72 lg:flex-[1_0_18rem]',
         empty && 'hidden',
       )}
+      data-compact={compact || undefined}
       {...props}
     >
       <h3 id={headingId} className="lg:shrink-0 lg:px-3 lg:pb-1 lg:pt-2.5">
@@ -131,7 +190,7 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
           <ChevronDown aria-hidden="true" className={cn('ml-auto size-3.5 text-muted-foreground transition-transform lg:hidden', open && 'rotate-180')} />
         </button>
       </h3>
-      <div className={cn('mt-1 flex-col gap-2 lg:mt-0 lg:flex lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:p-2', open ? 'flex' : 'hidden')}>
+      <div ref={bodyRef} className={cn('mt-1 flex-col gap-2 lg:mt-0 lg:flex lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:p-2', fit && 'lg:flex-1', compact && 'lg:gap-1.5', open ? 'flex' : 'hidden')}>
         {empty ? <p className="px-1 pb-1 text-xs text-muted-foreground">{emptyLabel}</p> : children}
       </div>
     </section>

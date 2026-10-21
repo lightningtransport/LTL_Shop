@@ -266,11 +266,11 @@ export default function WorkOrderDetailPage() {
         backHref="/mechanic/standard"
       />
 
-      {/* D53: one column on the phone; on an iPad my Jobs on the left, Notes and Truck Information on the right. */}
+      {/* D54: one column on the phone; on an iPad my Jobs on the left, Notes and Truck Information on the right. */}
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6">
         <div className="min-w-0">
           {/* Stage MG-4 (UX-4-007): what matters to me here — my Jobs and whether I am working here.
-              D53: never how long; the clock still counts behind the scenes for labor (D34). */}
+              D54: never how long; the clock still counts behind the scenes for labor (D34). */}
           <section
             className={`mb-4 rounded-xl border bg-card p-4 ${wo.laborRunning ? 'border-primary ring-1 ring-primary' : ''}`}
             data-testid="my-summary"
@@ -761,7 +761,7 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
         {job.qcFindings?.map((text) => (
           <p key={text} className="text-xs text-muted-foreground" data-testid="job-qc-finding">{messages.jobQcFinding(text)}</p>
         ))}
-        {/* D53: which tire the inspection found and why, and what the sheet said, so the mechanic knows what to fix. */}
+        {/* D54: which tire the inspection found and why, and what the sheet said, so the mechanic knows what to fix. */}
         {job.tireFindings?.length || job.inspectionNotes?.length ? (
           <div className="mt-1.5 rounded-md border border-warning/40 bg-warning-surface px-2.5 py-1.5 text-sm text-warning-foreground dark:text-warning" data-testid="job-from-inspection">
             <p className="text-xs font-medium">{messages.jobFromInspectionTitle}</p>

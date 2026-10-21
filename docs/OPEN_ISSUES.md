@@ -18,6 +18,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
+| Yard | LTR-266 | En la TV del taller el tablero del Yard pide scroll de lado y hacia abajo (D53) | B |
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |

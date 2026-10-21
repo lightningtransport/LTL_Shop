@@ -7,7 +7,7 @@ import { devLogin } from './support/dev-login';
  * LTR-259: tablet UI walk (skill `mobile-ui-check`, tablet section). Off unless TABLET_WALK=1, which also swaps the
  * Playwright projects for iPad Pro 11" portrait (834×1194) and landscape (1194×834). For every Admin screen it
  * screenshots the page and measures four things (LTR-264: also the New purchase / New outside repair dialogs and the
- * mechanic and PM screens, which use the iPad width since D53):
+ * mechanic and PM screens, which use the iPad width since D54):
  * - overflow: `main` scrolls sideways.
  * - overlap: two visible controls (input, select, button, link) cover each other.
  * - gutter: a capped container or the content leaves more than 120 px empty on the right of the content column.

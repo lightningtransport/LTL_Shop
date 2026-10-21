@@ -62,7 +62,7 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
         <h2 className="section-title mb-1 flex items-center gap-2">{messages.pmWaitingTitle}<CountChip>{waiting.length}</CountChip></h2>
         <p className="mb-2 text-sm text-muted-foreground">{messages.mostUrgentFirst}</p>
         {waiting.length ? (
-          // D53: two per row on an iPad; the next-up card takes the whole row.
+          // D54: two per row on an iPad; the next-up card takes the whole row.
           <ul className="grid gap-2 md:grid-cols-2">
             {waiting.map((wo, index) => {
               const next = !running && index === 0;

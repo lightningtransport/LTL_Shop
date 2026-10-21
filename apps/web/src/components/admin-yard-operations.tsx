@@ -117,6 +117,10 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.nextCursor);
   const counts = data?.[0]?.counts;
+  // D53: the TV board can't be tapped for "Load more", so it loads every page on its own.
+  useEffect(() => {
+    if (boardView && hasMore && !isValidating) void setSize(size + 1);
+  }, [boardView, hasMore, isValidating, size, setSize]);
   const appliedFilters = useMemo(() => readYardOperationsFilters(searchParams), [searchParams]);
   const quick = yardQuickFilterOf(appliedFilters);
   const anyFilter = Boolean(appliedFilters.search) || countActiveYardOperationsFilters(appliedFilters) > 0 || Boolean(appliedFilters.outOfShop) || Boolean(appliedFilters.soon);
@@ -345,6 +349,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             label={messages.yardLanes}
             labelId="yard-lanes-title"
             className={boardView ? 'lg:min-h-0 lg:flex-1' : 'lg:h-[max(24rem,calc(100dvh-19rem))]'}
+            fit={boardView}
             data-testid="yard-lanes"
           >
             {WORK_PLAN_YARD_PHASES.map((phase, index) => {
@@ -361,6 +366,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                   count={laneCount}
                   emptyLabel={messages.yardNoTrucksLane}
                   open={open}
+                  fit={boardView}
                   onToggle={() => setClosedLanes((current) => ({ ...current, [phase]: open }))}
                 >
                   {phaseItems.map((item) => <YardTruckCard key={item.truck.id} item={item} messages={messages} locale={locale} dispatch={dispatchSignals.get(item.truck.truckNumber)} soonUntil={soonUntil} canManage={canManageWorkOrders} fromPath={yardFromPath} onChanged={() => mutate()} />)}
@@ -370,7 +376,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
             <p className="text-center text-xs text-muted-foreground lg:hidden">{messages.yardEmptyHidden}</p>
           </KanbanBoard>
         )}
-        {hasMore ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
+        {hasMore && !boardView ? <Button variant="outline" className="w-full" disabled={isValidating} onClick={() => void setSize(size + 1)}>{isValidating ? `${messages.yardLoadMore}…` : messages.yardLoadMore}</Button> : null}
       </div>
     )}
   </div>;
@@ -407,19 +413,21 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
   const describedBy = useId();
   const rts = readyToGo && canManage && item.nextStep?.workOrderId ? item.nextStep.workOrderId : null;
 
+  // D53: in a full list on the TV board the card turns compact (its list sets data-compact): no vehicle line, no
+  // avatars, less padding; the alert or Next step stays whole (it is what the shop reads on the TV).
   return (
     <article className={cn('shrink-0 rounded-lg border bg-card shadow-sm', warning && 'shadow-[inset_3px_0_0_var(--warning)]')}>
       <Link
         href={adminTruckHref(item.truck.id, fromPath)}
         aria-label={item.truck.truckNumber}
         aria-describedby={`${describedBy}-line`}
-        className="block space-y-1.5 rounded-lg p-3 hover:bg-accent/40"
+        className="block space-y-1.5 rounded-lg p-3 hover:bg-accent/40 group-data-[compact=true]/lane:space-y-1 group-data-[compact=true]/lane:px-2.5 group-data-[compact=true]/lane:py-2"
         data-testid="yard-truck-card"
         data-kanban-card
       >
         <div className="flex items-start justify-between gap-2">
           <span className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate text-base font-semibold">{item.truck.truckNumber}</span>
+            <span className="truncate text-base font-semibold group-data-[compact=true]/lane:text-sm">{item.truck.truckNumber}</span>
             {/* D49 (LTR-257): in our yard (Samsara); in the shop when it also has an open Work Order. */}
             {item.presence.state === YardPresenceState.IN_YARD ? (
               <span className="shrink-0 text-xs font-medium text-success" data-testid="yard-card-place">
@@ -429,7 +437,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
           </span>
           {showPriority && workOrder ? <PriorityBadge priority={workOrder.priority}>{adminPriorityLabel(workOrder.priority, messages)}</PriorityBadge> : null}
         </div>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-xs text-muted-foreground group-data-[compact=true]/lane:hidden">
           {[vehicle, workOrder ? null : messages.noOpenWorkOrder].filter(Boolean).join(' · ')}
           {workOrder ? <>{vehicle ? ' · ' : ''}<span className="font-mono">{workOrder.displayId}</span> · {compactAge(workOrder.createdAt)}</> : null}
         </p>
@@ -446,14 +454,14 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
           // LTR-101: what is missing (the same Next step everywhere).
           <p id={`${describedBy}-line`} className="line-clamp-2 text-xs text-foreground/90" title={nextStepText} data-testid="yard-card-next-step">{nextStepText}</p>
         ) : null}
-        {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
+        {dispatch?.expectedIn ? <p className="truncate text-xs text-muted-foreground group-data-[compact=true]/lane:hidden" data-testid="yard-card-dispatch">{fillYardText(messages.yardDispatchExpectedIn, { date: formatAdminDateOnly(dispatch.expectedIn, locale) })}</p> : null}
         {workOrder && !readyToGo ? (
           <div className="flex items-center gap-2 pt-0.5" title={fillYardText(messages.yardJobsProgress, { done: String(workOrder.jobsCompleted), total: String(workOrder.jobsTotal) })}>
             <span aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-muted-foreground/20">
               <span className="block h-1 rounded-full bg-success" style={{ width: `${workOrder.jobsTotal ? (workOrder.jobsCompleted / workOrder.jobsTotal) * 100 : 0}%` }} />
             </span>
             <span className="tnum text-xs text-muted-foreground">{workOrder.jobsCompleted}/{workOrder.jobsTotal}</span>
-            <MechanicAvatarStack mechanics={mechanics} max={3} />
+            <span className="flex group-data-[compact=true]/lane:hidden"><MechanicAvatarStack mechanics={mechanics} max={3} /></span>
           </div>
         ) : null}
       </Link>

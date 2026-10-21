@@ -334,7 +334,7 @@ export function PmServiceCard({
         </p>
       ) : null}
 
-      {/* D53: on an iPad the mileage sits on the left and the parts on the right. */}
+      {/* D54: on an iPad the mileage sits on the left and the parts on the right. */}
       <div className="space-y-4 md:grid md:grid-cols-2 md:items-start md:gap-4 md:space-y-0">
       <SectionCard title={messages.pmServiceLabel} titleId="pm-service-title">
         <div className="space-y-3 p-4">

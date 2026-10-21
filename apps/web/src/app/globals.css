@@ -220,7 +220,7 @@ body {
     padding-bottom: max(2.5rem, var(--app-safe-bottom));
     padding-left: var(--app-shell-left);
   }
-  /* D53: on an iPad the mechanic and PM screens use the width (two columns where the page has them). */
+  /* D54: on an iPad the mechanic and PM screens use the width (two columns where the page has them). */
   .app-shell-wide {
     @apply md:max-w-3xl lg:max-w-6xl;
   }
