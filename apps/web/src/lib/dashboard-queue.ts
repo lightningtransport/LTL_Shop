@@ -32,8 +32,14 @@ export function dashboardGroupOf(item: Pick<AdminWorkOrderSummaryDto, 'nextStep'
 export function groupDashboardQueue<T extends Pick<AdminWorkOrderSummaryDto, 'nextStep'>>(items: T[], only: DashboardGroup | null = null) {
   return DASHBOARD_GROUPS
     .filter((group) => !only || group === only)
-    .map((group) => ({ group, items: items.filter((item) => dashboardGroupOf(item) === group) }))
+    .map((group) => ({ group, items: firstWhatLeftTheYard(items.filter((item) => dashboardGroupOf(item) === group)) }))
     .filter((entry) => entry.items.length > 0);
+}
+
+/** D52 (LTR-260): a Ready to Go truck Samsara saw leave the yard (or come back) goes first in Return to Service. */
+function firstWhatLeftTheYard<T extends Pick<AdminWorkOrderSummaryDto, 'nextStep'>>(items: T[]): T[] {
+  const moved = items.filter((item) => item.nextStep?.yardMove);
+  return moved.length ? [...moved, ...items.filter((item) => !item.nextStep?.yardMove)] : items;
 }
 
 /**

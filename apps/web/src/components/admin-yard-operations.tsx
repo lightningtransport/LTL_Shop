@@ -117,7 +117,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.nextCursor);
   const counts = data?.[0]?.counts;
-  // D52: the TV board can't be tapped for "Load more", so it loads every page on its own.
+  // D53: the TV board can't be tapped for "Load more", so it loads every page on its own.
   useEffect(() => {
     if (boardView && hasMore && !isValidating) void setSize(size + 1);
   }, [boardView, hasMore, isValidating, size, setSize]);
@@ -413,7 +413,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
   const describedBy = useId();
   const rts = readyToGo && canManage && item.nextStep?.workOrderId ? item.nextStep.workOrderId : null;
 
-  // D52: in a full list on the TV board the card turns compact (its list sets data-compact): no vehicle line, no
+  // D53: in a full list on the TV board the card turns compact (its list sets data-compact): no vehicle line, no
   // avatars, less padding; the alert or Next step stays whole (it is what the shop reads on the TV).
   return (
     <article className={cn('shrink-0 rounded-lg border bg-card shadow-sm', warning && 'shadow-[inset_3px_0_0_var(--warning)]')}>

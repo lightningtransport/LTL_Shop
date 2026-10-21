@@ -1,4 +1,5 @@
 import { JobExternalKind, WorkPlanInspectionOutcome, WorkPlanJobLane } from './enums';
+import type { ReadyToGoYardMove } from './samsara';
 
 /**
  * LTR-158 / D14: the one "Next step" rule for a Truck. The first matching kind
@@ -33,6 +34,8 @@ export interface TruckNextStepDto {
   remaining?: number;
   /** `external` (LTR-188 / D24): what went to the external shop. */
   externalKind?: JobExternalKind | `${JobExternalKind}`;
+  /** `return_to_service` (D52, LTR-260): Samsara saw the truck leave the yard after the close, or leave and come back. */
+  yardMove?: ReadyToGoYardMove;
 }
 
 export type TruckNextStepInput = {

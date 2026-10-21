@@ -14,7 +14,7 @@ import { Button } from './ui';
  * LTR-227: with a mouse (no trackpad swipe) the board moves sideways like Trello: a scrollbar always shown at the
  * bottom, and dragging the empty board (not a card, link or button) pans it. Shift + wheel works as in any browser.
  *
- * D52 (LTR-266): `fit` is the board on a TV (the Full screen tab), where nobody can scroll. The lists share the
+ * D53 (LTR-266): `fit` is the board on a TV (the Full screen tab), where nobody can scroll. The lists share the
  * screen width (no 18 rem minimum, no sideways scroll), each one is as tall as the board, and a list whose cards
  * don't fit turns compact (`data-compact` on the list; cards style themselves with `group-data-[compact=true]/lane:`).
  */
@@ -72,7 +72,7 @@ export function KanbanBoard({ children, label, labelId, fit = false, className, 
   /** Visually hidden heading of the board. */
   label: string;
   labelId: string;
-  /** D52: every list fits the screen, nothing scrolls (a TV). */
+  /** D53: every list fits the screen, nothing scrolls (a TV). */
   fit?: boolean;
   className?: string;
 } & Omit<HTMLAttributes<HTMLElement>, 'children'>) {
@@ -104,7 +104,7 @@ export function KanbanBoard({ children, label, labelId, fit = false, className, 
 }
 
 /**
- * D52: a fitted list turns compact when its cards don't fit its height, and back when the normal cards fit again.
+ * D53: a fitted list turns compact when its cards don't fit its height, and back when the normal cards fit again.
  * It remembers how tall the normal cards were, so the compact cards (shorter) don't flip it straight back.
  */
 function useFitCompact(enabled: boolean, count: number) {
@@ -156,7 +156,7 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
   /** Phones only: the column folds. */
   open?: boolean;
   onToggle?: () => void;
-  /** D52: shares the board width, as tall as the board, compact cards when full. */
+  /** D53: shares the board width, as tall as the board, compact cards when full. */
   fit?: boolean;
   children?: ReactNode;
 } & Omit<HTMLAttributes<HTMLElement>, 'children' | 'id' | 'title'>) {
@@ -169,7 +169,7 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
       aria-labelledby={headingId}
       className={cn(
         'group/lane lg:flex lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
-        // LTR-259: columns share the board width (never under 18rem); more than fit scroll sideways. D52: on a TV
+        // LTR-259: columns share the board width (never under 18rem); more than fit scroll sideways. D53: on a TV
         // they share it with no minimum.
         fit ? 'lg:min-w-0 lg:flex-[1_1_0%]' : 'lg:max-h-full lg:min-w-72 lg:flex-[1_0_18rem]',
         empty && 'hidden',

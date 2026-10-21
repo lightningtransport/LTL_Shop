@@ -409,9 +409,16 @@ test.describe('Shop Admin Phase 2A', () => {
     const row = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0104', exact: true }) });
     await expect(row).toBeVisible();
     // A completed Work Order whose Truck is Ready to Go reads "Return to Service", not "1 Job · all done".
+    // D52 (LTR-260): Samsara saw WO-0104's truck leave the yard after the close, so it asks to confirm.
     const next = row.getByTestId('work-order-row-next-step');
     await expect(next).toHaveAttribute('data-kind', 'return_to_service');
-    await expect(next).toHaveText('Ready to Go. Return it to service when it leaves the shop.');
+    // Chromium writes "Sep 21, 10:40 AM"; WebKit "Sep 21 at 10:40 AM".
+    const leftText = /Left the yard Sep 21(,| at) 10:40\sAM \(Samsara\)\. Confirm Return to Service\./;
+    await expect(next).toHaveText(leftText);
+    await page.goto('/admin');
+    const dashboardRow = page.getByTestId('dashboard-queue-row').filter({ hasText: 'WO-0104' });
+    await expect(dashboardRow).toContainText(leftText);
+    await expect(dashboardRow).toContainText('Nothing changes until you confirm.');
     await expect(row.getByText('all done')).toHaveCount(0);
 
     // An open Work Order with a Job left names that Job, like the Truck does.

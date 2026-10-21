@@ -1,6 +1,7 @@
 import { WorkPlanJobLane, type TruckNextStepDto } from '@ltl-shop/shared';
-import { adminPauseReasonLabel, type AdminMessages } from './admin-messages';
+import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from './admin-messages';
 import { fillPlaceholders } from './admin-next-step';
+import { formatDay, formatShortDateTime, formatTime } from './work-order-view';
 
 const LANE_NAME: Partial<Record<WorkPlanJobLane, string>> = {
   [WorkPlanJobLane.PM]: 'PM',
@@ -40,8 +41,14 @@ export function truckNextStepText(step: TruckNextStepDto | null | undefined, mes
       return messages.truckNextStepQc;
     case 'close':
       return messages.truckNextStepClose;
-    case 'return_to_service':
-      return messages.truckNextStepReturnToService;
+    case 'return_to_service': {
+      // D52 (LTR-260): Samsara saw it leave the yard after the close, or leave and come back.
+      const move = step.yardMove;
+      if (!move) return messages.truckNextStepReturnToService;
+      const locale = messages.locale as AdminLocale;
+      const time = formatDay(move.at, locale) === formatDay(new Date().toISOString(), locale) ? formatTime(move.at, locale) : formatShortDateTime(move.at, locale);
+      return fillPlaceholders(move.kind === 'left_yard' ? messages.truckNextStepLeftYard : messages.truckNextStepBackInYard, { time });
+    }
     case 'work':
       return fillPlaceholders(messages.truckNextStepWork, { count: String(step.remaining ?? 0), job: step.jobName ?? '' });
     case 'create_work_order':

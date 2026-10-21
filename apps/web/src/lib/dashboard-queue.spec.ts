@@ -12,6 +12,12 @@ function item(id: string, step: TruckNextStepDto['kind'], extra: Partial<AdminWo
 }
 
 describe('Dashboard queue (stage 3 / D1, UX-5-002)', () => {
+  it('D52 (LTR-260): in Return to Service, a truck Samsara saw leave the yard (or come back) goes first', () => {
+    const plain = item('r1', 'return_to_service', { status: WorkOrderStatus.COMPLETED });
+    const left = item('r2', 'return_to_service', { status: WorkOrderStatus.COMPLETED, nextStep: { kind: 'return_to_service', workOrderId: 'r2', yardMove: { kind: 'left_yard', at: '2026-10-21T15:00:00.000Z' } } });
+    expect(groupDashboardQueue([plain, left]).map((entry) => entry.items.map((row) => row.id))).toEqual([['r2', 'r1']]);
+  });
+
   it('groups by the action the Manager takes, in order, and leaves plain work out', () => {
     const queue = [item('w', 'work'), item('r', 'return_to_service', { status: WorkOrderStatus.COMPLETED }), item('b', 'resolve_blocker'), item('p', 'resume'), item('c', 'close'), item('a', 'assign')];
     expect(groupDashboardQueue(queue).map((entry) => [entry.group, entry.items.map((row) => row.id)])).toEqual([

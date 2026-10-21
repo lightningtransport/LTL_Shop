@@ -219,7 +219,7 @@ test.describe('Yard Operations Phase 1', () => {
     await board.close();
   });
 
-  test('the Full screen tab fits a TV: every step side by side, every truck, compact cards in a full list (D52)', async ({ page }) => {
+  test('the Full screen tab fits a TV: every step side by side, every truck, compact cards in a full list (D53)', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/admin/yard-operations?display=board');
     const lanes = page.getByTestId('yard-lanes');
