@@ -188,7 +188,7 @@ The tokens already matched the mockups (Stage 7). Stage 8 changed how they are u
 | Surface | Constraint |
 |---|---|
 | Auth (`.app-shell`) | `max-w-md` mobile, `md:max-w-xl` from `md`; safe-area padding |
-| Mechanic General and PM (`.app-shell .app-shell-wide`) | Phone: one column. From `md` (768px, every iPad, also Safari's ~980px desktop mode): no width cap, margins 1.5rem (2rem from `lg`), cap `90rem` only on `2xl` (D54, LTR-271). Cards in `.card-grid`: two per row, a card alone on its row takes the row; `.card-grid-lead` gives the first card a row of its own |
+| Mechanic General and PM, and Safety `/qc` (`.app-shell .app-shell-wide`, LTR-272) | Phone: one column. From `md` (768px, every iPad, also Safari's ~980px desktop mode): no width cap, margins 1.5rem (2rem from `lg`), cap `90rem` only on `2xl` (D54, LTR-271). Cards in `.card-grid`: two per row, a card alone on its row takes the row; `.card-grid-lead` gives the first card a row of its own |
 | Admin (`AdminShell` main) | Data screens (Dashboard, Yard, the lists) `max-w-none`; Work Order and Truck detail, Setup and forms `max-w-[1440px]` (`FULL_WIDTH_PATHS` in `admin-shell.tsx`, UX-4-003). Sidebar fixed from `lg` (1024 px); below, the header menu (UX-4-002) |
 
 Mechanic screens are designed for the phone first and must also fill a tablet

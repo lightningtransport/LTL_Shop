@@ -515,7 +515,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Tomó un camión y no puede seguir | **Let go**: el QC queda libre y la otra persona lo puede tomar; queda en el Activity Log | ✅ | QC6 |
 | Quiere saber qué se le hizo | La revisión muestra los Jobs con quién, cuándo y su nota, el PM, la inspección, los bloqueos y las devoluciones anteriores; solo de camiones de su lista | ✅ | QC7 |
 | Devuelve diciendo qué Job falló | La nota empieza con el Job ("Alignment: …") y el Manager la ve así | ✅ | QC8 |
-| "¿Ya revisé el 606?" | Pestaña **Done**: lo que aprobó o devolvió en 7 días, lo más nuevo primero | ✅ | QC9 |
+| "¿Ya revisé el 606?" | Pestaña **Done**: lo que aprobó o devolvió en 7 días, lo más nuevo primero; la nota de un devuelto se lee completa, no cortada en una línea (LTR-273) | ✅ | QC9 |
 | Hay un Critical y uno listo hace más tiempo | El Critical va primero | ✅ | QC10 |
 
 ---

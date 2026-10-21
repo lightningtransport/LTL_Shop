@@ -822,6 +822,8 @@ agregue.
    por Safety" en Dashboard, Truck y WO, agrega el trabajo desde el Truck y
    resuelve. Cuando ese trabajo se completa, el camión vuelve a la lista de
    Safety, para cualquiera de los dos.
+5. **Done**: lo que aprobó o devolvió en los últimos 7 días, por día; la nota
+   de un devuelto se lee completa (LTR-273).
 
 Safety no puede hacer nada más (403 en Admin y en las rutas del mecánico).
 Aparece en el roster del Manager como "Safety (Quality Check)"; el selector

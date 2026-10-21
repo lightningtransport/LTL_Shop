@@ -16,7 +16,7 @@ Después del login, `defaultWorkspacePath` manda a la primera que aplique:
 | Shop Manager, System Admin (y solo lectura) | `/admin` (Dashboard) | Computadora, iPad, teléfono |
 | Mecánico General (Standard) | `/mechanic/standard` | Teléfono o tablet, app instalada (PWA) |
 | Mecánico PM | `/mechanic/pm` | Teléfono o tablet, app instalada (PWA) |
-| Safety (QC) | `/qc` | Teléfono o tablet |
+| Safety (QC) | `/qc` | Teléfono o tablet (PWA) |
 | Sin permiso | `/access-denied` | — |
 
 La app es una sola PWA para todos (D54, LTR-171): tiene que verse bien en
@@ -81,7 +81,9 @@ Además: inspeccionar (`/inspect/[truckId]`, con permiso), pedir trabajo
 
 ## Safety
 
-`/qc`: la cola del Quality Check (tomar, aprobar, devolver con nota; D46).
+`/qc`: la cola del Quality Check (tomar, aprobar, devolver con nota; D46). Pestañas To review · Returned · Done
+(abajo en el teléfono). Como los mecánicos, una columna en el teléfono y a lo ancho desde 768 px, tarjetas de a
+dos (LTR-272); en Done la nota de un devuelto se lee completa.
 
 ## Otras
 

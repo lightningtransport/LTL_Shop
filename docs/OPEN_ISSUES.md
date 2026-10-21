@@ -26,7 +26,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Mecánicos | LTR-275 | En la tablet la app dice "Kept on this phone" / "este teléfono" (los mecánicos usan teléfono o tablet) | E |
 | Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
-| Safety / QC | *(sin issue: Linear llegó al límite de issues gratis)* | En el iPad `/qc` se queda en columna de teléfono con franjas vacías a los lados (como los mecánicos antes de D54); en Done la nota de un devuelto se corta con "…". En teléfono, bien. Falta decidir si Safety usa tablet (recorrido 2026-10-21, LTR-273) | C |
 | Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
 | Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
