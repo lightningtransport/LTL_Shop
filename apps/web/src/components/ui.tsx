@@ -33,8 +33,9 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:opacity-90',
-        secondary: 'border bg-card text-card-foreground hover:bg-accent',
-        outline: 'border bg-background text-foreground hover:bg-accent',
+        // LTR-274: a control's border is --input (≥ 3:1), not the hairline --border, so it reads as a button in dark too.
+        secondary: 'border border-input bg-card text-card-foreground hover:bg-accent',
+        outline: 'border border-input bg-background text-foreground hover:bg-accent',
         ghost: 'text-muted-foreground hover:bg-accent hover:text-foreground',
         destructive: 'bg-destructive text-destructive-foreground hover:opacity-90',
       },

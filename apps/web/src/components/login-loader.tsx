@@ -58,7 +58,7 @@ export function LoginLoader({ label }: { label: string }) {
       aria-live="polite"
       aria-label={label}
       data-testid="login-loader"
-      className={`fixed inset-0 z-[100] grid place-items-center bg-[#0f1a33] transition-opacity duration-300 motion-reduce:transition-none ${phase === 'fade' ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+      className={`fixed inset-0 z-[100] grid place-items-center bg-brand-navy transition-opacity duration-300 motion-reduce:transition-none ${phase === 'fade' ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
     >
       {duration ? (
         // eslint-disable-next-line @next/next/no-img-element -- an animated SVG: next/image would rasterize it.

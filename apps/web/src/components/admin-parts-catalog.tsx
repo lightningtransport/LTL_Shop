@@ -382,7 +382,7 @@ function PartsTable({ category, stock, canWrite, locale, messages, onEdit, onCha
             <span data-testid="part-cost">
               {cost === null
                 ? <span className="text-xs text-muted-foreground">{messages.pcNoCostYet}</span>
-                : <span className={`tabular-nums ${cost.reference ? 'text-muted-foreground' : ''}`}>{formatCents(cost.cents, locale)}{cost.reference ? <span className="ml-1 text-[11px]">{messages.pcRefShort}</span> : null}</span>}
+                : <span className={`tabular-nums ${cost.reference ? 'text-muted-foreground' : ''}`}>{formatCents(cost.cents, locale)}{cost.reference ? <span className="ml-1 text-xs">{messages.pcRefShort}</span> : null}</span>}
               {part.lastPaid ? (
                 <span className="block text-xs text-muted-foreground" data-testid="part-last-paid">
                   {fillPlaceholders(messages.pcLastPaid, { amount: formatCents(part.lastPaid.unitCostCents, locale), date: formatInvoiceDate(part.lastPaid.invoiceDate, locale), vendor: part.lastPaid.vendorName })}

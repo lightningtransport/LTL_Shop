@@ -53,7 +53,8 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
           <p className="mt-1 text-center text-xs text-muted-foreground">{messages.pmCreateAfter(running.truckNumber)}</p>
         </section>
       ) : (
-        <Button asChild variant="outline" className="w-full">
+        // LTR-274: on the page a button is `secondary` (card fill and border); `outline` is for buttons inside a card.
+        <Button asChild variant="secondary" className="w-full">
           <Link href="/mechanic/pm/new"><Plus aria-hidden="true" />{messages.createPmService}</Link>
         </Button>
       )}
@@ -85,16 +86,16 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
                       {wo.lastPm ? messages.lastPmLine(wo.lastPm.observedMileage === null ? messages.mileageNotRecorded : formatMileage(wo.lastPm.observedMileage), shortDate(wo.lastPm.completedAt)) : messages.noPmOnRecord}
                     </p>
                   </div>
-                  {/* LTR-271: on an iPad the button keeps its size at the right of the card. */}
-                  <div className="border-t p-2 md:flex md:justify-end">
+                  {/* LTR-274: the card's action fills the card's width on every screen. */}
+                  <div className="border-t p-2" data-card-action>
                     {next ? (
-                      <Button asChild className="w-full md:w-56">
+                      <Button asChild className="w-full">
                         <Link href={href} aria-label={messages.workOrderAction(messages.startPmOn(wo.truckNumber), wo.displayId, wo.truckNumber)}>
                           <Play aria-hidden="true" />{messages.startPmOn(wo.truckNumber)}
                         </Link>
                       </Button>
                     ) : (
-                      <Button asChild variant="ghost" className="w-full justify-between md:w-56">
+                      <Button asChild variant="outline" className="w-full">
                         <Link href={href} aria-label={messages.workOrderAction(messages.viewShort, wo.displayId, wo.truckNumber)}>
                           {messages.viewShort}<ChevronRight aria-hidden="true" />
                         </Link>
@@ -160,8 +161,8 @@ function RunningCard({ wo }: { wo: Wo }) {
           <span className={parts ? 'text-success' : 'text-muted-foreground'}>{messages.pmPartsLabel} {parts}</span>
         </p>
       </div>
-      <div className="border-t p-2 md:flex md:justify-end">
-        <Button asChild className="w-full md:w-56">
+      <div className="border-t p-2" data-card-action>
+        <Button asChild className="w-full">
           <Link href={`/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`} aria-label={messages.workOrderAction(messages.continuePmService, wo.displayId, wo.truckNumber)}>
             {messages.continuePmService}
           </Link>

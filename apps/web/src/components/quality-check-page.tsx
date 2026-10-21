@@ -448,19 +448,19 @@ function QueueCard({
           </div>
         ) : item.mechanics.length ? <p className="text-xs text-muted-foreground">{item.mechanics.join(', ')}</p> : null}
       </button>
-      {/* LTR-272: on an iPad the button keeps its size at the right of the card. */}
-      <div className="border-t p-2 md:flex md:justify-end">
+      {/* LTR-274: the card's action fills the card's width on every screen. */}
+      <div className="border-t p-2" data-card-action>
         {item.mine ? (
-          <Button className="w-full md:w-56" onClick={(event) => onOpen(event.currentTarget)}>
+          <Button className="w-full" onClick={(event) => onOpen(event.currentTarget)}>
             <ClipboardCheck aria-hidden="true" />{t.continueReview}
           </Button>
         ) : takenByOther ? (
-          <p className="flex min-h-9 items-center gap-2 px-1 text-sm text-muted-foreground md:mr-auto">
+          <p className="flex min-h-9 items-center gap-2 px-1 text-sm text-muted-foreground">
             <MechanicAvatar id={item.takenBy!.id} name={item.takenBy!.name} size="sm" />{t.takenBy(item.takenBy!.name)}
           </p>
         ) : (
           <Button
-            className="w-full md:w-56"
+            className="w-full"
             disabled={busy}
             aria-label={`${t.take} · ${messages.truckTitle(item.truck.truckNumber)}`}
             onClick={(event) => onTake(event.currentTarget)}
