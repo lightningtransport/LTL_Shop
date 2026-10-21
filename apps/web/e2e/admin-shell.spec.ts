@@ -346,6 +346,23 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByText('WO-0105').first()).toBeVisible();
   });
 
+  test('LTR-261: a truck Samsara sees in the yard without a Work Order waits on the Dashboard, with Create WO', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({ timeout: 15_000 });
+    const arrived = page.getByTestId('dashboard-group-arrived');
+    await expect(arrived).toContainText('Arrived · Needs a Work Order');
+    const row = arrived.getByTestId('dashboard-arrived-row');
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('Y-101');
+    await expect(row).toContainText(/In yard · since /);
+    await row.getByTestId('dashboard-create-wo').click();
+    await expect(page.getByRole('dialog')).toContainText('Y-101');
+    await page.keyboard.press('Escape');
+    // A counter filters the queue to its group: the arrivals step aside.
+    await page.getByTestId('dashboard-counter-close').click();
+    await expect(arrived).toHaveCount(0);
+  });
+
   test('work order search 9 + Apply returns ranked WO/truck matches and EmptyState', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/);

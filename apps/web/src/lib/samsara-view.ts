@@ -59,9 +59,13 @@ export function yardPlaceText(
   if (!place) return null;
   const since = samsara?.inYardSince ?? null;
   if (!since) return place === 'in_shop' ? messages.presenceInShop : messages.presenceInYard;
+  return fillPlaceholders(place === 'in_shop' ? messages.presenceInShopSince : messages.presenceInYardSince, { since: yardSinceWhen(since, locale, now) });
+}
+
+/** "9:00 AM" when the truck arrived today, "Oct 19, 9:00 AM" when it arrived another day. */
+export function yardSinceWhen(since: string, locale: AdminLocale, now = new Date()) {
   const sameDay = formatDay(since, locale) === formatDay(now.toISOString(), locale);
-  const when = sameDay ? formatTime(since, locale) : formatShortDateTime(since, locale);
-  return fillPlaceholders(place === 'in_shop' ? messages.presenceInShopSince : messages.presenceInYardSince, { since: when });
+  return sameDay ? formatTime(since, locale) : formatShortDateTime(since, locale);
 }
 
 /** D49: an open Work Order (created, in progress or paused); a completed one waiting for Return to Service is not. */
