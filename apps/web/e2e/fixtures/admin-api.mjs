@@ -1949,6 +1949,47 @@ createServer(async (request, response) => {
     else json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
+  // LTR-272: Safety's Quality Check, so the tablet walk sees real cards (mine, taken by someone else, free, returned).
+  if (request.url?.startsWith('/api/qc')) {
+    const qcTruck = (truckNumber, make, model, year) => ({ id: `00000000-0000-4000-8000-0000000017${truckNumber.slice(-2)}`, truckNumber, make, model, year });
+    const qcItem = (n, truckNumber, extra) => ({
+      workOrderId: `00000000-0000-4000-8000-0000000016${n}`, displayId: `WO-03${n}`, version: 1,
+      truck: qcTruck(truckNumber, 'VOLVO', 'VNL 860', 2025),
+      doneJobs: ['Brakes', 'Tires', 'Detailing'], mechanics: ['Alejandro 1', 'Mechanic 2'],
+      doneBy: [
+        { jobId: `j${n}1`, job: 'Brakes', mechanic: { id: '00000000-0000-4000-8000-000000000101', name: 'Alejandro 1' } },
+        { jobId: `j${n}2`, job: 'Tires', mechanic: { id: '00000000-0000-4000-8000-000000000102', name: 'Mechanic 2' } },
+        { jobId: `j${n}3`, job: 'Detailing', mechanic: null },
+      ],
+      priority: 'normal', leavesOn: null, location: '301 Yard', readySince: '2026-09-11T14:00:00.000Z', takenBy: null, mine: false, ...extra,
+    });
+    const pending = [
+      qcItem(10, '609', { mine: true, takenBy: { id: '00000000-0000-4000-8000-000000000109', name: 'QC1 · Quality Check' }, priority: 'high', leavesOn: '2026-09-12' }),
+      qcItem(11, '943', { takenBy: { id: '00000000-0000-4000-8000-000000000110', name: 'QC2 · Quality Check' } }),
+      qcItem(12, '282', {}),
+    ];
+    const returned = [{ ...qcItem(13, '955', {}), note: 'Air leak on the left drive tire is still there.', returnedBy: 'QC1 · Quality Check', returnedAt: '2026-09-11T12:00:00.000Z' }];
+    if (request.url === '/api/qc/queue') { json(response, 200, { pending, returned, onTeam: true }); return; }
+    if (request.url.startsWith('/api/qc/history')) {
+      json(response, 200, { days: 7, items: [
+        { workOrderId: returned[0].workOrderId, displayId: returned[0].displayId, truck: returned[0].truck, outcome: 'returned', at: returned[0].returnedAt, note: returned[0].note },
+        { workOrderId: '00000000-0000-4000-8000-000000001614', displayId: 'WO-0314', truck: qcTruck('907', 'FREIGHTLINER', 'Cascadia', 2023), outcome: 'approved', at: '2026-09-10T18:00:00.000Z', note: null },
+      ] });
+      return;
+    }
+    const reviewMatch = request.url.match(/^\/api\/qc\/([0-9a-f-]+)$/i);
+    const item = reviewMatch && [...pending, ...returned].find((entry) => entry.workOrderId === reviewMatch[1]);
+    if (item && request.method === 'GET') {
+      json(response, 200, {
+        ...item,
+        truck: { ...item.truck, vin: '4V4NC9EH5PN000609', mileage: 412300, company: 'Lightning Transport' },
+        jobs: item.doneBy.map((entry) => ({ id: entry.jobId, name: entry.job, category: entry.job, mechanic: entry.mechanic, completedAt: '2026-09-11T13:00:00.000Z', note: null, isPm: false })),
+        pm: null, inspection: { outcome: 'no_issues_found', recordedAt: '2026-09-11T09:00:00.000Z', sheet: null },
+        catalogJobs: [], findings: [], blockers: [], previousReturns: [],
+      });
+      return;
+    }
+  }
   const historyMatch = request.url?.match(/^\/api(?:\/admin)?\/trucks\/([0-9a-f-]+)\/repair-history(?:\?(.*))?$/i);
   if (historyMatch) {
     const params = new URLSearchParams(historyMatch[2] ?? '');
