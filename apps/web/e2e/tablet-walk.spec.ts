@@ -58,6 +58,11 @@ const PAGES: Walk[] = [
   ['pm-trucks', '/mechanic/pm/trucks', { user: 'mpm@lightning.local' }],
   ['pm-completed', '/mechanic/pm/completed', { user: 'mpm@lightning.local' }],
   ['pm-new', '/mechanic/pm/new', { user: 'mpm@lightning.local' }],
+  // LTR-272: Safety's Quality Check uses the iPad width too.
+  ['qc-review', '/qc', { user: 'qc1@lightning.local' }],
+  ['qc-returned', '/qc?tab=returned', { user: 'qc1@lightning.local' }],
+  ['qc-done', '/qc?tab=done', { user: 'qc1@lightning.local' }],
+  ['qc-review-open', '/qc', { user: 'qc1@lightning.local', open: /^(Continue review|Continuar revisión)$/ }],
 ];
 
 type Found = { overflow: string[]; overlap: string[]; gutter: string[]; lonely: string[]; copy: string[] };
@@ -95,7 +100,8 @@ async function measure(page: Page, scope: string, wide: boolean): Promise<Found>
     // LTR-271: the mechanic screens have no sidebar, so anything past a normal margin is an empty band.
     if (main && window.innerWidth - main.getBoundingClientRect().width > (wideShell ? 48 : 260)) gutter.push(`main is ${Math.round(main.getBoundingClientRect().width)} of ${window.innerWidth} px wide`);
     const column = main?.firstElementChild as HTMLElement | null;
-    if (column) {
+    // Behind an open dialog the page is dimmed and hidden from the tree: its column says nothing about the layout.
+    if (column && !root.includes('dialog')) {
       const style = getComputedStyle(column);
       const right = column.getBoundingClientRect().right - parseFloat(style.paddingRight);
       const left = column.getBoundingClientRect().left + parseFloat(style.paddingLeft);
@@ -132,7 +138,8 @@ async function measure(page: Page, scope: string, wide: boolean): Promise<Found>
     const copy: string[] = [];
     const banned = /\b(D\d{2}|LTR-\d+|Vercel|GitHub|npm|API token|SAMSARA_API_TOKEN|Activity Log|database|endpoint|prisma)\b/;
     for (const el of document.querySelectorAll('main p, main li, main dd, main small, main [role=note], main label, main span')) {
-      if (!visible(el) || el.children.length > 2) continue;
+      // A card (an item holding its own buttons or links) is not a paragraph: its text is many short lines.
+      if (!visible(el) || el.children.length > 2 || el.querySelector('button, a')) continue;
       const text = (el.textContent ?? '').trim().replace(/\s+/g, ' ');
       if (text.length > 120) copy.push(`long (${text.length}): ${text.slice(0, 90)}…`);
       else if (banned.test(text)) copy.push(`word "${text.match(banned)?.[0]}": ${text.slice(0, 90)}`);
