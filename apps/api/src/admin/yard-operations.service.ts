@@ -174,6 +174,17 @@ const yardTruckInclude = {
  * `workPlanInputFromYardRow` maps (Category name, Jobs with their Category). Not the Truck, the Job owners, the
  * team, the pauses or the blocker notes — those only draw the cards. Same where / order as `summaryWorkOrderInclude`.
  */
+/** Stage 8 / D52: the shop's side of one Truck Dispatch names. */
+type ShopStatus = {
+  phase: string;
+  readyToGo: boolean;
+  jobsLeft: number;
+  truckId: string;
+  openWorkOrder: { id: string; displayId: string } | null;
+  outOfShop: boolean;
+  yardMove: 'left_yard' | 'back_in_yard' | null;
+};
+
 const readyToGoCountWorkOrderInclude = {
   primaryCategory: true,
   jobs: {
@@ -762,7 +773,7 @@ export class YardOperationsService {
     );
     // LTR-159: the same Next step as Truck Detail, Dashboard and the Work Order.
     const nextStep = currentWorkOrder
-      ? workOrderNextStep(currentWorkOrder, { inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null })
+      ? workOrderNextStep(currentWorkOrder, { inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null, samsara: truck.samsara })
       : deriveTruckNextStep({ workOrder: null, inspectionOutcome: workPlan.inspection.outcome, jobs: [] });
     return {
       truck,
@@ -786,8 +797,8 @@ export class YardOperationsService {
    * Stage 8 (D8): the shop's side for the Dispatch tab — Work Plan step, Ready to Go and Jobs left — for the
    * Truck numbers Dispatch names. One query; Trucks with no shop engagement come back without a step.
    */
-  async shopStatusByTruckNumber(numbers: string[]): Promise<Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>> {
-    const result = new Map<string, { phase: string; readyToGo: boolean; jobsLeft: number; truckId: string; openWorkOrder: { id: string; displayId: string } | null; outOfShop: boolean }>();
+  async shopStatusByTruckNumber(numbers: string[]): Promise<Map<string, ShopStatus>> {
+    const result = new Map<string, ShopStatus>();
     if (!numbers.length) return result;
     const rows = await this.prisma.truck.findMany({
       where: { AND: [activeYardEngagement(), { truckNumber: { in: numbers } }] },
@@ -806,6 +817,8 @@ export class YardOperationsService {
         truckId: row.id,
         openWorkOrder: open ? { id: open.id, displayId: open.displayId } : null,
         outOfShop: Boolean(item.outOfShop),
+        // D52 (LTR-260): left the yard (or came back) while Ready to Go.
+        yardMove: item.nextStep?.kind === 'return_to_service' ? item.nextStep.yardMove?.kind ?? null : null,
       });
     }
     return result;

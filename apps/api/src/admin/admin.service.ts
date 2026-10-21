@@ -2545,6 +2545,7 @@ function toAdminSummary(row: SummaryRow): AdminWorkOrderSummaryDto {
       : workOrderNextStep(row, {
           inspectionRequirementOutcome: activeInspectionOutcome(row.truck),
           returnedToService: Boolean(row.serviceStatusEvents?.[0]),
+          samsara: toTruckDto(row.truck).samsara,
         }),
   };
 }
@@ -2677,6 +2678,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     nextStep: workOrderNextStep(row, {
       inspectionRequirementOutcome: activeInspectionOutcome(row.truck),
       returnedToService: Boolean(row.serviceStatusEvents[0]),
+      samsara: toTruckDto(row.truck).samsara,
     }),
   };
 }
@@ -2791,7 +2793,7 @@ function toTruckSummary(row: {
     nextStep: open
       ? workOrderNextStep(open, { inspectionRequirementOutcome: activeInspectionOutcome(row) })
       : readyToGo
-        ? workOrderNextStep(readyToGo, { returnedToService: false })
+        ? workOrderNextStep(readyToGo, { returnedToService: false, samsara: toTruckDto(row).samsara })
         : { kind: 'create_work_order' },
     truck: toTruckDto(row),
     // S3-4: the dash lights first, then codes that lit check engine (info and pending stay on the Faults tab).

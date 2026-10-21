@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, inject, it } from 'vitest';
 import { REAL_CRON_SECRET } from '../env';
 import { randomUUID } from 'node:crypto';
-import { USERS, Json, adminCompleteJob, as, catalogJob, createWo, manager, ok, prisma, refused, resetDb, same, truthy, userId } from '../harness';
+import { USERS, Json, adminCompleteJob, adminWo, as, catalogJob, closeWo, createWo, doPm, laneJob, manager, ok, plannedWo, prisma, refused, resetDb, returnToService, same, sameNextStepEverywhere, truckDetail, truthy, userId } from '../harness';
 import { EMPTY_SAMSARA_FIXTURE, type SamsaraFixture } from '../samsara-mock';
 
 /** OPEN_ISSUES §1w and §1x (D35, D42): Samsara pairing, sync of miles and location, and faults. Never the real Samsara. */
@@ -154,6 +154,56 @@ describe('Manager: Samsara (D35, D42)', () => {
     await sync('sync: en la carretera', [stat(418_700, 'I-75 N, Ocala, FL', '2026-10-19T19:00:00Z')]);
     const row = await truckRow();
     same('fuera de todo geofence no hay geofence', [row.samsaraGeofenceId, row.samsaraInYardSince], [null, null]);
+    await resetDb();
+  });
+
+  it('A152 | D52 (LTR-260): un camión en Ready to Go que Samsara ve fuera de la yard después del cierre pide confirmar Return to Service en todas las pantallas y va primero en el Dashboard; si vuelve a entrar sin Return to Service, es una llegada nueva', async () => {
+    await resetDb();
+    const sync = async (label: string, at: string, address: string, geofence?: { id: string; name: string }) => {
+      await setSamsara({ vehicles: [vehicle()], stats: [stat(418_612, address, at, geofence)] });
+      ok(label, await manager.post('/admin/integrations/samsara/sync'));
+    };
+    const later = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString().replace(/\.\d{3}Z$/, '.000Z');
+    const moveEverywhere = async (step: string, workOrderId: string, truckId: string) => {
+      const detail = await truckDetail(truckId);
+      const trucks = ok('lista de Trucks', await manager.get('/admin/trucks')) as Json;
+      const dashboard = ok('Dashboard', await manager.get('/admin/dashboard')) as Json;
+      const seen = {
+        truck: detail.nextStep?.yardMove ?? null,
+        workOrder: (await adminWo(workOrderId)).nextStep?.yardMove ?? null,
+        truckList: (trucks.items as Json[]).find((item) => item.truck.id === truckId)?.nextStep?.yardMove ?? null,
+        dashboard: (dashboard.queue as Json[]).find((item) => item.id === workOrderId)?.nextStep?.yardMove ?? null,
+      };
+      const kinds = new Set(Object.values(seen).map((move) => JSON.stringify(move)));
+      if (kinds.size !== 1) throw new Error(`${step}: las pantallas no dicen lo mismo ${JSON.stringify(seen)}`);
+      return seen.truck as Json | null;
+    };
+
+    await sync('sync: está en la yard antes de cerrar', '2026-10-20T08:00:00Z', '6015 US-301, Tampa, FL 33610', HOME_OFFICE);
+    const { truck, workOrderId } = await plannedWo(TRUCK);
+    await doPm(workOrderId, truck.id);
+    for (const lane of ['alignment', 'detailing', 'quality_check'] as const) {
+      ok(`Manager completa ${lane}`, await adminCompleteJob(workOrderId, laneJob(await adminWo(workOrderId), lane).id));
+    }
+    ok('Close Work Order', await closeWo(workOrderId));
+    await sameNextStepEverywhere('Ready to Go', workOrderId, truck.id, 'return_to_service');
+    same('sigue en la yard desde antes del cierre: espera salir, sin aviso', await moveEverywhere('en la yard', workOrderId, truck.id), null);
+
+    const leftAt = later(5);
+    await sync('sync: Samsara lo ve en la carretera después del cierre', leftAt, 'I-4 E, Lakeland, FL');
+    await sameNextStepEverywhere('salió', workOrderId, truck.id, 'return_to_service');
+    same('Truck, WO, Trucks y Dashboard dicen que salió, con la hora de la lectura', await moveEverywhere('salió', workOrderId, truck.id), { kind: 'left_yard', at: leftAt });
+    same('sigue en Ready to Go: la app no hace Return to Service sola', (await truckDetail(truck.id)).phase, 'ready_to_go');
+
+    const backAt = later(30);
+    await sync('sync: vuelve a la yard sin Return to Service', backAt, '6015 US-301, Tampa, FL 33610', LIGHTNING_YARD);
+    same('dice que volvió, con la hora de llegada', await moveEverywhere('volvió', workOrderId, truck.id), { kind: 'back_in_yard', at: backAt });
+    truthy('Trucks lo lista en "In yard without a Work Order"', ((ok('Trucks → sin WO', await manager.get('/admin/trucks?place=in_yard_no_wo')) as Json).items as Json[]).some((item) => item.truck.truckNumber === TRUCK));
+
+    ok('el Manager confirma Return to Service', await returnToService(workOrderId));
+    same('ya no está en Ready to Go: el siguiente paso es abrir un Work Order', (await truckDetail(truck.id)).nextStep.kind, 'create_work_order');
+    await createWo(TRUCK);
+    same('la WO nueva lo deja "In shop"', ((ok('Trucks → In shop', await manager.get('/admin/trucks?place=in_shop')) as Json).items as Json[]).some((item) => item.truck.truckNumber === TRUCK), true);
     await resetDb();
   });
 

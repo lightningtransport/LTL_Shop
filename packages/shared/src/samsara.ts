@@ -304,6 +304,36 @@ export function truckPlace(samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofen
   return hasOpenWorkOrder ? 'in_shop' : 'in_yard';
 }
 
+/**
+ * D52 (LTR-260): arrival times stored before this moment are the first reading after D49 went live (and after the
+ * yard geofences were adjusted, LTR-257), not a real arrival, so they never mean "came back".
+ */
+export const SAMSARA_YARD_SINCE_TRUSTED_FROM = '2026-10-20T06:00:00.000Z';
+
+/**
+ * D52 (LTR-260): what Samsara saw of a Ready to Go truck after its Work Order closed. `left_yard`: the last reading,
+ * taken after the close, is outside our yard. `back_in_yard`: it is in the yard again and arrived after the close, so it
+ * left and came back without Return to Service. `at` is that reading or that arrival. It only informs (D49 §6).
+ */
+export type ReadyToGoYardMove = { kind: 'left_yard' | 'back_in_yard'; at: string };
+
+export function readyToGoYardMove(
+  samsara: Pick<TruckSamsaraDto, 'locationAt' | 'geofenceId' | 'inYardSince'> | null | undefined,
+  completedAt: string | Date | null | undefined,
+): ReadyToGoYardMove | null {
+  if (!completedAt || !samsara?.locationAt) return null;
+  const closed = new Date(completedAt).getTime();
+  const state = truckPresence(samsara).state;
+  if (state === YardPresenceState.OUTSIDE_YARD) {
+    return new Date(samsara.locationAt).getTime() > closed ? { kind: 'left_yard', at: samsara.locationAt } : null;
+  }
+  if (state === YardPresenceState.IN_YARD && samsara.inYardSince) {
+    const arrived = new Date(samsara.inYardSince).getTime();
+    if (arrived > closed && arrived >= Date.parse(SAMSARA_YARD_SINCE_TRUSTED_FROM)) return { kind: 'back_in_yard', at: samsara.inYardSince };
+  }
+  return null;
+}
+
 /** D50: what Add from Samsara would create for a truck number Dispatch has and the Shop app does not. */
 export type SamsaraTruckPreviewDto = {
   truckNumber: string;

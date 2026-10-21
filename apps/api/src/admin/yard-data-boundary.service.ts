@@ -195,7 +195,7 @@ export class YardDataBoundaryService {
           truckId: truck.id,
           openWorkOrder: truck.openWorkOrder,
           outOfShop: truck.outOfShop,
-          ...(step ? { phase: step.phase, readyToGo: step.readyToGo, jobsLeft: step.jobsLeft } : { phase: null, readyToGo: false, jobsLeft: 0 }),
+          ...(step ? { phase: step.phase, readyToGo: step.readyToGo, jobsLeft: step.jobsLeft, yardMove: step.yardMove } : { phase: null, readyToGo: false, jobsLeft: 0, yardMove: null }),
           samsara: truck.samsara,
         });
       }

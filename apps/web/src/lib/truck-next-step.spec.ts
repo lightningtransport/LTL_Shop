@@ -16,6 +16,14 @@ describe('truckNextStepText (LTR-159)', () => {
     expect(truckNextStepText(null, en)).toBeNull();
   });
 
+  it('D52 (LTR-260): says when Samsara saw a Ready to Go truck leave the yard or come back', () => {
+    expect(truckNextStepText({ kind: 'return_to_service' }, en)).toBe('Ready to Go. Return it to service when it leaves the shop.');
+    expect(truckNextStepText({ kind: 'return_to_service', yardMove: { kind: 'left_yard', at: '2026-10-15T14:40:00.000Z' } }, en))
+      .toBe('Left the yard Oct 15, 10:40 AM (Samsara). Confirm Return to Service.');
+    expect(truckNextStepText({ kind: 'return_to_service', yardMove: { kind: 'back_in_yard', at: '2026-10-15T13:05:00.000Z' } }, es))
+      .toMatch(/^Volvió a la yard 15 oct.*9:05.*sin Return to Service\. Confírmalo y abre un Work Order\.$/);
+  });
+
   it('labels the action; plain work in progress has none', () => {
     expect(truckNextStepActionLabel({ kind: 'close' }, en)).toBe('Close Work Order');
     expect(truckNextStepActionLabel({ kind: 'assign', jobName: 'x' }, es)).toBe('Asignar');

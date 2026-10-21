@@ -725,6 +725,12 @@ en [`USER_FLOWS.md`](USER_FLOWS.md).
 3. El Truck pasa a **Ready to Go** y se queda así hasta Return to Service.
 4. **Return to Service** (motivo opcional) desde el Truck, el WO o la tarjeta
    del Yard. El camión sale del tablero.
+5. **D52 (LTR-260):** si Samsara ve el camión fuera de la yard después del
+   cierre, el siguiente paso dice "Left the yard · Confirm Return to Service"
+   y va primero en su grupo del Dashboard y arriba del día en Departures. Si
+   vuelve a entrar sin Return to Service, dice "Back in the yard" y Dispatch ›
+   Incoming lo pone en "Arrived · Needs a Work Order". La app no hace Return
+   to Service sola.
 
 Además el Manager puede cancelar el WO o un Job (con motivo), reabrir
 (admin), cambiar la prioridad (las notas solo se agregan) y corregir tiempos
@@ -842,7 +848,7 @@ aplique:
 | 6 | `external` | "En taller externo: <Job>" — lo único pendiente fuera de QC está afuera (D24); "Regresó" está en la fila del Job |
 | 7 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
 | 8 | `close` | Close Work Order |
-| 9 | `return_to_service` | Return to Service |
+| 9 | `return_to_service` | Return to Service. Con `yardMove` (D52): `left_yard` = Samsara lo vio fuera de la yard después del cierre ("Left the yard · Confirm Return to Service"); `back_in_yard` = salió y volvió a entrar sin Return to Service |
 | 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan) |
 | — | `create_work_order` | Truck sin WO abierto |
 

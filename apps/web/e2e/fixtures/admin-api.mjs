@@ -2335,7 +2335,13 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
 function fixtureNextStepForWorkOrder(workOrder) {
   const workOrderId = workOrder.id;
   if (workOrder.status === 'cancelled') return null;
-  if (workOrder.status === 'completed') return workOrder.returnedToServiceAt ? null : { kind: 'return_to_service', workOrderId };
+  // D52 (LTR-260): WO-0104's truck left the yard after the close (Samsara), so it asks to confirm Return to Service.
+  if (workOrder.status === 'completed') {
+    if (workOrder.returnedToServiceAt) return null;
+    return workOrder.displayId === 'WO-0104'
+      ? { kind: 'return_to_service', workOrderId, yardMove: { kind: 'left_yard', at: '2026-09-21T14:40:00.000Z' } }
+      : { kind: 'return_to_service', workOrderId };
+  }
   const blocker = workOrder.latestReportedBlocker;
   if (blocker && !blocker.resolvedAt) return { kind: 'resolve_blocker', workOrderId, blockerId: blocker.id, jobName: blocker.job?.displayName, reason: blocker.reason };
   if (workOrder.status === 'waiting_paused') return { kind: 'resume', workOrderId, reason: workOrder.currentPause?.reason };

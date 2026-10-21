@@ -129,8 +129,8 @@ describe('YardDataBoundaryService', () => {
     const dto = await service.get(NOW, fetchImpl as unknown as typeof fetch);
 
     expect(dto.shop).toEqual([
-      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0, samsara: null },
-      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0, samsara: null },
+      { truckNumber: '277', truckId: 't-277', openWorkOrder: { id: 'wo-1', displayId: 'WO-001' }, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0, yardMove: null, samsara: null },
+      { truckNumber: '905', truckId: 't-905', openWorkOrder: null, outOfShop: false, phase: null, readyToGo: false, jobsLeft: 0, yardMove: null, samsara: null },
     ]);
   });
 
