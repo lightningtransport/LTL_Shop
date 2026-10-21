@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-21 (LTR-271: HU-ME1 en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (LTR-261: el Dashboard avisa la llegada sin Work Order, G12 hecho); antes 2026-10-21 (D54: HU-ME1 sin tiempo a la vista y a lo ancho en iPad; HU-M16 llantas a Alignment con qué llanta y por qué, filas A152–A153); antes 2026-10-19 (D51: HU-M22 planear la semana; D50: HU-M22 la pestaña Dispatch con el lugar de Samsara, fila A151; D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-21 (LTR-273: D53 Full screen en la TV en HU-M7; mecánicos en teléfono o tablet como PWA; nombres del menú People / Jobs / Shop rates); antes 2026-10-21 (LTR-271: HU-ME1 en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (LTR-261: el Dashboard avisa la llegada sin Work Order, G12 hecho); antes 2026-10-21 (D54: HU-ME1 sin tiempo a la vista y a lo ancho en iPad; HU-M16 llantas a Alignment con qué llanta y por qué, filas A152–A153); antes 2026-10-19 (D51: HU-M22 planear la semana; D50: HU-M22 la pestaña Dispatch con el lugar de Samsara, fila A151; D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -63,11 +63,16 @@ respuestas confirman lo construido y 7 muestran huecos (sección 7).
 | J25 | Manager | una inspección encuentra llantas malas | que el Job ya diga qué llanta va en cada posición (nueva o recap) y si la tengo | cambiarla ese mismo día sin escribir nada dos veces |
 | J26 | Manager | llegan muchas facturas de proveedores | cargarlas rápido, y más adelante que se lean solas y yo solo confirme | dejar de teclear facturas enteras |
 | J27 | Manager | un camión entra o sale de nuestra yard | ver en la app que está "In yard" (o "In shop" si tiene Work Order abierta) y desde cuándo, sin abrir Samsara | saber qué camiones tengo en el patio para trabajarlos |
+| J28 | Manager | planeo la semana del taller | ver por día qué camiones llegan y cuáles tienen que salir, primero lo que pide acción (Arrived sin Work Order, Not ready) | tener listo el trabajo antes de que llegue el camión y que nada salga sin terminar (D51, HU-M22) |
+| J29 | Manager | un camión en Ready to Go ya salió de la yard (o volvió) | que la app me lo marque y me pida confirmar Return to Service | no dejar camiones "en el taller" que ya están en ruta, sin que la app decida sola (D52, HU-M22) |
+| J30 | Todo el taller | miramos la TV del taller | ver el tablero completo del Yard, sin tocar nada | saber de un vistazo en qué paso va cada camión (D53, HU-M7) |
 
 Cada historia se puede recorrer con el **modo demo local** (D36, [`reference/DEMO.md`](reference/DEMO.md)): el panel cambia de cuenta sin cerrar sesión y guía cada HU paso a paso; el **Demo flow** encadena los pasos de las HU en 14 capítulos (un día del taller). En el panel las historias se muestran con títulos en lenguaje de usuario y agrupadas por quién las hace; el guion vive en `apps/web/src/lib/demo/scripts.ts` y usa estos mismos ids (J y HU) como clave: mantenerlos estables.
 
-**Quién usa qué:** los mecánicos, en el teléfono. El Manager, en el teléfono
-(caminando por el taller) y en la computadora. Idioma: mezclado, así que
+**Quién usa qué:** los mecánicos, en su teléfono o su tablet, con la app
+instalada como PWA; se tiene que ver bien en los dos. El Manager, en el teléfono
+(caminando por el taller), en el iPad y en la computadora; el tablero del Yard
+queda en la TV del taller (D53). Idioma: mezclado, así que
 inglés y español tienen que estar completos los dos.
 
 **No es trabajo de esta app:** despachar cargas, nómina, permisos por
@@ -128,7 +133,7 @@ hallazgos, cada Job extra queda en el plan con su dueño.
 | Agrega un Job que no está en el catálogo (Custom) | Lo acepta y lo marca "pendiente de revisión" | ✅ | A24 |
 | …y repite el nombre (aunque cambie mayúsculas o espacios) | No deja repetir | ✅ | A24 |
 | Quiere que ese Job quede en el catálogo | Al crearlo marca "Agregar también al catálogo": entra como Job de catálogo (D25) | ✅ | A36 |
-| Quiere revisar los Custom Jobs (Job Catalog → **Custom Jobs to review**) | La bandeja los agrupa por categoría y nombre (sin importar mayúsculas, tildes ni espacios), con cuántas veces se usaron, en qué Work Orders y los Jobs del catálogo que se parecen | ✅ | A76 |
+| Quiere revisar los Custom Jobs (Setup → Jobs → **Custom Jobs to review**) | La bandeja los agrupa por categoría y nombre (sin importar mayúsculas, tildes ni espacios), con cuántas veces se usaron, en qué Work Orders y los Jobs del catálogo que se parecen | ✅ | A76 |
 | …y uno es en realidad un Job del catálogo | **Unir:** todo el grupo queda ligado a ese Job del catálogo de una sola vez; el nombre viejo queda como alias para la próxima vez. La historia de los Work Orders no cambia | ✅ | A77 |
 | …y es un trabajo que se repite y falta en el catálogo | **Agregar al catálogo:** crea el Job (con el nombre del grupo o uno corregido) y le liga todo el grupo; un nombre que ya existe no se acepta y propone unir | ✅ | A78 |
 | …y fue un trabajo de una sola vez | **Dejar como único:** sale de la bandeja sin tocar el catálogo. Si se equivocó, **Deshacer** lo devuelve a la bandeja | ✅ | A79 |
@@ -217,7 +222,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cancela todos los Jobs pendientes | El Work Order se puede cerrar | ✅ | E16 |
 | **Salida urgente:** el camión tiene que salir sin terminar todo | Con autorización del Manager: cancela con motivo los Jobs que no se harán y cierra | ✅ | E16 |
 | El camión vuelve por algo que quedó mal | Se abre un Work Order nuevo (no se reabre el anterior) | ✅ | A17, E14 |
-| Nadie hace Return to Service y el camión se va | Samsara lo ve fuera de la yard: "Left the yard · Confirm Return to Service", primero en el Dashboard (D52, HU-M22) | ✅ | A152 |
+| Nadie hace Return to Service y el camión se va | Samsara lo ve fuera de la yard: "Left the yard · Confirm Return to Service", primero en el Dashboard (D52, HU-M22) | ✅ | A150 |
 
 ### HU-M6 · Cancelar y reabrir (J4, J10)
 
@@ -247,6 +252,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Yard por fase | Cada camión con trabajo aparece en su fase. Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subgrupo | ✅ | A21 |
 | Presencia física | Desde D49 sale de Samsara: In shop / In yard / la ciudad; sin Samsara, nada (no se inventa) | ✅ | A149 |
 | Pestaña Dispatch | Llegadas y salidas de Dispatch con el lugar de Samsara (D50, HU-M22); si Dispatch no responde, lo dice y no muestra listas falsas | ✅ | A21, e2e `yard-operations` |
+| Full screen en la TV del taller (D53) | La pestaña Full screen abre el tablero solo, en otra pestaña y con los mismos filtros. Entra entero en la pantalla: las 8 columnas se reparten el ancho (sin scroll de lado), una columna que no cabe pasa a tarjetas compactas (sin scroll hacia abajo) y carga todos los camiones sin "Load more". El Yard en la app sigue como D33 | 👁 | e2e `yard-operations` (LTR-228, D53) |
 | Siguiente paso | Truck, Work Order, listas y Yard dicen lo mismo en cada etapa, incluida Ready to Go | ✅ | A19, A19b |
 | Pedidos de trabajo de los mecánicos | Aparecen en el Dashboard hasta que se marcan atendidos (se marcan ahí mismo) | ✅ | A22 |
 | Cola del Dashboard (Etapa 3) | Todo lo que espera al Manager, agrupado por acción, incluidos los Ready to Go, sin corte en 8; cada fila se hace ahí (D26). Contadores que filtran | 👁 | e2e `next-step-in-place`, `admin-shell` |
@@ -276,7 +282,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 
 ### HU-M9 · Dar de alta al personal (J12) — ✅ (D22, LTR-187; Managers y Admins: D48, LTR-253)
 
-**Función:** Admin → **Mecánicos → Agregar**. El Manager (y el System Admin)
+**Función:** Admin → Setup → **People → Agregar**. El Manager (y el System Admin)
 crea mecánicos Standard, PM y Safety; la app crea también la cuenta de acceso.
 
 **Flujo**
@@ -529,7 +535,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 
 | Qué | Respuesta | Estado | Fila |
 |---|---|---|---|
-| Crear o editar Jobs de catálogo | El Manager y el System Admin, en Admin → Job Catalog (D25) | ✅ | A36 |
+| Crear o editar Jobs de catálogo | El Manager y el System Admin, en Admin → Setup → Jobs (D25) | ✅ | A36 |
 | Agrega un Job personalizado y marca "Agregar también al catálogo" | Entra al catálogo y al Work Order como Job de catálogo; la próxima vez se elige de la lista | ✅ | A36 |
 | Un Job con el mismo nombre ya está en esa categoría | No deja duplicarlo; ofrece elegir el que existe | ✅ | A36 |
 | Un mecánico o Safety intenta escribir el catálogo | No puede | ✅ | A26 |
@@ -632,7 +638,7 @@ Ver la fila E7 en HU-ME2.
 | El Manager ya sacó la parte del estante al Job de PM (**Parts from stock**) y el mecánico eligió la misma en el PM (P29) | Al completar la WO no sale otra vez: el camión paga una vez y el estante baja una. Reabrir o cancelar solo deshace lo que sacó el PM (LTR-242) | ✅ | A134 |
 | Antes de completar, el Manager abre **Parts…** del Job de PM (D47, LTR-247) | Ve, por cada parte que eligió el mecánico, si sale del estante (y a cuánto), si ya se compró o se sacó para ese Job (no se cobra otra vez) o si no hay (no se cobra); el aceite a precio fijo; y un aviso si una compra del camión sin Job tiene esa parte | ✅ | A143 |
 | En **Parts…** del Job, devuelve 1 de 2 que salieron del estante (D47, LTR-247) | Vuelve 1 al mismo costo; el camión paga solo la que queda; después se puede devolver la otra | ✅ | A144 |
-| El Manager pone el precio del cambio de aceite | Setup → Labor rate → PM oil change: desde hoy o después, uno por día; mecánicos y Safety no lo ven | ✅ | A127 |
+| El Manager pone el precio del cambio de aceite | Setup → Shop rates → PM oil change: desde hoy o después, uno por día; mecánicos y Safety no lo ven | ✅ | A127 |
 | Quiere cobrarle a Finanzas | Factura interna por camión y mes con partes al costo, reparaciones externas y mano de obra (HU-M13, D34) | ✅ | A72–A75 |
 
 ### HU-M13 · Cobrarle a Finanzas lo que hizo el taller (J14) — ✅ construido (D34: LB-1 tarifa y mano de obra, LB-2 factura interna)
@@ -640,7 +646,7 @@ Ver la fila E7 en HU-ME2.
 **Quién:** el Manager. Finanzas recibe un PDF, no entra a la app.
 
 **Flujo**
-1. **Setup → Labor rate:** pone la tarifa por hora del taller y desde qué fecha vale.
+1. **Setup → Shop rates:** pone la tarifa por hora del taller y desde qué fecha vale.
 2. Al completar un Work Order, su mano de obra (horas × tarifa) entra al costo del camión. Truck → Costs la muestra.
 3. **Parts & costs → Internal invoices:** en "Month close" elige el mes y ve cada camión con lo que tiene sin cobrar; **Create drafts for all** arma los borradores que faltan de una vez (D37), o **New invoice** arma uno solo: camión y mes. Cada borrador trae lo que todavía no se cobró de ese camión hasta fin de mes (compras, reparaciones externas, mano de obra), al costo.
 4. Revisa las líneas; puede sacar alguna (queda para la próxima). **Send**: la factura se congela con su número `SHOP-2026-0001` y se descarga en PDF para mandarla a Finanzas.
@@ -947,9 +953,9 @@ La fila A149 está en `apps/api/test-real/rows/samsara.real.spec.ts`; la pantall
 | El número no está en la app | "Not in Shop app" + Add from Samsara (D50) | ✅ | A151 |
 | Abro "In yard without a Work Order" en el tablero Shop | Trucks con Where: In yard without a Work Order; al abrirle una WO sale de la lista | ✅ | A149 |
 | Dispatch no responde | Las listas dicen que no respondió; los contadores de Samsara siguen | ✅ | unit `yard-data-boundary.service.spec.ts` |
-| Está en Ready to Go (nadie hizo Return to Service) y Samsara lo ve fuera de la yard, con una lectura posterior al cierre (D52) | El siguiente paso dice "Left the yard {hora} · Confirm Return to Service" en todas las pantallas; en el Dashboard va primero en Return to Service; en Departures va arriba del día. La app no lo hace sola: el Manager confirma | ✅ | A152 · unit `yard-card.spec.ts`, `samsara-presence.spec.ts` |
-| …y vuelve a entrar a la yard sin Return to Service (D52) | Es una llegada nueva: Dispatch › Incoming lo pone en "Arrived · Needs a Work Order" con Create WO; el siguiente paso dice "Back in the yard since {hora}" | ✅ | A152 · unit `yard-card.spec.ts` |
-| Sigue en la yard desde antes de cerrar la WO | No cambia nada: Ready to Go, esperando salir | ✅ | A152 · unit `samsara-presence.spec.ts` |
+| Está en Ready to Go (nadie hizo Return to Service) y Samsara lo ve fuera de la yard, con una lectura posterior al cierre (D52) | El siguiente paso dice "Left the yard {hora} · Confirm Return to Service" en todas las pantallas; en el Dashboard va primero en Return to Service; en Departures va arriba del día. La app no lo hace sola: el Manager confirma | ✅ | A150 · unit `yard-card.spec.ts`, `samsara-presence.spec.ts` |
+| …y vuelve a entrar a la yard sin Return to Service (D52) | Es una llegada nueva: Dispatch › Incoming lo pone en "Arrived · Needs a Work Order" con Create WO; el siguiente paso dice "Back in the yard since {hora}" | ✅ | A150 · unit `yard-card.spec.ts` |
+| Sigue en la yard desde antes de cerrar la WO | No cambia nada: Ready to Go, esperando salir | ✅ | A150 · unit `samsara-presence.spec.ts` |
 | Llega a la yard sin Work Order y el Manager solo mira el Dashboard | El Dashboard lo pone primero en "Needs you": grupo "Arrived · Needs a Work Order", "In yard · since {hora}" y Create WO ahí mismo. Es la misma lista que el contador del Yard; el último en llegar va primero, se ven 5 y el resto en "See all N in Trucks". Un contador de arriba lo esconde, como a los pedidos | ✅ | A149 (la lista) · e2e `admin-shell.spec.ts` (LTR-261) · unit `dashboard-queue.spec.ts` |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
@@ -1001,7 +1007,7 @@ No entran en la auditoría automática. Se revisan a mano antes de salir en vivo
 
 - Inicio de sesión real, cambio y recuperación de contraseña.
 - Idioma (English / Español) y tema (Light / Dark / Auto).
-- App instalada en el teléfono: ícono, nombre, barra de estado, zonas seguras.
+- App instalada (PWA) en el teléfono y en la tablet: ícono, nombre, barra de estado, zonas seguras, vertical y horizontal, sin scroll de lado.
 - Pantallas vacías, de carga y de error.
 - Textos: que cada pantalla diga lo que dice este documento.
 

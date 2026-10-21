@@ -1,6 +1,6 @@
 # PROPUESTA: camiones propios, Samsara y API para terceros
 
-**Estado:** Samsara (Paso 2 y Paso 2b) **construido y en producción el 2026-10-14** (S-1 a S-4 y S-6, OPEN_ISSUES §1w–§1x). **Pendientes:** Paso 1, camiones propios en Admin (P13), y Paso 3, API para terceros (P14), en LTR-203. Diseñado el 2026-10-09; ampliado el 2026-10-13. Sale de dos chats del dueño: "Base de datos propia de camiones" e "Integración API Samsara para camiones". Decisiones: D35 y **D42** (fallas → Jobs recomendados) en [`DECISIONS.md`](../../DECISIONS.md); preguntas abiertas P12–P14. **Maqueta:** [`mockup.html`](mockup.html) (7 pantallas; ábrela en el navegador). Linear: épica [LTR-46](https://linear.app/ltransl/issue/LTR-46); Samsara [LTR-202](https://linear.app/ltransl/issue/LTR-202); camiones propios y API [LTR-203](https://linear.app/ltransl/issue/LTR-203).
+**Estado (2026-10-21):** Samsara (Paso 2 y Paso 2b) **construido y en producción el 2026-10-14** (S-1 a S-4 y S-6, OPEN_ISSUES §1w–§1x). **Paso 1, camiones propios en Admin: construido** (D44, LTR-215, PR 336; P13 cerrada). Después se sumaron In yard / In shop por geofence (D49), Dispatch con Samsara y Add from Samsara (D50, D51) y la salida de la yard (D52). **Pendiente:** solo el Paso 3, API para terceros (P14), en LTR-203. Diseñado el 2026-10-09; ampliado el 2026-10-13. Sale de dos chats del dueño: "Base de datos propia de camiones" e "Integración API Samsara para camiones". Decisiones: D35 y **D42** (fallas → Jobs recomendados) en [`DECISIONS.md`](../../DECISIONS.md); preguntas abiertas P12–P14. **Maqueta:** [`mockup.html`](mockup.html) (7 pantallas; ábrela en el navegador). Linear: épica [LTR-46](https://linear.app/ltransl/issue/LTR-46); Samsara [LTR-202](https://linear.app/ltransl/issue/LTR-202); camiones propios y API [LTR-203](https://linear.app/ltransl/issue/LTR-203).
 
 ## Qué quiere el dueño
 
@@ -99,5 +99,5 @@ API de **solo lectura** con su propia llave revocable, solo los campos que neces
 
 ## Preguntas abiertas (en DECISIONS)
 - ~~**P12**~~ Samsara: **cerrada 2026-10-13** — sin webhook, GitHub Actions dispara la sincronización, token "LTL Shop" de solo lectura creado, aviso de millas a 50 mi.
-- **P13** Alta de camiones en Admin: ¿cuándo?, ¿qué campos de Ninox se conservan?
+- ~~**P13**~~ Alta de camiones en Admin: **cerrada con D44 (2026-10-14)**, construida en LTR-215.
 - **P14** API para la otra persona: ¿qué datos usa hoy (solo camiones o también estado de WOs)?

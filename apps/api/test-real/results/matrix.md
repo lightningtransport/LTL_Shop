@@ -167,9 +167,9 @@ PASA 197 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A147 | Un Manager no da de alta ni toca a un Manager o a un System Admin; sí al personal del taller | PASA |
 | A148 | El System Admin desactiva, reactiva y quita a un Manager (D31); el tipo no cambia; nadie se quita a sí mismo | PASA |
 | A149 | D49: en un geofence de nuestra yard el camión está "In yard" desde la primera lectura adentro; con Work Order abierta está "In shop"; pasar de un geofence de la yard a otro no cambia la llegada; afuera no es ni uno ni otro, aunque tenga WO | PASA |
+| A150 | D52 (LTR-260): un camión en Ready to Go que Samsara ve fuera de la yard después del cierre pide confirmar Return to Service en todas las pantallas y va primero en el Dashboard; si vuelve a entrar sin Return to Service, es una llegada nueva | PASA |
 | A151 | D50: un camión que Dispatch tiene y la app no se agrega desde Samsara: crea el camión con VIN, marca, modelo, año y placa y lo deja conectado; sin vehículo en Samsara no ofrece nada; un mecánico no puede | PASA |
 | A152 | Flat Repair y Tires nacen con el mecánico de Alignment, que ve la posición, los PSI o el tread y el motivo; "Assign later" a propósito los deja sin dueño | PASA |
-| A152 | D52 (LTR-260): un camión en Ready to Go que Samsara ve fuera de la yard después del cierre pide confirmar Return to Service en todas las pantallas y va primero en el Dashboard; si vuelve a entrar sin Return to Service, es una llegada nueva | PASA |
 | A153 | Con dos en el equipo de Alignment la llanta espera en su cola; la inspección de un mecánico también manda las llantas a Alignment | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |

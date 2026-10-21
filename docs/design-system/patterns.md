@@ -1,6 +1,6 @@
 # Patterns
 
-**Classification:** CURRENT STATE
+**Classification:** CURRENT STATE · **Updated:** 2026-10-21 (LTR-273: Location vs Presence after D49; action notices; TV board; phone and tablet)
 **Source:** `apps/web/src/components/ui.tsx` plus call sites in
 `apps/web/src/app` and `apps/web/src/components`
 
@@ -94,20 +94,48 @@ catalogs (`pcLinesCountOne` / `pcLinesCount`, `truckMechanicsOne` /
 component: "1 parts", "1 lines" and "1 open Work Orders" came from a single
 `{count}` template.
 
-## Location vs Presence (LTR-13)
+## Location vs Presence (LTR-13, changed by D49)
 
-CURRENT UI hides Yard Presence (`UNKNOWN`, “Presence unknown”,
-“Presencia desconocida”) on Admin Truck detail and Yard cards/board stubs.
-Show only last reported location (`location` / `locationUpdatedOn` from the
-Truck DTO). Do not rename Presence → Ubicación: `location` ≠ Presence.
+Since D49 Presence comes from Samsara geofences: "In yard · since {time}" when
+Samsara sees the truck inside one of our yard geofences, "In shop" when it is
+also on an open Work Order. Without a Samsara reading, nothing is shown (never
+`UNKNOWN`, never invented). The address typed in Dispatch (`location`) is a
+different thing and never decides "In yard". Do not rename Presence → Ubicación.
 
 | Field | CURRENT display | Do not |
 |---|---|---|
-| `location` / `locationUpdatedOn` | “Last reported location” / “Ubicación reportada” | “in yard”, “en el yard”, Presence |
-| Yard Presence | Hidden until a real geofence exists (TARGET V3) | Presence UNKNOWN chips, “Presencia desconocida” rows |
+| `location` / `locationUpdatedOn` | “Last reported location” / “Ubicación reportada”; in Dispatch "Dispatch: {location}" when it disagrees with Samsara | Use it to say "in yard" |
+| Samsara presence (D49) | “In yard · since {time}” / “En la yard · desde {hora}”, “In shop” / “En el shop”; the city when outside | Presence UNKNOWN chips, “Presencia desconocida” rows |
 
 Mechanic surfaces already show location only. Keep that. Copy catalogs live in
 `apps/web/src/lib/admin-messages.ts` and `apps/web/src/lib/locale-context.tsx`.
+
+## Notices that ask for an action (LTR-261, D51, D52)
+
+When the app sees something the Manager must act on, it says what happened and
+puts the action right there. It never acts alone.
+
+- **Shape:** what happened + since when + one button. Examples: "Arrived · Needs a Work Order" · "In yard · since 9:00" · **Create WO**; "Left the yard 3:10 PM · Confirm Return to Service".
+- **Order:** in the Dashboard queue and in Dispatch, what needs action goes first; done items (Left) go last.
+- **Same words everywhere:** the next step text is shared by Dashboard, Truck, Work Order, Trucks and Yard (`nextStep` from the API).
+- **Long lists:** show 5 and a "See all N in Trucks" link to the filtered list.
+- **Confirm what moves a truck:** Return to Service and Close Work Order always open their dialog.
+
+## Board on a TV (D53)
+
+A screen nobody touches (the shop TV) must fit without scrolling: the Full
+screen view (`?display=board`) splits the width among the columns, turns a
+column that does not fit into compact cards and loads every truck (no "Load
+more"). The in-app Yard keeps scrolling (D33). Use `KanbanBoard fit` for that.
+
+## Phone and tablet (PWA, D54)
+
+Mechanics install the app on their phone or their tablet, so every mechanic
+and Safety screen is checked on both: one column on the phone, the full width
+from 768px with `.app-shell-wide` and `.card-grid`, no empty side bands, no
+half rows, no sideways scroll, portrait and landscape. Check with the
+`mobile-ui-check` skill (iPhone WebKit, Android Chromium) and the tablet walk
+before shipping a field screen.
 
 ## Access and permission chrome
 
