@@ -220,9 +220,38 @@ body {
     padding-bottom: max(2.5rem, var(--app-safe-bottom));
     padding-left: var(--app-shell-left);
   }
-  /* D54: on an iPad the mechanic and PM screens use the width (two columns where the page has them). */
+  /* D54: on an iPad the mechanic and PM screens use the width (two columns where the page has them).
+     LTR-271: no cap on a tablet, only normal margins. Safari's desktop mode draws the iPad page ~980 px wide, so
+     a 48rem cap left an empty band on each side. A cap only on a big monitor. */
   .app-shell-wide {
-    @apply md:max-w-3xl lg:max-w-6xl;
+    @apply md:max-w-none 2xl:max-w-[90rem];
+  }
+  @media (min-width: 768px) {
+    .app-shell-wide {
+      --app-shell-left: max(1.5rem, var(--app-safe-left));
+      --app-shell-right: max(1.5rem, var(--app-safe-right));
+    }
+  }
+  @media (min-width: 1024px) {
+    .app-shell-wide {
+      --app-shell-left: max(2rem, var(--app-safe-left));
+      --app-shell-right: max(2rem, var(--app-safe-right));
+    }
+  }
+  /* D54 / LTR-271: mechanic cards sit two per row on an iPad, and a card alone on its row takes the whole row, so
+     no half row is left empty. With .card-grid-lead the first card (the next one up) takes a row of its own. */
+  .card-grid {
+    @apply grid items-start gap-3 md:grid-cols-2;
+  }
+  .card-grid > :last-child:nth-child(odd),
+  .card-grid-lead > :first-child {
+    @apply md:col-span-2;
+  }
+  .card-grid-lead > :last-child:nth-child(odd):not(:first-child) {
+    @apply md:col-span-1;
+  }
+  .card-grid-lead > :last-child:nth-child(even) {
+    @apply md:col-span-2;
   }
   /* Mechanic header: full-bleed and sticky, its background under the status bar, so scrolled content never
      sits in the blurred strip. Same 56px row as the Admin header. */

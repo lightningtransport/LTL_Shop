@@ -62,13 +62,13 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
         <h2 className="section-title mb-1 flex items-center gap-2">{messages.pmWaitingTitle}<CountChip>{waiting.length}</CountChip></h2>
         <p className="mb-2 text-sm text-muted-foreground">{messages.mostUrgentFirst}</p>
         {waiting.length ? (
-          // D54: two per row on an iPad; the next-up card takes the whole row.
-          <ul className="grid gap-2 md:grid-cols-2">
+          // D54: two per row on an iPad; the next-up card takes the whole row. LTR-271: so does one alone on its row.
+          <ul className={`card-grid items-stretch gap-2 ${running ? '' : 'card-grid-lead'}`}>
             {waiting.map((wo, index) => {
               const next = !running && index === 0;
               const href = `/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`;
               return (
-                <li key={wo.id} className={`flex flex-col rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary md:col-span-2' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
+                <li key={wo.id} className={`flex flex-col rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
                   <div className="flex-1 space-y-1 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</span>
@@ -85,15 +85,16 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
                       {wo.lastPm ? messages.lastPmLine(wo.lastPm.observedMileage === null ? messages.mileageNotRecorded : formatMileage(wo.lastPm.observedMileage), shortDate(wo.lastPm.completedAt)) : messages.noPmOnRecord}
                     </p>
                   </div>
-                  <div className="border-t p-2">
+                  {/* LTR-271: on an iPad the button keeps its size at the right of the card. */}
+                  <div className="border-t p-2 md:flex md:justify-end">
                     {next ? (
-                      <Button asChild className="w-full">
+                      <Button asChild className="w-full md:w-56">
                         <Link href={href} aria-label={messages.workOrderAction(messages.startPmOn(wo.truckNumber), wo.displayId, wo.truckNumber)}>
                           <Play aria-hidden="true" />{messages.startPmOn(wo.truckNumber)}
                         </Link>
                       </Button>
                     ) : (
-                      <Button asChild variant="ghost" className="w-full justify-between">
+                      <Button asChild variant="ghost" className="w-full justify-between md:w-56">
                         <Link href={href} aria-label={messages.workOrderAction(messages.viewShort, wo.displayId, wo.truckNumber)}>
                           {messages.viewShort}<ChevronRight aria-hidden="true" />
                         </Link>
@@ -159,8 +160,8 @@ function RunningCard({ wo }: { wo: Wo }) {
           <span className={parts ? 'text-success' : 'text-muted-foreground'}>{messages.pmPartsLabel} {parts}</span>
         </p>
       </div>
-      <div className="border-t p-2">
-        <Button asChild className="w-full">
+      <div className="border-t p-2 md:flex md:justify-end">
+        <Button asChild className="w-full md:w-56">
           <Link href={`/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`} aria-label={messages.workOrderAction(messages.continuePmService, wo.displayId, wo.truckNumber)}>
             {messages.continuePmService}
           </Link>

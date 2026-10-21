@@ -5,12 +5,15 @@ import { devLogin } from './support/dev-login';
 
 /**
  * LTR-259: tablet UI walk (skill `mobile-ui-check`, tablet section). Off unless TABLET_WALK=1, which also swaps the
- * Playwright projects for iPad Pro 11" portrait (834×1194) and landscape (1194×834). For every Admin screen it
+ * Playwright projects for iPad Pro 11" portrait (834×1194), landscape (1194×834) and Safari's default desktop mode
+ * (LTR-271: the page is drawn about 980 px wide, so `md` applies but `lg` does not). For every Admin screen it
  * screenshots the page and measures four things (LTR-264: also the New purchase / New outside repair dialogs and the
  * mechanic and PM screens, which use the iPad width since D54):
  * - overflow: `main` scrolls sideways.
  * - overlap: two visible controls (input, select, button, link) cover each other.
  * - gutter: a capped container or the content leaves more than 120 px empty on the right of the content column.
+ * - lonely (LTR-271): a card alone on a row of a two-column grid, with the other half of the row empty. On the wide
+ *   mechanic screens, gutter also reports more than 48 px empty between the page and the window edge.
  * - copy: visible text longer than 120 characters, or words that belong to the team, not the shop (D34, LTR-, Vercel…).
  * Output: TABLET_WALK_OUT (default test-results/tablet-walk)/<project>/report.json.
  */
@@ -46,14 +49,21 @@ const PAGES: Walk[] = [
   ['purchase-new', '/admin/parts/purchases', { open: /^(New purchase|Nueva compra)$/ }],
   ['outside-new', '/admin/parts/outside-repairs', { open: /^(New outside repair|Nueva reparación externa)$/ }],
   ['mechanic-home', '/mechanic/standard', { user: 'mechanic@lightning.local' }],
+  ['mechanic-trucks', '/mechanic/standard/trucks', { user: 'mechanic@lightning.local' }],
+  ['mechanic-completed', '/mechanic/standard/completed', { user: 'mechanic@lightning.local' }],
+  ['mechanic-new', '/mechanic/standard/new', { user: 'mechanic@lightning.local' }],
   ['mechanic-wo', '/work-orders/00000000-0000-4000-8000-000000000106', { user: 'mechanic@lightning.local' }],
+  ['mechanic-truck', '/trucks/00000000-0000-4000-8000-000000001001/history', { user: 'mechanic@lightning.local' }],
   ['pm-home', '/mechanic/pm', { user: 'mpm@lightning.local' }],
+  ['pm-trucks', '/mechanic/pm/trucks', { user: 'mpm@lightning.local' }],
+  ['pm-completed', '/mechanic/pm/completed', { user: 'mpm@lightning.local' }],
+  ['pm-new', '/mechanic/pm/new', { user: 'mpm@lightning.local' }],
 ];
 
-type Found = { overflow: string[]; overlap: string[]; gutter: string[]; copy: string[] };
+type Found = { overflow: string[]; overlap: string[]; gutter: string[]; lonely: string[]; copy: string[] };
 
-async function measure(page: Page, scope: string): Promise<Found> {
-  return page.evaluate((root) => {
+async function measure(page: Page, scope: string, wide: boolean): Promise<Found> {
+  return page.evaluate(([root, wideShell]) => {
     const label = (el: Element) => `${el.tagName.toLowerCase()} "${(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || ''}"`;
     const visible = (el: Element) => {
       const r = el.getBoundingClientRect();
@@ -82,7 +92,8 @@ async function measure(page: Page, scope: string): Promise<Found> {
     // Gutter: the content column is the first child of `main`. Report capped boxes and empty space on its right.
     const gutter: string[] = [];
     // A phone-width shell on a tablet: `main` itself much narrower than the window (the Admin sidebar is 240 px).
-    if (main && window.innerWidth - main.getBoundingClientRect().width > 260) gutter.push(`main is ${Math.round(main.getBoundingClientRect().width)} of ${window.innerWidth} px wide`);
+    // LTR-271: the mechanic screens have no sidebar, so anything past a normal margin is an empty band.
+    if (main && window.innerWidth - main.getBoundingClientRect().width > (wideShell ? 48 : 260)) gutter.push(`main is ${Math.round(main.getBoundingClientRect().width)} of ${window.innerWidth} px wide`);
     const column = main?.firstElementChild as HTMLElement | null;
     if (column) {
       const style = getComputedStyle(column);
@@ -102,6 +113,21 @@ async function measure(page: Page, scope: string): Promise<Found> {
       }
     }
 
+    // Lonely (LTR-271): in a grid of two or more columns, a card (taller than 120 px) that ends its row alone.
+    const lonely: string[] = [];
+    for (const grid of document.querySelectorAll(`${root} *`)) {
+      const s = getComputedStyle(grid);
+      if (s.display !== 'grid' || !visible(grid)) continue;
+      const columns = s.gridTemplateColumns.split(' ').filter(Boolean).length;
+      if (columns < 2) continue;
+      const cells = [...grid.children].filter(visible);
+      const last = cells.at(-1);
+      if (!last || last.getBoundingClientRect().height < 120) continue;
+      const row = cells.filter((cell) => Math.abs(cell.getBoundingClientRect().top - last.getBoundingClientRect().top) < 2);
+      const used = row.reduce((sum, cell) => sum + cell.getBoundingClientRect().width, 0);
+      if (used < grid.getBoundingClientRect().width * 0.75) lonely.push(`${label(last)} alone on its row (${Math.round(used)} of ${Math.round(grid.getBoundingClientRect().width)} px)`);
+    }
+
     // Copy: long visible paragraphs and team-only words.
     const copy: string[] = [];
     const banned = /\b(D\d{2}|LTR-\d+|Vercel|GitHub|npm|API token|SAMSARA_API_TOKEN|Activity Log|database|endpoint|prisma)\b/;
@@ -111,8 +137,8 @@ async function measure(page: Page, scope: string): Promise<Found> {
       if (text.length > 120) copy.push(`long (${text.length}): ${text.slice(0, 90)}…`);
       else if (banned.test(text)) copy.push(`word "${text.match(banned)?.[0]}": ${text.slice(0, 90)}`);
     }
-    return { overflow, overlap: [...new Set(overlap)], gutter: [...new Set(gutter)], copy: [...new Set(copy)] };
-  }, scope);
+    return { overflow, overlap: [...new Set(overlap)], gutter: [...new Set(gutter)], lonely: [...new Set(lonely)], copy: [...new Set(copy)] };
+  }, [scope, wide] as const);
 }
 
 test('tablet walk', async ({ page }, info) => {
@@ -139,20 +165,21 @@ test('tablet walk', async ({ page }, info) => {
       await page.getByRole('button', { name: options.open }).first().click();
       await page.waitForTimeout(900);
       await page.screenshot({ path: `${dir}/${name}-1.png` });
-      const inDialog = await measure(page, '[role=dialog]');
+      const inDialog = await measure(page, '[role=dialog]', false);
       report[name] = { path, ...inDialog, error: (await page.getByText('Something went wrong').count()) > 0 };
       writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
       await page.keyboard.press('Escape');
       continue;
     }
-    const found: Found = { overflow: [], overlap: [], gutter: [], copy: [] };
+    const found: Found = { overflow: [], overlap: [], gutter: [], lonely: [], copy: [] };
+    const wide = !path.startsWith('/admin');
     const view = await page.evaluate(() => { const m = document.querySelector('main'); return { scroll: m?.scrollHeight ?? 0, view: m?.clientHeight ?? 1 }; });
     const shots = Math.min(5, Math.max(1, Math.ceil(view.scroll / Math.max(1, view.view))));
     for (let index = 0; index < shots; index += 1) {
       await page.evaluate(([i, h]) => { const m = document.querySelector('main'); if (m) m.scrollTop = Number(i) * (Number(h) - 80); }, [index, view.view] as const);
       await page.waitForTimeout(250);
       await page.screenshot({ path: `${dir}/${name}-${index + 1}.png` });
-      const pass = await measure(page, 'main');
+      const pass = await measure(page, 'main', wide);
       (Object.keys(found) as Array<keyof Found>).forEach((key) => { found[key] = [...new Set([...found[key], ...pass[key]])]; });
     }
     // The Filters sheet (below the inline breakpoint) is where most controls live on a tablet: capture it too.
@@ -164,7 +191,8 @@ test('tablet walk', async ({ page }, info) => {
       await page.screenshot({ path: `${dir}/${name}-filters.png` });
       await page.keyboard.press('Escape');
     }
-    const errors = await page.getByText('Something went wrong').count();
+    // A page whose data did not load (the fixture has no route for it) is a failure too, not a clean screen.
+    const errors = await page.getByText(/^(Something went wrong|Fixture route not found)$/).count();
     report[name] = { path, ...found, error: errors > 0 };
     writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
   }

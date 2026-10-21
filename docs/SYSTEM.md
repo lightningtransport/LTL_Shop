@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -774,8 +774,11 @@ solo a las 5:00 p.m. (D20); al volver toca Continue.
 ("Working on Truck 922", "Active"), nunca desde qué hora ni cuánto lleva. Las
 sesiones de `work_sessions` siguen igual para el labor (D34); el Admin ve las
 horas. En el iPad (desde 768 px) las pantallas de mecánico usan el ancho
-(`.app-shell-wide`): tarjetas de a dos, y en el Work Order los Jobs a la izquierda
-y Notas / Truck Information a la derecha.
+(`.app-shell-wide`, sin tope de ancho en tablet, solo márgenes; LTR-271: Safari en
+el iPad dibuja ~980 px en modo escritorio): tarjetas de a dos (`.card-grid`; una
+sola en su fila ocupa la fila entera y sus botones guardan su tamaño a la
+derecha), y en el Work Order los Jobs a la izquierda y Notas / Truck Information
+a la derecha.
 
 **MECH03 — Bloqueo:** reporta un bloqueo en uno de sus Jobs → si no le queda
 otro Job disponible, su tiempo se detiene → solo puede agregar notas → el
