@@ -451,6 +451,7 @@ queda el registro del cambio. El Work Order sigue abierto para los demás pasos.
 | Arranca el PM | El PM queda suyo aunque el dueño por defecto fuera otro | ✅ | A9 |
 | Arranca el PM y nadie más ha hecho Start | El Work Order pasa a "en curso"; su reloj corre y se detiene al terminar | ✅ | A9b |
 | Millaje menor que el del camión | No deja | ✅ | E11 |
+| El millaje guardado quedó por debajo del camión (el camión subió después) | Al abrir el PM lo dice con el millaje actual y las partes siguen bloqueadas; My work dice "Mileage · check it", sin check verde (LTR-277) | 👁 | A9c (la lista trae el millaje del camión) |
 | Millaje con un salto de más de 50 000 | Pide confirmar | ✅ | E11 |
 | Finish sin millaje o sin partes | No deja | ✅ | E11 |
 | Ya tiene un PM en curso en otro camión | No deja empezar otro hasta terminar. La pantalla lo dice **antes** de tocar (inicio, Create PM service y el otro camión) y lleva al PM en curso | ✅ | A11 · e2e bloque A |

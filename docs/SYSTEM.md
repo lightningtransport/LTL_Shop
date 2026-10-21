@@ -359,6 +359,11 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   solo lectura al terminar.
 - Millaje: nunca menor que el del Truck; un salto de más de 50 000 pide
   confirmación (D10).
+- Un millaje guardado que quedó por debajo del Truck (el Truck subió después)
+  se avisa **al abrir** el PM, con el millaje actual, sin esperar a salir del
+  campo; el aviso de partes dice lo mismo y las partes siguen bloqueadas. En My
+  work la tarjeta del PM en curso dice "Mileage · check it" en vez del check
+  verde; la lista del PM trae `pmJob.truckMileage` para compararlo (LTR-277 §2).
 - Partes: catálogo de 9 categorías filtrado por marca/modelo del Truck; se
   exige al menos una.
 

@@ -1594,7 +1594,7 @@ export class WorkOrdersService {
 
   /**
    * Stage PM-1: for the PM workspace cards — the PM's mileage and parts count, and the truck's previous
-   * finished PM. Two queries for the whole list.
+   * finished PM, and the Truck's mileage now (LTR-277 §2). Three queries for the whole list.
    */
   private async addPmListDetails(items: Array<{ id: string; truckId: string; pmJob?: Record<string, unknown> | null; lastPm?: unknown }>) {
     // Unit-test doubles may not model the PM tables; the cards then go without these extras.
@@ -1604,6 +1604,11 @@ export class WorkOrdersService {
       select: { workOrderId: true, observedMileage: true, _count: { select: { parts: true } } },
     });
     const byWorkOrder = new Map(services.map((service) => [service.workOrderId, service]));
+    const trucks = typeof this.prisma.truck?.findMany !== 'function' ? [] : await this.prisma.truck.findMany({
+      where: { id: { in: [...new Set(items.map((item) => item.truckId))] } },
+      select: { id: true, mileage: true },
+    });
+    const truckMileage = new Map(trucks.map((row) => [row.id, row.mileage]));
     const finished = await this.prisma.pmService.findMany({
       where: {
         workOrder: { truckId: { in: [...new Set(items.map((item) => item.truckId))] } },
@@ -1616,7 +1621,7 @@ export class WorkOrdersService {
     });
     for (const item of items) {
       const own = byWorkOrder.get(item.id);
-      if (item.pmJob) item.pmJob = { ...item.pmJob, observedMileage: own?.observedMileage ?? null, partsCount: own?._count.parts ?? 0 };
+      if (item.pmJob) item.pmJob = { ...item.pmJob, observedMileage: own?.observedMileage ?? null, partsCount: own?._count.parts ?? 0, truckMileage: truckMileage.get(item.truckId) ?? null };
       const previous = finished
         .filter((service) => service.workOrder.truckId === item.truckId && service.workOrderId !== item.id)
         .map((service) => ({ observedMileage: service.observedMileage, completedAt: service.workOrderJob?.completedAt ?? service.workOrder.completedAt ?? service.workOrder.createdAt }))

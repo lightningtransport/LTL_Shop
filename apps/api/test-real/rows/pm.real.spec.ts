@@ -51,6 +51,8 @@ describe('Mecánico PM', () => {
     const running = (list.active as Json[]).find((item) => item.id === second.workOrderId);
     same('el PM en curso trae su millaje y sus piezas', [running?.pmJob?.observedMileage, running?.pmJob?.partsCount], [null, 0]);
     same('el 922 no tiene PM anterior', running?.lastPm, null);
+    // LTR-277 §2: la tarjeta compara el millaje del PM con el del camión hoy.
+    same('el PM en curso trae el millaje del camión hoy', running?.pmJob?.truckMileage, (await truck('922')).mileage);
     const done = (list.completed as Json[]).find((item) => item.id === firstJoin.id);
     same('el PM terminado dice millaje y piezas', [done?.pmJob?.observedMileage, done?.pmJob?.partsCount], [firstMileage, 1]);
   });
