@@ -320,7 +320,7 @@ test.describe('Shop Admin Phase 2A', () => {
     await verifyMetric(/completed today$/, { status: 'completed', completedFrom: '2026-09-06T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
     await verifyMetric(/in the last 7 days$/, { status: 'completed', completedFrom: '2026-08-31T04:00:00.000Z', completedBefore: '2026-09-07T04:00:00.000Z' });
 
-    // A counter filters the queue to its group, and toggles back.
+    // A counter puts its group first and hides the other counters, and toggles back.
     const closeCounter = page.getByTestId('dashboard-counter-close');
     await closeCounter.click();
     await expect(closeCounter).toHaveAttribute('aria-pressed', 'true');
@@ -358,9 +358,9 @@ test.describe('Shop Admin Phase 2A', () => {
     await row.getByTestId('dashboard-create-wo').click();
     await expect(page.getByRole('dialog')).toContainText('Y-101');
     await page.keyboard.press('Escape');
-    // A counter filters the queue to its group: the arrivals step aside.
+    // LTR-277 §1: a counter hides only the other counters; the arrivals stay.
     await page.getByTestId('dashboard-counter-close').click();
-    await expect(arrived).toHaveCount(0);
+    await expect(arrived).toBeVisible();
   });
 
   test('work order search 9 + Apply returns ranked WO/truck matches and EmptyState', async ({ page }) => {
