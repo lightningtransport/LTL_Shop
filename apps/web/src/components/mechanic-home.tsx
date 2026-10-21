@@ -235,23 +235,24 @@ function WorkCard({
         ) : null}
         <MyJobList wo={wo} userId={userId} nextJobId={nextJobId} />
       </div>
-      <div className="flex gap-2 border-t p-2">
+      {/* LTR-271: on an iPad the buttons keep their size at the right of the card, not stretched across a wide card. */}
+      <div className="flex gap-2 border-t p-2 md:justify-end">
         {clockHere || paused ? (
-          <Button asChild variant={clockHere ? 'default' : 'outline'} className="w-full">
+          <Button asChild variant={clockHere ? 'default' : 'outline'} className="w-full md:w-56">
             <Link href={`/work-orders/${wo.id}`} aria-label={messages.workOrderAction(messages.viewWork, wo.displayId, wo.truckNumber)}>{messages.viewWork}</Link>
           </Button>
         ) : ready ? (
-          <StartAction wo={wo} className="flex-1" variant={primary ? 'default' : 'outline'} />
+          <StartAction wo={wo} className="flex-1 md:w-56 md:flex-none" variant={primary ? 'default' : 'outline'} />
         ) : nextJobId ? (
           <>
             {/* Block A (MG4): the line says "tap Continue", so the button is Continue. */}
-            <StartAction wo={wo} className="flex-1" label={messages.continueWork} variant={primary ? 'default' : 'outline'} />
+            <StartAction wo={wo} className="flex-1 md:w-56 md:flex-none" label={messages.continueWork} variant={primary ? 'default' : 'outline'} />
             <Button asChild variant="ghost" className="shrink-0">
               <Link href={`/work-orders/${wo.id}`} aria-label={viewLabel}>{messages.viewShort}</Link>
             </Button>
           </>
         ) : (
-          <Button asChild variant="outline" className="w-full">
+          <Button asChild variant="outline" className="w-full md:w-56">
             <Link href={`/work-orders/${wo.id}`} aria-label={messages.workOrderAction(messages.viewWork, wo.displayId, wo.truckNumber)}>{messages.viewWork}</Link>
           </Button>
         )}
