@@ -29,6 +29,7 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
 | `--sunken` | A step below the card: table headers, folded groups (R6) |
+| `--brand-navy` | The brand navy behind the animated logo before sign-in (`bg-brand-navy`, `login-loader.tsx`); same in light and dark. LTR-274 |
 
 Other `:root` tokens, not colors: `--shadow-2xs` … `--shadow-xl` (and `--shadow`), stronger in `.dark`; Tailwind `shadow-soft` is `var(--shadow-lg)`. Since Stage 8 cards and fields carry no shadow, so shadows are for floating things (toasts, menus). `--font-serif` exists only as an alias of `--font-sans`.
 
@@ -104,7 +105,8 @@ ad-hoc size/weight combinations.
 
 Rules:
 
-- Nothing under 12px. No `text-[10px]` / `text-[11px]`. Known leftovers are tracked in LTR-274.
+- Nothing under 12px. No `text-[10px]` / `text-[11px]` (LTR-274 removed the last ones outside the frozen demo panel; the avatar initials below are the one exception).
+- Monospace identifiers (WO-0102, VIN) may use `font-mono text-[13px]`: the mono face reads as large as 14px text, so it lines up with the body.
 - Sentence case. No `uppercase`, no wide tracking: eyebrows, form labels,
   badges, and nav group labels all read as normal text. `e2e/ui-consistency`
   fails if Admin list pages render uppercase text.
@@ -142,7 +144,8 @@ Interactive controls use Tailwind `min-h-11` (2.75rem / 44px):
 Do not ship new tappable controls below 44px. The 2026-09-01 UX audit recorded
 this as a CURRENT rule (`docs/archive/audit/ux-theme/README.md`).
 
-Buttons also use `whitespace-nowrap`; if an action group does not fit, the
+Button borders (`outline`, `secondary`) use `--input`, not `--border` (LTR-274): a control needs ≥ 3:1, and the hairline made
+them read as text in dark. Buttons also use `whitespace-nowrap`; if an action group does not fit, the
 group wraps or stacks. Individual action labels must never be allowed to form
 an accidental two-line button.
 

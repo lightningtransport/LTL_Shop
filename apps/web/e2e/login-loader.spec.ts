@@ -8,7 +8,9 @@ test.describe('Login loader', () => {
     const loader = page.getByTestId('login-loader');
     await expect(loader).toBeVisible();
     await expect(loader).toHaveAttribute('aria-label', /Lightning Shop/);
-    await expect(loader).toHaveCSS('background-color', 'rgb(15, 26, 51)');
+    // LTR-274: the brand navy is the --brand-navy token (#0f1a33 in OKLCH).
+    // WebKit prints more decimals of the hue (264.700012).
+    await expect(loader).toHaveCSS('background-color', /^oklch\(0\.2226 0\.0515 264\.7/);
     await expect(loader.locator('img[src="/lightning-loader.svg"]')).toBeVisible();
     await expect(loader).toHaveCount(0, { timeout: 10_000 });
     await expect(page.getByLabel('Email')).toBeVisible();

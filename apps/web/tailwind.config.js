@@ -42,6 +42,8 @@ module.exports = {
         'warning-surface': themed('warning-surface'),
         // R6: a step below the card (table headers, folded groups).
         sunken: themed('sunken'),
+        // LTR-274: the brand navy of the sign-in loader.
+        'brand-navy': themed('brand-navy'),
         shop: {
           bg: 'oklch(var(--shop-bg) / <alpha-value>)',
           panel: 'oklch(var(--shop-panel) / <alpha-value>)',

@@ -761,7 +761,7 @@ function TireButton({ copy, position, tire, tone, onClick }: { copy: InspectionC
   return (
     <button type="button" onClick={onClick} data-testid={`tire-${position}`} className={cn('relative flex h-[78px] w-[60px] flex-col items-center justify-center rounded-lg border-2 hover:ring-2 hover:ring-ring/40 sm:w-16', TIRE_TONE[tone])} aria-label={tireAriaLabel(position, tire?.psi, tire?.tread, tone, copy)}>
       {Icon ? <Icon aria-hidden="true" className={cn('absolute right-1 top-1 size-3', TIRE_TEXT[tone])} /> : null}
-      <span className="text-[11px] font-semibold text-muted-foreground">{position}</span>
+      <span className="text-xs font-semibold text-muted-foreground">{position}</span>
       <span className={cn('tnum text-base font-semibold leading-tight', TIRE_TEXT[tone])}>{tire?.psi ?? '—'}</span>
       <span className="tnum text-xs text-muted-foreground">{tire?.tread !== null && tire?.tread !== undefined ? `${tire.tread}/32` : 'PSI'}</span>
     </button>

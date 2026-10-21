@@ -14,7 +14,10 @@ import { devLogin } from './support/dev-login';
  * - gutter: a capped container or the content leaves more than 120 px empty on the right of the content column.
  * - lonely (LTR-271): a card alone on a row of a two-column grid, with the other half of the row empty. On the wide
  *   mechanic screens, gutter also reports more than 48 px empty between the page and the window edge.
+ * - actions (LTR-274): a card's action bar (`data-card-action`) whose buttons do not fill the card, or a button there
+ *   with no fill and no border (it reads as text).
  * - copy: visible text longer than 120 characters, or words that belong to the team, not the shop (D34, LTR-, Vercel…).
+ * TABLET_WALK_DARK=1 walks in dark mode (LTR-274: the owner's iPad is dark; light alone hid a ghost button).
  * Output: TABLET_WALK_OUT (default test-results/tablet-walk)/<project>/report.json.
  */
 const OUT = process.env.TABLET_WALK_OUT ?? 'test-results/tablet-walk';
@@ -65,7 +68,7 @@ const PAGES: Walk[] = [
   ['qc-review-open', '/qc', { user: 'qc1@lightning.local', open: /^(Continue review|Continuar revisión)$/ }],
 ];
 
-type Found = { overflow: string[]; overlap: string[]; gutter: string[]; lonely: string[]; copy: string[] };
+type Found = { overflow: string[]; overlap: string[]; gutter: string[]; lonely: string[]; actions: string[]; copy: string[] };
 
 async function measure(page: Page, scope: string, wide: boolean): Promise<Found> {
   return page.evaluate(([root, wideShell]) => {
@@ -134,6 +137,37 @@ async function measure(page: Page, scope: string, wide: boolean): Promise<Found>
       if (used < grid.getBoundingClientRect().width * 0.75) lonely.push(`${label(last)} alone on its row (${Math.round(used)} of ${Math.round(grid.getBoundingClientRect().width)} px)`);
     }
 
+    // Actions (LTR-274): a card's action (`data-card-action`) fills the card's width and looks like a button — a fill or
+    // a border — in light and dark. Before, on an iPad the button sat 224 px wide at the right of an empty band, and
+    // the PM "View" was a ghost that read as plain text in dark.
+    const actions: string[] = [];
+    // A card's action bar: marked with `data-card-action`, or found — the last block of a card (a list item or a
+    // rounded box) with a top border that holds only buttons or links. Found too, so markup without the mark is checked.
+    const bars = new Set<Element>(document.querySelectorAll(`${root} [data-card-action]`));
+    for (const card of document.querySelectorAll(`${root} li, ${root} [class*="rounded-xl"]`)) {
+      const last = card.lastElementChild;
+      if (!last || last === card.firstElementChild || parseFloat(getComputedStyle(last).borderTopWidth) === 0) continue;
+      const controls = [...last.querySelectorAll('button, a[href]')];
+      const loose = (last.textContent ?? '').replace(/\s+/g, '').length - controls.reduce((n, el) => n + (el.textContent ?? '').replace(/\s+/g, '').length, 0);
+      if (controls.length && loose === 0) bars.add(last);
+    }
+    for (const bar of bars) {
+      if (!visible(bar)) continue;
+      const style = getComputedStyle(bar);
+      const inner = bar.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const items = [...bar.querySelectorAll('button, a[href]')].filter(visible);
+      if (!items.length) continue;
+      const left = Math.min(...items.map((el) => el.getBoundingClientRect().left));
+      const right = Math.max(...items.map((el) => el.getBoundingClientRect().right));
+      if (right - left < inner * 0.9) actions.push(`${label(items[0])} uses ${Math.round(right - left)} of ${Math.round(inner)} px`);
+      for (const el of items) {
+        const s = getComputedStyle(el);
+        const filled = s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent';
+        const bordered = parseFloat(s.borderTopWidth) > 0 && s.borderTopColor !== s.backgroundColor;
+        if (!filled && !bordered) actions.push(`${label(el)} has no fill and no border: it reads as text`);
+      }
+    }
+
     // Copy: long visible paragraphs and team-only words.
     const copy: string[] = [];
     const banned = /\b(D\d{2}|LTR-\d+|Vercel|GitHub|npm|API token|SAMSARA_API_TOKEN|Activity Log|database|endpoint|prisma)\b/;
@@ -144,7 +178,7 @@ async function measure(page: Page, scope: string, wide: boolean): Promise<Found>
       if (text.length > 120) copy.push(`long (${text.length}): ${text.slice(0, 90)}…`);
       else if (banned.test(text)) copy.push(`word "${text.match(banned)?.[0]}": ${text.slice(0, 90)}`);
     }
-    return { overflow, overlap: [...new Set(overlap)], gutter: [...new Set(gutter)], lonely: [...new Set(lonely)], copy: [...new Set(copy)] };
+    return { overflow, overlap: [...new Set(overlap)], gutter: [...new Set(gutter)], lonely: [...new Set(lonely)], actions: [...new Set(actions)], copy: [...new Set(copy)] };
   }, [scope, wide] as const);
 }
 
@@ -155,6 +189,7 @@ test('tablet walk', async ({ page }, info) => {
   mkdirSync(dir, { recursive: true });
   const only = process.env.TABLET_WALK_ONLY?.split(',');
   const report: Record<string, unknown> = {};
+  if (process.env.TABLET_WALK_DARK) await page.emulateMedia({ colorScheme: 'dark' });
   let signedIn = '';
   for (const [name, path, options] of PAGES) {
     if (only && !only.includes(name)) continue;
@@ -178,7 +213,7 @@ test('tablet walk', async ({ page }, info) => {
       await page.keyboard.press('Escape');
       continue;
     }
-    const found: Found = { overflow: [], overlap: [], gutter: [], lonely: [], copy: [] };
+    const found: Found = { overflow: [], overlap: [], gutter: [], lonely: [], actions: [], copy: [] };
     const wide = !path.startsWith('/admin');
     const view = await page.evaluate(() => { const m = document.querySelector('main'); return { scroll: m?.scrollHeight ?? 0, view: m?.clientHeight ?? 1 }; });
     const shots = Math.min(5, Math.max(1, Math.ceil(view.scroll / Math.max(1, view.view))));

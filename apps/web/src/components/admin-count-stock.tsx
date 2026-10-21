@@ -124,7 +124,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
     }
     const qty = stockQty(Math.abs(value.diff) / 100);
     const text = fillPlaceholders(value.diff > 0 ? messages.pcCountUp : messages.pcCountDown, { qty, cost: formatCents(value.unit ?? 0, locale) });
-    return <span className="tabular-nums">{text}{value.diff > 0 && !row.item?.avgCostCents && !costs[row.part.id]?.trim() ? <span className="ml-1 text-[11px] text-muted-foreground">{messages.pcRefShort}</span> : null}</span>;
+    return <span className="tabular-nums">{text}{value.diff > 0 && !row.item?.avgCostCents && !costs[row.part.id]?.trim() ? <span className="ml-1 text-xs text-muted-foreground">{messages.pcRefShort}</span> : null}</span>;
   }
 
   if (isLoading && !catalog) return <PageSkeleton label={messages.pcCountStock} />;

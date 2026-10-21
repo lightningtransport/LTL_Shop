@@ -93,6 +93,16 @@ Reused across screens; use them instead of building a new one.
 Feature screens (dashboard, Yard board, Work Order detail, catalog) compose
 these primitives. They are not a second component library.
 
+## Field card actions (mechanic, PM, Safety; LTR-274)
+
+One pattern for every card on the mechanic, PM and Safety screens, on the phone and the tablet, in light and dark:
+
+- The action bar is the card's last block: `border-t p-2` and `data-card-action`.
+- Its button fills the card's width (`w-full`, or `flex-1` beside a second one). Never a fixed width at the right of an empty band: on an iPad that read as a stray button (LTR-271 did that; LTR-274 undid it).
+- The main action is `default` (filled). Any other action in the bar is `outline` (border `--input` and a fill darker than the card). Never `ghost` in a card's action bar: in dark it reads as plain text.
+- On the page, outside a card, a full-width action is `secondary` (card fill and border), not `outline`, whose fill equals the page.
+- `e2e/tablet-walk.spec.ts` checks it (`actions`): a bar whose buttons use less than 90% of the card, or a button there with no fill and no border.
+
 ## Admin composition rules
 
 - Every page has one `.page-title` (`PageHeader` on lists; the detail screens, the Dashboard and the Yard build their header from the mockups in a `<header>`); no eyebrow.

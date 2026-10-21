@@ -109,12 +109,12 @@ export function PartStockPanel({ partId, referenceCents, canWrite, locale, messa
             <div className="rounded-lg bg-muted p-2">
               <dt className="text-xs text-muted-foreground">{messages.pcPartPanelAvg}</dt>
               <dd className="text-lg font-semibold tabular-nums">{item.avgCostCents === null ? '—' : formatCents(item.avgCostCents, locale)}</dd>
-              <dd className="text-[11px] text-muted-foreground">{messages.pcPartPanelAvgHint}</dd>
+              <dd className="text-xs text-muted-foreground">{messages.pcPartPanelAvgHint}</dd>
             </div>
             <div className="rounded-lg bg-muted p-2">
               <dt className="text-xs text-muted-foreground">{messages.pcPartPanelRef}</dt>
               <dd className="text-lg font-semibold tabular-nums">{referenceCents === null ? '—' : formatCents(referenceCents, locale)}</dd>
-              <dd className="text-[11px] text-muted-foreground">{messages.pcPartPanelRefHint}</dd>
+              <dd className="text-xs text-muted-foreground">{messages.pcPartPanelRefHint}</dd>
             </div>
           </dl>
           {canWrite ? (
