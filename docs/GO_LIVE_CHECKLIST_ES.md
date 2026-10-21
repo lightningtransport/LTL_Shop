@@ -7,7 +7,7 @@
 > La última migración en `main` es `20261029100000_samsara_geofence_in_shop` (D49, 2026-10-19). Antes de
 > retomar, confirma en la Fase 1 que producción tiene todas las migraciones y que la web y la API están en el
 > último `main` (con Vercel Hobby a veces un merge no despliega solo).
-> El seguimiento de la salida en vivo está en Linear, proyecto **Plataforma y Go-live** (LTR-45, LTR-52). Las fases 1 a 3 ya se
+> El seguimiento de la salida en vivo está en Linear, proyecto **Plataforma y Go-live** (LTR-45). Las fases 1 a 3 ya se
 > hicieron de hecho; al retomar alcanza con repetir la 1 para confirmar que no apareció nada nuevo.
 **Lista anterior (Ninox, septiembre):** [`archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md`](archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md)
 
@@ -183,9 +183,10 @@ manda sus Jobs a la cola del equipo desde ahí mismo, o haz primero la fase 6.
   Safety (el Manager puede hacerlo de respaldo, D29).
 - **Shop hours:** cierre 5:00 p.m., lunes a viernes. Guardar.
 
-**5.2 · Tú / Yo — camiones.** Con el conteo de la consulta 1.2: si falta
-algún camión que el taller va a buscar, avísame; la carga se hace una sola
-vez con el script de Ninox (nunca con `db:seed`, que pisaría datos reales).
+**5.2 · Tú — camiones.** Con el conteo de la consulta 1.2: si falta algún
+camión que el taller va a buscar, dalo de alta en Admin → Trucks → Add truck y
+conéctalo a Samsara desde su ficha (D44). Nunca `db:seed`, que pisaría datos
+reales. (El script único de Ninox, LTR-52, quedó cancelado el 2026-10-21.)
 
 **5.3 · Catálogo de Jobs:** ya lo cargó la fase 3. Abre Admin → Setup → Jobs y
 confirma que están las categorías que usa el taller; activa o desactiva las

@@ -1,10 +1,12 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-21 (LTR-274 hecho: nada bajo 12px, token `--brand-navy`; botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-275 hecho: "this device" / "este dispositivo"); antes 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
+**Actualizado:** 2026-10-21 (limpieza de Linear: los cerrados se borraron de Linear y su copia está en [`archive/LINEAR_CERRADOS_2026-10-21.md`](archive/LINEAR_CERRADOS_2026-10-21.md); LTR-194 hecho, LTR-73 duplicado de LTR-255, LTR-46, LTR-54 y LTR-52 cancelados; suman LTR-267 a LTR-270); antes 2026-10-21 (LTR-274 hecho: nada bajo 12px, token `--brand-navy`; botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-275 hecho: "this device" / "este dispositivo"); antes 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
-Cuando un issue pasa a Done, se borra su línea.
+Cuando un issue pasa a Done, se borra su línea. Un `LTR-n` cerrado antes del
+2026-10-21 ya no está en Linear: búscalo en
+[`archive/LINEAR_CERRADOS_2026-10-21.md`](archive/LINEAR_CERRADOS_2026-10-21.md).
 
 El historial completo hasta el 2026-10-14 (plan de cierre, fases A–D, defectos
 §1a–§1z, limpieza, idioma) está en
@@ -18,18 +20,20 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
-| Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
 | Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
+| Yard | LTR-270 | La prueba e2e de arrastrar el tablero del Yard con el mouse sigue en rojo en WebKit (sigue a LTR-227) | — |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
-| Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
-| Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
-| Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
-| Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
-| Plataforma y Go-live | LTR-45 / LTR-52 | Salida en vivo (en espera) y flota de producción | — |
+| Parts, Costs & Finance | — | Repuestos, stock y llantas (D45): hecho (LTR-220–226, cerrados); faltan P24, P26, P28 y P31 de Randy | — |
+| Safety / QC | LTR-233 | Fotos y videos como evidencia de un hallazgo (SQ-4, Gated); SQ-1 a SQ-3 de D46 hechas (LTR-229–232, cerrados) | — |
+| Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia (D48 ya resolvió quién maneja a Managers y Admins) | — |
+| Plataforma y Go-live | LTR-45 | Salida en vivo (en espera desde el 2026-10-09) | — |
+| Plataforma y Go-live | LTR-267 | Vercel: cada deploy pesa 400–600 MB y Functions Storage se vuelve a llenar (lo hace el dueño) | — |
+| Plataforma y Go-live | LTR-268 | Supabase de producción: MFA en la cuenta dueña y respaldos (lo hace el dueño) | — |
+| Plataforma y Go-live | LTR-269 | Revisión de UI en teléfono y escritorio: 13 hallazgos de color y accesibilidad, pantallas nuevas sin revisar | — |
 | Plataforma y Go-live | LTR-241 | `getAttention` del Dashboard: 60 de sus 113 consultas, medido en la ronda de rendimiento 2026-10 (LTR-237, cerrada; ver `reference/PERFORMANCE.md`); 10 e2e de Chromium fallan en main (specs desactualizados) | E |
-| Integraciones V3 | LTR-46, 54, 56 | Integraciones en espera (Gated): contratos, trailers | — |
+| Integraciones V3 | LTR-56 | Trailers UC como activos (Gated; ID de Ninox sin resolver) | — |
 
 ## Preguntas abiertas
 
