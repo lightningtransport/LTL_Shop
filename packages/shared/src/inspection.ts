@@ -124,6 +124,15 @@ export function tireReadingStatus(
   return { status, reason };
 }
 
+/**
+ * D52: why a tire made a Job, from the saved reading alone. A Job is only made for `fix`, and on a tie tread
+ * wins (D41), so a tread under the minimum is `worn`; otherwise the pressure was off one way or the other.
+ */
+export function tireFindingReason(reading: { psi: number; tread: number; targetPsi: number; minTread: number }): 'low_pressure' | 'high_pressure' | 'worn' {
+  if (reading.tread < reading.minTread) return 'worn';
+  return reading.psi < reading.targetPsi ? 'low_pressure' : 'high_pressure';
+}
+
 // ───────────────────────── Requests ─────────────────────────
 
 const noteSchema = z.string().trim().min(1).max(1000);
@@ -140,10 +149,13 @@ export const inspectionTireAnswerSchema = z.object({
   tread: z.number().int().min(0).max(32),
 });
 
-/** Who does a Job the inspection creates (Manager only). Keyed by the catalog Job the defects point to. */
+/**
+ * Who does a Job the inspection creates (Manager only). Keyed by the catalog Job the defects point to.
+ * D52: `null` is "Assign later" said on purpose, so Flat Repair and Tires skip the Alignment team.
+ */
 export const inspectionJobAssignmentSchema = z.object({
   catalogJobId: z.string().uuid(),
-  assignedMechanicId: z.string().uuid(),
+  assignedMechanicId: z.string().uuid().nullable(),
 });
 
 /** D41: save the whole sheet once — every active check answered and the 10 tires. */
@@ -281,6 +293,11 @@ export type TruckInspectionStateDto = {
   legacyInspection: { outcome: 'issues_found' | 'no_issues_found'; recordedAt: string | null; byName: string | null } | null;
   /** D45 / ST-4: the last tire put at each position (from a confirmed Tires Job, still in place). */
   installedTires?: InstalledTireDto[];
+  /**
+   * D52: Flat Repair and Tires go to the Alignment team (the tire machine is in his area): its one mechanic, or its
+   * queue when it has several. Null when the team is empty: the Jobs are born unowned.
+   */
+  tireJobsGoTo?: { mechanic: { id: string; name: string } | null; queue: boolean } | null;
 };
 
 /** D45 / ST-4: what is mounted at a position, from the last tire taken from stock for it. */

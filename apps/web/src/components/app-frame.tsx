@@ -11,11 +11,13 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  // D52: the mechanic and PM screens use the tablet width; login, reset and Safety keep the phone column.
+  const wide = pathname === '/' || /^\/(mechanic|work-orders|trucks)(\/|$)/.test(pathname);
   return (
     <main
       id="main-content"
       tabIndex={-1}
-      className="app-shell min-h-screen outline-none"
+      className={wide ? 'app-shell app-shell-wide min-h-screen outline-none' : 'app-shell min-h-screen outline-none'}
     >
       {children}
     </main>

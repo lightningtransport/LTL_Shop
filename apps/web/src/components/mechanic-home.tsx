@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, Clock3, Hourglass } from 'lucide-react';
+import { Check, Hourglass, Play } from 'lucide-react';
 import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { clockStoppedLine } from '@/lib/clock-stopped';
 import { pauseLabel } from '@/lib/format';
@@ -79,20 +79,20 @@ export function StandardHome({
 
   return (
     <div className="space-y-6" data-testid="standard-home">
-      <Section title={messages.activeJobsTitle} count={inProgress.length} testId="home-in-progress">
+      <Section title={messages.activeJobsTitle} count={inProgress.length} testId="home-in-progress" cards>
         {inProgress.length ? inProgress.map((wo) => (
           <WorkCard key={wo.id} wo={wo} userId={userId} clockHere={wo.id === clockId} primary={wo.id === nextId} StartAction={StartAction} />
         )) : <EmptyState>{messages.noActiveJobs}</EmptyState>}
       </Section>
 
       {ready.length ? (
-        <Section title={messages.readyToStart} count={ready.length} hint={messages.mostUrgentFirst} testId="home-ready">
+        <Section title={messages.readyToStart} count={ready.length} hint={messages.mostUrgentFirst} testId="home-ready" cards>
           {ready.map((wo) => <WorkCard key={wo.id} wo={wo} userId={userId} ready primary={wo.id === nextId} StartAction={StartAction} />)}
         </Section>
       ) : null}
 
       {blocked.length ? (
-        <Section title={messages.blockedSectionTitle} count={blocked.length} hint={messages.blockedSectionHint} testId="home-blocked">
+        <Section title={messages.blockedSectionTitle} count={blocked.length} hint={messages.blockedSectionHint} testId="home-blocked" cards>
           {blocked.map((wo) => <BlockedCard key={wo.id} wo={wo} userId={userId} />)}
         </Section>
       ) : null}
@@ -119,7 +119,7 @@ export function StandardHome({
       ) : null}
 
       {data.paused.length ? (
-        <Section title={messages.pausedJobsTitle} count={data.paused.length} testId="home-paused">
+        <Section title={messages.pausedJobsTitle} count={data.paused.length} testId="home-paused" cards>
           {data.paused.map((wo) => <WorkCard key={wo.id} wo={wo} userId={userId} paused StartAction={StartAction} />)}
         </Section>
       ) : null}
@@ -133,12 +133,13 @@ export function StandardHome({
   );
 }
 
-function Section({ title, count, hint, testId, children }: { title: string; count: number; hint?: string; testId: string; children: React.ReactNode }) {
+function Section({ title, count, hint, testId, cards = false, children }: { title: string; count: number; hint?: string; testId: string; cards?: boolean; children: React.ReactNode }) {
   return (
     <section data-testid={testId}>
       <h2 className="section-title mb-1 flex items-center gap-2">{title}<CountChip>{count}</CountChip></h2>
       {hint ? <p className="mb-2 text-sm text-muted-foreground">{hint}</p> : <div className="mb-2" />}
-      <div className="space-y-3">{children}</div>
+      {/* D52: on an iPad the cards sit two per row. */}
+      <div className={cards ? 'grid items-start gap-3 md:grid-cols-2' : 'space-y-3'}>{children}</div>
     </section>
   );
 }
@@ -229,7 +230,7 @@ function WorkCard({
             className="flex items-start gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium"
             data-testid={wo.resolvedBlockerAwaitingContinue ? 'resolved-tap-continue' : 'clock-stopped-tap-continue'}
           >
-            <Clock3 aria-hidden="true" className="mt-px size-3.5 shrink-0" />{notice}
+            <Play aria-hidden="true" className="mt-px size-3.5 shrink-0" />{notice}
           </p>
         ) : null}
         <MyJobList wo={wo} userId={userId} nextJobId={nextJobId} />

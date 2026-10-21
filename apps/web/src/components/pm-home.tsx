@@ -29,7 +29,6 @@ function age(iso: string) {
 export function PmHome({ data, loading }: { data: HomeLists | undefined; loading: boolean }) {
   const { messages } = useShopLocale();
   const shortDate = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { month: 'short', day: 'numeric' }).format(new Date(iso));
-  const time = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
   const running = data?.active[0] ?? null;
   const waiting = data?.created ?? [];
 
@@ -48,7 +47,7 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
       {running ? (
         <section>
           <h2 className="section-title mb-2">{messages.pmActiveTitle}</h2>
-          <RunningCard wo={running} startedAt={running.pmJob?.startedAt ? time(running.pmJob.startedAt) : null} />
+          <RunningCard wo={running} />
           <PmInProgressNotice running={running} className="mt-3" showLink={false} />
           <Button className="mt-2 w-full" variant="outline" disabled>{messages.createPmService}</Button>
           <p className="mt-1 text-center text-xs text-muted-foreground">{messages.pmCreateAfter(running.truckNumber)}</p>
@@ -63,13 +62,14 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
         <h2 className="section-title mb-1 flex items-center gap-2">{messages.pmWaitingTitle}<CountChip>{waiting.length}</CountChip></h2>
         <p className="mb-2 text-sm text-muted-foreground">{messages.mostUrgentFirst}</p>
         {waiting.length ? (
-          <ul className="space-y-2">
+          // D52: two per row on an iPad; the next-up card takes the whole row.
+          <ul className="grid gap-2 md:grid-cols-2">
             {waiting.map((wo, index) => {
               const next = !running && index === 0;
               const href = `/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`;
               return (
-                <li key={wo.id} className={`rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
-                  <div className="space-y-1 p-3">
+                <li key={wo.id} className={`flex flex-col rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary md:col-span-2' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
+                  <div className="flex-1 space-y-1 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</span>
                       {wo.priority === 'high' || wo.priority === 'critical' ? (
@@ -140,7 +140,7 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
   );
 }
 
-function RunningCard({ wo, startedAt }: { wo: Wo; startedAt: string | null }) {
+function RunningCard({ wo }: { wo: Wo }) {
   const { messages } = useShopLocale();
   const service = wo.pmJob?.displayName ?? messages.pmServiceLabel;
   const mileage = wo.pmJob?.observedMileage ?? null;
@@ -149,7 +149,7 @@ function RunningCard({ wo, startedAt }: { wo: Wo; startedAt: string | null }) {
     <div className="rounded-xl border border-primary bg-card ring-1 ring-primary" data-testid={`pm-running-${wo.truckNumber}`}>
       <div className="space-y-1 p-3">
         <p className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</p>
-        <p className="text-sm text-muted-foreground">{startedAt ? messages.pmStartedLine(service, startedAt) : service} · <span className="font-mono">{wo.displayId}</span></p>
+        <p className="text-sm text-muted-foreground">{messages.pmStartedLine(service)} · <span className="font-mono">{wo.displayId}</span></p>
         <p className="flex flex-wrap items-center gap-x-2 text-sm">
           <span className={`flex items-center gap-1 ${mileage !== null ? 'text-success' : 'text-muted-foreground'}`}>
             {mileage !== null ? <CircleCheck aria-hidden="true" className="size-4" /> : null}

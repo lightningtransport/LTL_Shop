@@ -205,7 +205,7 @@ export function OutsideRepairForm({
         {notice ? <InlineAlert data-testid="outside-charged-notice">{notice}</InlineAlert> : null}
         {showErrors ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-truck">{messages.pcTruckRequired}</Label>
             <Select id="outside-truck" value={form.truckId} disabled={busy} aria-invalid={(showErrors && !form.truckId) || undefined} onChange={(event) => setForm((current) => ({ ...current, truckId: event.target.value, jobId: '' }))}>
               <option value="">{messages.pcPickTruck}</option>
@@ -213,7 +213,7 @@ export function OutsideRepairForm({
             </Select>
             <RequiredNote show={showErrors && !form.truckId} messages={messages} />
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-vendor">{messages.pcVendorField}</Label>
             <Select id="outside-vendor" value={form.vendorId} disabled={busy} aria-invalid={(showErrors && !form.vendorId) || undefined} onChange={(event) => { set('vendorId', event.target.value); setDuplicate(null); }}>
               <option value="">{messages.pcPickVendor}</option>
@@ -221,11 +221,11 @@ export function OutsideRepairForm({
             </Select>
             <RequiredNote show={showErrors && !form.vendorId} messages={messages} />
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-date">{messages.pcInvoiceDate}</Label>
             <Input id="outside-date" type="date" value={form.invoiceDate} onChange={(event) => set('invoiceDate', event.target.value)} disabled={busy} />
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-invoice">{messages.pcInvoiceNumber}</Label>
             <Input id="outside-invoice" className="font-mono" value={form.invoiceNumber} onChange={(event) => { set('invoiceNumber', event.target.value); setDuplicate(null); }} onBlur={() => void checkDuplicate()} disabled={busy} autoComplete="off" aria-invalid={(showErrors && !form.invoiceNumber.trim()) || Boolean(duplicate) || undefined} />
             <RequiredNote show={showErrors && !form.invoiceNumber.trim()} messages={messages} />
@@ -238,7 +238,7 @@ export function OutsideRepairForm({
           </p>
         ) : null}
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="outside-job">{messages.pcExternalJob}<OptionalTag messages={messages} /></Label>
           <Select id="outside-job" value={form.jobId} disabled={busy || !form.truckId} onChange={(event) => set('jobId', event.target.value)}>
             <option value="">{messages.pcNotLinked}</option>
@@ -247,7 +247,7 @@ export function OutsideRepairForm({
           {form.truckId && externalJobs && !jobs.length ? <p className="text-xs text-muted-foreground">{messages.pcNoExternalJobs}</p> : null}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="outside-what">{messages.pcWhatWasDone}</Label>
           <Textarea id="outside-what" rows={2} value={form.description} onChange={(event) => set('description', event.target.value)} disabled={busy} aria-invalid={(showErrors && !form.description.trim()) || undefined} />
           <RequiredNote show={showErrors && !form.description.trim()} messages={messages} />
@@ -261,7 +261,7 @@ export function OutsideRepairForm({
           {amount === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : <RequiredNote show={showErrors && amount === null} messages={messages} />}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="block text-sm font-medium">{messages.pcInvoiceFile}<OptionalTag messages={messages} /></span>
           {!formData.filesEnabled ? (
             <p className="text-xs text-muted-foreground" data-testid="files-off">{messages.pcFilesOff}</p>
@@ -282,7 +282,7 @@ export function OutsideRepairForm({
             </label>
           )}
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="outside-notes">{messages.pcNotes}<OptionalTag messages={messages} /></Label>
           <Textarea id="outside-notes" rows={2} value={form.notes} onChange={(event) => set('notes', event.target.value)} disabled={busy} />
         </div>

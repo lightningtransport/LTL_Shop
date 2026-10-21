@@ -169,7 +169,22 @@ export interface WorkOrderJobDto {
   qcFindings?: string[];
   /** D45 / ST-4: the tires to put, as the Manager confirmed them ("RF · New 11R22.5"), never their cost. */
   tires?: Array<{ position: string; tireType: 'new' | 'recap'; tireSize: string | null; status: 'proposed' | 'issued' | 'to_buy' }>;
+  /** D52: the tires from the inspection that made this Job, and why ("RF · 72 PSI (should be 110) · low pressure"). */
+  tireFindings?: JobTireFindingDto[];
+  /** D52: what the inspection sheet said for this Job ("Lights: left lens cracked"). */
+  inspectionNotes?: string[];
 }
+
+/** D52: one tire reading behind a Job. `worn` = tread under the minimum; otherwise the pressure is off. */
+export interface JobTireFindingDto {
+  position: string;
+  psi: number;
+  targetPsi: number;
+  tread: number;
+  minTread: number;
+  reason: 'low_pressure' | 'high_pressure' | 'worn';
+}
+
 
 /** LTR-188 / D24: a Job at an external shop — what went out, the Manager's note and since when. */
 export interface JobExternalDto {

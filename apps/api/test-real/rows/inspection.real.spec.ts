@@ -251,3 +251,56 @@ describe('Setup → Inspection checklist (D41, HU-M17)', () => {
     refused('desactivar en el catálogo un Job que usa la hoja', await manager.patch(`/admin/catalog/jobs/${mudflaps.id}`, { status: 'inactive' }), 409, 'CATALOG_JOB_IN_INSPECTION_CHECKLIST');
   });
 });
+
+describe('Las llantas de la inspección van a Alignment y dicen qué llanta y por qué (D52)', () => {
+  beforeEach(resetDb);
+
+  it('A152 | Flat Repair y Tires nacen con el mecánico de Alignment, que ve la posición, los PSI o el tread y el motivo; "Assign later" a propósito los deja sin dueño', async () => {
+    const { truck: row, workOrderId } = await createWo('931');
+    const alignment = await userId(USERS.alignment);
+    const before = await state(row.id);
+    same('la hoja dice a quién van', before.tireJobsGoTo?.mechanic?.id, alignment);
+    ok('guardar con una llanta baja y una gastada', await manager.post(`/admin/trucks/${row.id}/inspection`, sheet(before, {}, { LFO: [72, 8], RRO: [95, 1] })));
+
+    const wo = await adminWo(workOrderId);
+    const ownerOf = (job: Json) => job?.assignedMechanic?.id ?? job?.assignedMechanicId ?? null;
+    same('Flat Repair va a Alignment', ownerOf(jobsNamed(wo, 'Flat Repair')[0]), alignment);
+    same('Tires va a Alignment', ownerOf(jobsNamed(wo, 'Tires')[0]), alignment);
+
+    const mine = ok('el mecánico de Alignment abre el camión', await as(USERS.alignment).get(`/work-orders/${workOrderId}`));
+    const flat = mine.jobs.find((job: Json) => job.displayName === 'Flat Repair');
+    same('ve qué llanta y por qué (presión)', flat.tireFindings, [{ position: 'LFO', psi: 72, targetPsi: 95, tread: 8, minTread: 2, reason: 'low_pressure' }]);
+    const tires = mine.jobs.find((job: Json) => job.displayName === 'Tires');
+    same('ve qué llanta y por qué (gastada)', tires.tireFindings.map((finding: Json) => `${finding.position}:${finding.reason}`), ['RRO:worn']);
+
+    const other = await createWo('968');
+    const sheet2 = await state(other.truck.id);
+    ok('guardar con "Assign later" en Flat Repair', await manager.post(`/admin/trucks/${other.truck.id}/inspection`, sheet(sheet2, {}, { LFO: [72, 8] }, {
+      assignments: [{ catalogJobId: sheet2.tireJobs.flatRepair.id, assignedMechanicId: null }],
+    })));
+    same('queda sin dueño', ownerOf(jobsNamed(await adminWo(other.workOrderId), 'Flat Repair')[0]), null);
+  });
+
+  it('A153 | Con dos en el equipo de Alignment la llanta espera en su cola; la inspección de un mecánico también manda las llantas a Alignment', async () => {
+    const spare = await userId(USERS.spare);
+    const step = await prisma.shopWorkflowStep.findUniqueOrThrow({ where: { stepKey: 'alignment' }, select: { id: true } });
+    await prisma.shopWorkflowStepMember.create({ data: { stepId: step.id, userId: spare } });
+    const general = await userId(USERS.general);
+    await prisma.userCapability.deleteMany({ where: { userId: general, capability: 'INSPECTION_PERFORM' } });
+    ok('permiso de inspeccionar', await manager.patch(`/admin/mechanics/${general}`, { canInspect: true }));
+    try {
+      const { truck: row, workOrderId } = await createWo('944');
+      const before = await state(row.id, as(USERS.general));
+      same('la hoja dice cola de Alignment', before.tireJobsGoTo?.queue, true);
+      ok('el mecánico guarda con una llanta baja y frenos', await as(USERS.general).post(`/inspections/trucks/${row.id}`, sheet(before, { Brakes: 'Pastillas gastadas.' }, { RF: [80, 9] })));
+      const wo = await adminWo(workOrderId);
+      const flat = jobsNamed(wo, 'Flat Repair')[0];
+      same('Flat Repair sin dueño, en la cola de Alignment', [flat?.assignedMechanic ?? null, flat?.workflowStepKey], [null, 'alignment']);
+      same('Brake Inspection sigue naciendo sin dueño', jobsNamed(wo, 'Brake Inspection')[0]?.assignedMechanic ?? null, null);
+      const queue = ok('la cola del otro de Alignment', await as(USERS.spare).get('/team-queue'));
+      truthy('Flat Repair está en su cola', JSON.stringify(queue).includes('Flat Repair'));
+    } finally {
+      await prisma.userCapability.deleteMany({ where: { userId: general, capability: 'INSPECTION_PERFORM' } });
+    }
+  });
+});

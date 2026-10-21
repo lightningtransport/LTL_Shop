@@ -422,7 +422,7 @@ export function PurchaseForm({
           </div>
         ) : null}
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="purchase-vendor">{messages.pcVendorField}</Label>
             <Select
               id="purchase-vendor"
@@ -448,12 +448,12 @@ export function PurchaseForm({
               </div>
             ) : null}
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="purchase-date">{messages.pcInvoiceDate}</Label>
             <Input id="purchase-date" type="date" value={state.invoiceDate} onChange={(event) => set('invoiceDate', event.target.value)} disabled={busy} required aria-invalid={(showErrors && !state.invoiceDate) || undefined} />
             <RequiredNote show={showErrors && !state.invoiceDate} messages={messages} />
           </div>
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             <Label htmlFor="purchase-invoice">{messages.pcInvoiceNumber}</Label>
             <Input
               id="purchase-invoice"
@@ -638,7 +638,7 @@ export function PurchaseForm({
           </div>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="block text-sm font-medium">{messages.pcInvoiceFile}<OptionalTag messages={messages} /></span>
           {!formData.filesEnabled ? (
             <p className="text-xs text-muted-foreground" data-testid="files-off">{messages.pcFilesOff}</p>
@@ -660,7 +660,7 @@ export function PurchaseForm({
           )}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <Label htmlFor="purchase-notes">{messages.pcNotes}<OptionalTag messages={messages} /></Label>
           <Textarea id="purchase-notes" rows={2} value={state.notes} onChange={(event) => set('notes', event.target.value)} disabled={busy} />
         </div>

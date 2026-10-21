@@ -314,11 +314,11 @@ function CorrectTimeDialog({
     >
       <form className="space-y-3" data-testid="time-correction-dialog" onSubmit={(event) => { event.preventDefault(); submit(); }}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1">
+          <label className="block min-w-0 space-y-1">
             <span className="text-sm font-medium">{messages.timeCorrectionStartedAt}</span>
             <Input type="datetime-local" aria-label={messages.timeCorrectionStartedAt} value={startedAt} onChange={(event) => { setStartedAt(event.target.value); setError(null); }} />
           </label>
-          <label className="block space-y-1">
+          <label className="block min-w-0 space-y-1">
             <span className="text-sm font-medium">{messages.timeCorrectionEndedAt}</span>
             <Input type="datetime-local" aria-label={messages.timeCorrectionEndedAt} value={endedAt} onChange={(event) => { setEndedAt(event.target.value); setError(null); }} />
           </label>

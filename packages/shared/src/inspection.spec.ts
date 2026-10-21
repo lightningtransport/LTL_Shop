@@ -5,6 +5,7 @@ import {
   TirePosition,
   TireReadingStatus,
   tireAxle,
+  tireFindingReason,
   tireReadingStatus,
   tireTargets,
 } from './inspection';
@@ -41,5 +42,17 @@ describe('D41 tire rule', () => {
   it('keeps the worse of the two, tread first on a tie', () => {
     expect(status(72, 3)).toEqual({ status: TireReadingStatus.FIX, reason: 'pressure' });
     expect(status(72, 1)).toEqual({ status: TireReadingStatus.FIX, reason: 'tread' });
+  });
+});
+
+describe('tireFindingReason (D52)', () => {
+  const reading = (psi: number, tread: number) => ({ psi, tread, targetPsi: 110, minTread: 4 });
+  it('says worn when the tread is under the minimum, even if the pressure is off too', () => {
+    expect(tireFindingReason(reading(110, 3))).toBe('worn');
+    expect(tireFindingReason(reading(70, 2))).toBe('worn');
+  });
+  it('says low or high pressure otherwise', () => {
+    expect(tireFindingReason(reading(72, 8))).toBe('low_pressure');
+    expect(tireFindingReason(reading(140, 8))).toBe('high_pressure');
   });
 });

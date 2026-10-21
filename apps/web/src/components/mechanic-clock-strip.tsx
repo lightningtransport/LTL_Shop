@@ -6,13 +6,12 @@ import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useAuth } from '@/lib/auth-context';
 import { useShopLocale } from '@/lib/locale-context';
 import { useWorkOrders } from '@/lib/shop-data';
-import { intlLocale } from '@/lib/shop-locale';
 import { useOnline } from '@/lib/use-online';
 import { cn } from '@/lib/utils';
 
 /**
- * Stage MG-2 (MG1, D21): one strip under the header on every General mechanic screen that says where my
- * clock runs ("Your clock · Truck 922 · since 10:45 AM") or that it is stopped. Without a connection it
+ * Stage MG-2 (MG1, D21): one strip under the header on every General mechanic screen that says which Truck
+ * I am working on ("Working on Truck 922") or that nothing is active. D52: never since when or how long. Without a connection it
  * becomes the single offline notice (UX-6-007). It reads the same list the home screen reads.
  */
 export function MechanicClockStrip({ className }: { className?: string }) {
@@ -49,8 +48,6 @@ export function MechanicClockStrip({ className }: { className?: string }) {
       </p>
     );
   }
-  const since = new Intl.DateTimeFormat(intlLocale(messages.locale), { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' })
-    .format(new Date(clock.since));
   return (
     <Link
       href={`/work-orders/${clock.workOrderId}`}
@@ -60,8 +57,7 @@ export function MechanicClockStrip({ className }: { className?: string }) {
     >
       <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-success" />
       <span className="min-w-0 flex-1 truncate">
-        {/* LTR-218 (UX-1-009): on a phone "Your clock" and "Open" crowded out the time; the green dot and the arrow say it. */}
-        <b className="sr-only font-semibold sm:not-sr-only">{messages.clockStripYourClock}<span aria-hidden="true">{' · '}</span></b>{messages.truckTitle(clock.truckNumber)}{' · '}{messages.clockStripSince(since)}
+        <b className="font-semibold">{messages.clockStripYourClock}</b>{' '}{messages.truckTitle(clock.truckNumber)}
       </span>
       <span className="flex shrink-0 items-center text-xs font-medium text-success"><span className="sr-only sm:not-sr-only">{messages.clockStripOpen}</span><ChevronRight aria-hidden="true" className="size-4" /></span>
     </Link>
