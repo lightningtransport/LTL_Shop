@@ -195,7 +195,8 @@ export function QualityCheckPage() {
             pending.length ? (
               <>
                 <p className="mb-2 text-xs text-muted-foreground" data-testid="qc-count">{t.toReview(pending.length, mineCount)}</p>
-                <ul className="space-y-2" aria-label={t.tabReview}>
+                {/* LTR-272: on an iPad two per row, a card alone on its row takes the whole row. */}
+                <ul className="card-grid items-stretch gap-2" aria-label={t.tabReview}>
                   {pending.map((item) => (
                     <QueueCard
                       key={item.workOrderId}
@@ -409,7 +410,7 @@ function QueueCard({
   const jobs = item.doneBy?.length ? item.doneBy.map((entry) => entry.job) : item.doneJobs;
   return (
     <li
-      className={cn('rounded-xl border bg-card', item.mine && 'border-primary ring-1 ring-primary', takenByOther && 'opacity-70')}
+      className={cn('flex flex-col rounded-xl border bg-card', item.mine && 'border-primary ring-1 ring-primary', takenByOther && 'opacity-70')}
       data-testid={`qc-card-${item.truck.truckNumber}`}
     >
       <button
@@ -417,7 +418,7 @@ function QueueCard({
         disabled={takenByOther}
         onClick={(event) => onOpen(event.currentTarget)}
         aria-label={messages.truckTitle(item.truck.truckNumber)}
-        className={cn('block w-full space-y-1.5 rounded-t-xl p-3 text-left', takenByOther ? 'cursor-default' : 'hover:bg-accent/40')}
+        className={cn('flex w-full flex-1 flex-col justify-start space-y-1.5 rounded-t-xl p-3 text-left', takenByOther ? 'cursor-default' : 'hover:bg-accent/40')}
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold">{messages.truckTitle(item.truck.truckNumber)}</span>
@@ -447,18 +448,19 @@ function QueueCard({
           </div>
         ) : item.mechanics.length ? <p className="text-xs text-muted-foreground">{item.mechanics.join(', ')}</p> : null}
       </button>
-      <div className="border-t p-2">
+      {/* LTR-272: on an iPad the button keeps its size at the right of the card. */}
+      <div className="border-t p-2 md:flex md:justify-end">
         {item.mine ? (
-          <Button className="w-full" onClick={(event) => onOpen(event.currentTarget)}>
+          <Button className="w-full md:w-56" onClick={(event) => onOpen(event.currentTarget)}>
             <ClipboardCheck aria-hidden="true" />{t.continueReview}
           </Button>
         ) : takenByOther ? (
-          <p className="flex min-h-9 items-center gap-2 px-1 text-sm text-muted-foreground">
+          <p className="flex min-h-9 items-center gap-2 px-1 text-sm text-muted-foreground md:mr-auto">
             <MechanicAvatar id={item.takenBy!.id} name={item.takenBy!.name} size="sm" />{t.takenBy(item.takenBy!.name)}
           </p>
         ) : (
           <Button
-            className="w-full"
+            className="w-full md:w-56"
             disabled={busy}
             aria-label={`${t.take} · ${messages.truckTitle(item.truck.truckNumber)}`}
             onClick={(event) => onTake(event.currentTarget)}
@@ -708,7 +710,7 @@ function ReturnedTab({ items }: { items: QualityCheckReturnedItem[] }) {
   const t = messages.qc;
   if (!items.length) return <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{t.noneReturned}</div>;
   return (
-    <ul className="space-y-2" data-testid="qc-returned">
+    <ul className="card-grid items-stretch gap-2" data-testid="qc-returned">
       {items.map((item) => (
         <li key={item.workOrderId} className="space-y-1 rounded-xl border bg-card p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
