@@ -33,3 +33,4 @@ aquí vuelve a ser vigente, se copia a los documentos vivos.
 | `OPEN_ISSUES_HISTORIAL_2026-10.md` | Lista completa de defectos y planes §0–§6 hasta el 2026-10-14 (B/C/E, fases A–D, §1a–§1z) | Lo pendiente pasó a Linear (un proyecto por módulo). Aquí quedan los detalles de lo hecho; los defectos del Dashboard se renombraron DB1–DB11. |
 | `ETAPA8_PLAN.md` | Plan para igualar el Admin a las maquetas | Ejecutado (PR 244). |
 | `PENDIENTES_UI.md` | Preguntas de UI de la Etapa 8 (UI-P1…UI-P6) | Todas respondidas. |
+| `LINEAR_CERRADOS_2026-10-21.md` | Respaldo de los 257 issues cerrados de Linear LTR (Done, Canceled, Duplicate) con su descripción completa y PR | Se borraron de Linear para bajar del límite de 250 issues del plan gratis. Busca aquí un `LTR-n` viejo. |
