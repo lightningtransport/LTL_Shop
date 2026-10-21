@@ -270,7 +270,7 @@ test.describe('Daniel PM workflow', () => {
     await page.goto(`/work-orders/${woId}`);
     await page.getByLabel('Observed mileage').fill('155000');
     await expect(page.getByTestId('pm-not-saved')).toBeVisible();
-    await expect(page.getByText(/stays on this phone and is sent when the connection is back/)).toBeVisible();
+    await expect(page.getByText(/stays on this device and is sent when the connection is back/)).toBeVisible();
 
     // Leaving and coming back keeps what was entered.
     await page.reload();
@@ -321,7 +321,7 @@ test.describe('PM redesign (Stage PM-4)', () => {
     await page.goto(`/work-orders/${woId}`);
     await expect(page.getByLabel('Observed mileage')).toBeVisible();
     await context.setOffline(true);
-    await expect(page.getByTestId('offline-strip')).toHaveText(/Offline · your changes are kept on this phone/);
+    await expect(page.getByTestId('offline-strip')).toHaveText(/Offline · your changes are kept on this device/);
     await context.setOffline(false);
     await expect(page.getByTestId('offline-strip')).toHaveCount(0);
   });

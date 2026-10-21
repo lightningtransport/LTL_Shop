@@ -55,6 +55,7 @@ API error codes have one EN/ES sentence each in `apps/web/src/lib/api-error-copy
 | Active labor | Mano de obra activa | Timed work sessions |
 | Waiting time | Tiempo de espera | Official pause totals only |
 | Read only | Solo lectura | Use only when the surface cannot mutate |
+| On this device | En este dispositivo | Where an unsent draft waits (notes, PM entry, inspection). Never "this phone": mechanics use a phone or a tablet (LTR-275) |
 
 ## Flujo v3 vocabulary (LTR-152)
 

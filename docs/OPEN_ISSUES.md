@@ -1,6 +1,6 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
+**Actualizado:** 2026-10-21 (LTR-275 hecho: "this device" / "este dispositivo"); antes 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
@@ -24,7 +24,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
-| Mecánicos | LTR-275 | En la tablet la app dice "Kept on this phone" / "este teléfono" (los mecánicos usan teléfono o tablet) | E |
 | Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
 | Safety / QC | LTR-229 (Epic), LTR-233 | Ajustes de Safety (D46): SQ-1 a SQ-3 hechas (LTR-230–232); fotos y videos para más adelante (LTR-233, Gated) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia | — |
