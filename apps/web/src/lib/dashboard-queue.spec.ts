@@ -40,9 +40,11 @@ describe('Dashboard queue (stage 3 / D1, UX-5-002)', () => {
     expect(dashboardGroupOf(item('w', 'work'))).toBeNull();
   });
 
-  it('a counter filters the queue to its group', () => {
-    const queue = [item('b', 'resolve_blocker'), item('c', 'close')];
-    expect(groupDashboardQueue(queue, 'close').map((entry) => entry.group)).toEqual(['close']);
+  it('LTR-277: a counter puts its group first and hides only the other counters', () => {
+    const queue = [item('b', 'resolve_blocker'), item('i', 'inspect'), item('c', 'close'), item('m', 'add_missing_steps')];
+    expect(groupDashboardQueue(queue, 'close').map((entry) => entry.group)).toEqual(['close', 'inspect', 'missing_steps']);
+    // A counter at 0: its group is not there, and what no counter counts stays.
+    expect(groupDashboardQueue(queue, 'assign').map((entry) => entry.group)).toEqual(['inspect', 'missing_steps']);
   });
 
   it('"Blocked" counts official pauses and active blockers, like the Yard (D5)', () => {

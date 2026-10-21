@@ -29,9 +29,14 @@ export function dashboardGroupOf(item: Pick<AdminWorkOrderSummaryDto, 'nextStep'
   }
 }
 
-export function groupDashboardQueue<T extends Pick<AdminWorkOrderSummaryDto, 'nextStep'>>(items: T[], only: DashboardGroup | null = null) {
-  return DASHBOARD_GROUPS
-    .filter((group) => !only || group === only)
+/**
+ * LTR-277 §1: a counter puts its group first and hides only the other three counters. What no counter counts
+ * (inspection, missing steps, QC, outside) still waits on the Manager and stays.
+ */
+export function groupDashboardQueue<T extends Pick<AdminWorkOrderSummaryDto, 'nextStep'>>(items: T[], only: DashboardCounter | null = null) {
+  const counters: readonly DashboardGroup[] = DASHBOARD_COUNTERS;
+  const order = only ? [only, ...DASHBOARD_GROUPS.filter((group) => !counters.includes(group))] : DASHBOARD_GROUPS;
+  return order
     .map((group) => ({ group, items: firstWhatLeftTheYard(items.filter((item) => dashboardGroupOf(item) === group)) }))
     .filter((entry) => entry.items.length > 0);
 }

@@ -28,6 +28,7 @@ import {
   groupDashboardQueue,
   leavingSoonNotReady,
   shopDay,
+  type DashboardCounter,
   type DashboardGroup,
 } from '@/lib/dashboard-queue';
 
@@ -52,7 +53,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminDashboard();
   const { data: dispatch, mutate: mutateDispatch } = useAdminYardDataBoundary();
-  const [focus, setFocus] = useState<DashboardGroup | null>(null);
+  const [focus, setFocus] = useState<DashboardCounter | null>(null);
   const [opening, setOpening] = useState<{ id: string; truckNumber: string } | null>(null);
   const queue = useMemo(() => data?.queue ?? data?.attention ?? [], [data]);
   if (isLoading) return <PageSkeleton label={messages.currentOperations} />;
@@ -61,12 +62,14 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const canManage = !!user?.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE);
   const counts = dashboardCounts(queue);
   const groups = groupDashboardQueue(queue, focus);
-  const requests = focus ? [] : data.openWorkRequests ?? [];
+  // LTR-277 §1: a counter hides only the other counters; arrivals, requests and what leaves soon stay.
+  const focusedEmpty = !!focus && !groups.some((entry) => entry.group === focus);
+  const requests = data.openWorkRequests ?? [];
   // LTR-261: a truck that arrived without a Work Order waits on the Manager too, not only on the Yard.
-  const arrived = focus ? [] : arrivedNeedsWorkOrder(dispatch?.samsaraPlaces);
+  const arrived = arrivedNeedsWorkOrder(dispatch?.samsaraPlaces);
   const departures = dispatch?.upcomingDepartures.status === 'ok' ? dispatch.upcomingDepartures.items : [];
   const today = shopDay(new Date(data.generatedAt));
-  const leaving = focus ? [] : leavingSoonNotReady(queue, departures, today);
+  const leaving = leavingSoonNotReady(queue, departures, today);
   // Ready to Go rows say when Dispatch has the Truck leaving.
   const leavesOn = new Map<string, string>();
   for (const departure of departures) {
@@ -77,6 +80,23 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const listHref = (entries: Record<string, string>) => `/admin/work-orders?${new URLSearchParams(entries).toString()}`;
   const openStatuses = 'created,in_progress,waiting_paused';
   const refresh = () => mutate();
+  // LTR-277 §1: built once so the counter's group can go above the arrivals.
+  const groupSections = groups.map(({ group, items }) => {
+    const { label, Icon, tone } = GROUP_META[group];
+    return (
+      <section key={group} aria-label={messages[label] as string} data-testid={`dashboard-group-${group}`}>
+        <h3 className={cn('flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium', tone)}>
+          <Icon aria-hidden="true" className="size-3.5" />{messages[label] as string}
+          <span className="tnum text-muted-foreground">{items.length}</span>
+        </h3>
+        <ul className="divide-y border-b last:border-b-0">
+          {items.map((item) => (
+            <QueueRow key={item.id} item={item} group={group} leavesOn={leavesOn.get(item.truck.truckNumber) ?? null} locale={locale} messages={messages} canManage={canManage} onChanged={refresh} />
+          ))}
+        </ul>
+      </section>
+    );
+  });
 
   return <div className="space-y-6">
     <header className="flex flex-wrap items-end justify-between gap-3">
@@ -160,13 +180,20 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
           </Button>
         ) : null}
       </div>
-      {!waiting ? (
+      {focusedEmpty ? (
+        <p className="border-b px-4 py-3 text-sm text-muted-foreground" data-testid="dashboard-filter-empty">
+          {fillPlaceholders(messages.dashboardFilterEmpty, { filter: messages[GROUP_META[focus].label] as string })}
+        </p>
+      ) : null}
+      {!waiting && !focus ? (
         <div className="flex flex-col items-center gap-1 px-4 py-10 text-center text-muted-foreground" data-testid="dashboard-nothing-waiting">
           <CircleCheck aria-hidden="true" className="size-5 text-success" />
           <p className="font-medium text-foreground">{messages.dashboardNothingWaiting}</p>
           <p>{fillPlaceholders(messages.dashboardNothingWaitingBody, { time: formatShortDateTime(data.generatedAt, locale) })}</p>
         </div>
       ) : null}
+      {/* LTR-277 §1: the counter's group goes first. */}
+      {focus && !focusedEmpty ? groupSections[0] : null}
       {/* LTR-261: where the flow starts — Samsara saw it arrive and nobody opened a Work Order (D49, D51). */}
       {arrived.length ? (
         <section aria-label={messages.dashboardGroupArrived} data-testid="dashboard-group-arrived">
@@ -188,24 +215,9 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
           </ul>
         </section>
       ) : null}
-      {groups.map(({ group, items }) => {
-        const { label, Icon, tone } = GROUP_META[group];
-        return (
-          <section key={group} aria-label={messages[label] as string} data-testid={`dashboard-group-${group}`}>
-            <h3 className={cn('flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium', tone)}>
-              <Icon aria-hidden="true" className="size-3.5" />{messages[label] as string}
-              <span className="tnum text-muted-foreground">{items.length}</span>
-            </h3>
-            <ul className="divide-y border-b last:border-b-0">
-              {items.map((item) => (
-                <QueueRow key={item.id} item={item} group={group} leavesOn={leavesOn.get(item.truck.truckNumber) ?? null} locale={locale} messages={messages} canManage={canManage} onChanged={refresh} />
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+      {groupSections.slice(focus && !focusedEmpty ? 1 : 0)}
       {/* D46 / SQ-3: Safety findings the Manager has not added or set aside yet. */}
-      {!focus && data.openQcFindings?.length ? (
+      {data.openQcFindings?.length ? (
         <section aria-label={messages.dashQcFindings} data-testid="dashboard-group-qc-findings">
           <h3 className="flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium text-primary">
             <ShieldCheck aria-hidden="true" className="size-3.5" />{messages.dashQcFindings}
