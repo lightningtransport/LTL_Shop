@@ -1,6 +1,6 @@
 # Documentación de Lightning Shop
 
-**Actualizado:** 2026-10-14 (PRD nuevo; lo pendiente pasa a Linear; índice completo)
+**Actualizado:** 2026-10-21 (decisiones hasta D54; carpeta `notas/`; flujo de trabajo de agentes al día)
 
 Esta carpeta tiene **una sola fuente de verdad por tema**. Si algo no está
 aquí, no es una regla vigente. Lo que está en `archive/` es historia: sirve
@@ -13,7 +13,8 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`PRD.md`](PRD.md) | **Empieza aquí.** Qué es el producto, para quién, sus 11 módulos (los mismos proyectos de Linear), qué no hace, métricas y hacia dónde va. |
 | [`SYSTEM.md`](SYSTEM.md) | **Cómo funciona el sistema hoy**: roles, flujos, estados, pantallas y reglas. |
 | [`USER_FLOWS.md`](USER_FLOWS.md) | **Historias de usuario, jobs to be done, flujos paso a paso y casos límite** por rol, con el estado comprobado de cada uno. |
-| [`DECISIONS.md`](DECISIONS.md) | Registro único de decisiones de producto (D1–D44, D-SET, D-PC, D-MG, D-PM, D-QC) y preguntas abiertas (P). |
+| [`DECISIONS.md`](DECISIONS.md) | Registro único de decisiones de producto (D1–D54, D-SET, D-PC, D-MG, D-PM, D-QC) y preguntas abiertas (P). |
+| [`notas/`](notas/README.md) | Notas sueltas del dueño (lo que dijo Randy, lo que se vio en el taller). No mandan: el agente las lee al empezar y las pasa a Linear o a `DECISIONS.md`. Se puede abrir `docs/` como bóveda de Obsidian. |
 | **Linear** (equipo LTR) | **Todo lo pendiente**: defectos, mejoras y tareas, un proyecto por módulo. |
 | [`OPEN_ISSUES.md`](OPEN_ISSUES.md) | Resumen corto de lo abierto, con su issue de Linear. El historial de defectos hasta el 2026-10-14 está en [`archive/OPEN_ISSUES_HISTORIAL_2026-10.md`](archive/OPEN_ISSUES_HISTORIAL_2026-10.md). |
 | [`GO_LIVE_CHECKLIST_ES.md`](GO_LIVE_CHECKLIST_ES.md) | Paso a paso para salir en vivo (fases 0–8, quién hace qué). |
@@ -26,7 +27,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | Documento | Para qué sirve |
 |---|---|
 | [`ENGINEERING_PRACTICES.md`](reference/ENGINEERING_PRACTICES.md) | Reglas de datos, caché, mutaciones y rendimiento. |
-| [`AGENT_WORKFLOW.md`](reference/AGENT_WORKFLOW.md) | Cómo se trabaja una tarea (humano o agente) de principio a fin. |
+| [`AGENT_WORKFLOW.md`](reference/AGENT_WORKFLOW.md) | Cómo se trabaja una tarea (humano o agente) de principio a fin: ramas, pruebas, PR, migraciones y deploy. |
 | [`DEPLOY.md`](reference/DEPLOY.md) | Deploy en Vercel y migraciones por el workflow de Release safety. |
 | [`PERFORMANCE.md`](reference/PERFORMANCE.md) | Mediciones y metas de rendimiento. |
 | [`NINOX_SHOP_MAPPING.md`](reference/NINOX_SHOP_MAPPING.md) | IDs de Ninox verificados. |
