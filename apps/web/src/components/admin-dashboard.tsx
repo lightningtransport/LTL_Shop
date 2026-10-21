@@ -281,6 +281,12 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
       detail = messages.dashCloseSub;
       break;
     case 'return_to_service':
+      // D52 (LTR-260): Samsara saw it leave the yard after the close (or leave and come back): confirm, do not assume.
+      if (step.yardMove) {
+        title = <span className="text-warning-foreground dark:text-warning">{truckNextStepText(step, messages)}</span>;
+        detail = messages.dashRtsMovedSub;
+        break;
+      }
       title = <>{messages.workPlanReady}{leavesOn ? <> · <span className="text-warning-foreground dark:text-warning">{fillPlaceholders(messages.dashDispatchLeaves, { date: formatAdminDateOnly(leavesOn, locale) })}</span></> : null}</>;
       detail = messages.dashRtsSub;
       break;

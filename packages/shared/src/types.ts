@@ -976,6 +976,8 @@ export interface YardDispatchShopTruckDto {
   jobsLeft?: number;
   /** D50: the truck's Samsara reading, for the D49 place (In shop / In yard / city / no GPS). */
   samsara?: TruckSamsaraDto | null;
+  /** D52 (LTR-260): Ready to Go and Samsara saw it leave the yard after the close, or leave and come back. */
+  yardMove?: 'left_yard' | 'back_in_yard' | null;
 }
 
 export interface PmPartDto {

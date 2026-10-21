@@ -21,7 +21,6 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
-| Yard | LTR-260 | Un camión en Ready to Go que ya salió de la yard sigue en el tablero, y al volver no pide Work Order (G11) | C |
 | Yard | LTR-261 | El Dashboard no avisa que llegó a la yard un camión sin Work Order (G12) | C |
 | Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |

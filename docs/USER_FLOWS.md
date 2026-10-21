@@ -217,7 +217,7 @@ un Job. Un Job sin dueño no lo puede hacer nadie.
 | Cancela todos los Jobs pendientes | El Work Order se puede cerrar | ✅ | E16 |
 | **Salida urgente:** el camión tiene que salir sin terminar todo | Con autorización del Manager: cancela con motivo los Jobs que no se harán y cierra | ✅ | E16 |
 | El camión vuelve por algo que quedó mal | Se abre un Work Order nuevo (no se reabre el anterior) | ✅ | A17, E14 |
-| Nadie hace Return to Service y el camión se va | Sigue en Ready to Go aunque Samsara lo ve fuera de la yard (G11) | 🔲 | LTR-260 |
+| Nadie hace Return to Service y el camión se va | Samsara lo ve fuera de la yard: "Left the yard · Confirm Return to Service", primero en el Dashboard (D52, HU-M22) | ✅ | A152 |
 
 ### HU-M6 · Cancelar y reabrir (J4, J10)
 
@@ -939,8 +939,9 @@ La fila A149 está en `apps/api/test-real/rows/samsara.real.spec.ts`; la pantall
 | El número no está en la app | "Not in Shop app" + Add from Samsara (D50) | ✅ | A151 |
 | Abro "In yard without a Work Order" en el tablero Shop | Trucks con Where: In yard without a Work Order; al abrirle una WO sale de la lista | ✅ | A149 |
 | Dispatch no responde | Las listas dicen que no respondió; los contadores de Samsara siguen | ✅ | unit `yard-data-boundary.service.spec.ts` |
-| Está en Ready to Go (nadie hizo Return to Service) y Samsara lo ve fuera de la yard | Hoy Departures dice "Left", pero el tablero Shop, Trucks y el Dashboard lo siguen mostrando en Ready to Go. Falta decidir si pasa solo a Return to Service o lo pide | 🔲 | LTR-260 |
-| …y vuelve a entrar a la yard en otra visita | Hoy no sale en "Arrived · Needs a Work Order" ni en "In yard without a Work Order": la app cree que sigue listo para salir | 🔲 | LTR-260 |
+| Está en Ready to Go (nadie hizo Return to Service) y Samsara lo ve fuera de la yard, con una lectura posterior al cierre (D52) | El siguiente paso dice "Left the yard {hora} · Confirm Return to Service" en todas las pantallas; en el Dashboard va primero en Return to Service; en Departures va arriba del día. La app no lo hace sola: el Manager confirma | ✅ | A152 · unit `yard-card.spec.ts`, `samsara-presence.spec.ts` |
+| …y vuelve a entrar a la yard sin Return to Service (D52) | Es una llegada nueva: Dispatch › Incoming lo pone en "Arrived · Needs a Work Order" con Create WO; el siguiente paso dice "Back in the yard since {hora}" | ✅ | A152 · unit `yard-card.spec.ts` |
+| Sigue en la yard desde antes de cerrar la WO | No cambia nada: Ready to Go, esperando salir | ✅ | A152 · unit `samsara-presence.spec.ts` |
 | Llega a la yard sin Work Order y el Manager solo mira el Dashboard | Hoy el Dashboard no lo muestra; solo Yard. Propuesta: grupo "Arrived · Needs a Work Order" con Create WO en la cola del Dashboard | 🔲 | LTR-261 |
 
 ### HU-M10 · Poner un ayudante en un Job (J2) — ✅ construido (D23, LTR-188)
@@ -1035,7 +1036,7 @@ resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md) e historial en
 | ~~G9~~ | Repuestos fuera del PM, compra atada al Job, stock y llantas desde la inspección — **hecho (D45, HU-M19, 2026-10-16)** | Manager | LTR-220 (ST: LTR-221–226) |
 | ~~G10~~ | Cuidar el stock (cargar, ajustar con motivo, mínimos) en una sola pantalla Parts — **hecho (D47, HU-M20, LTR-246)** | Manager | LTR-243 (LTR-246) |
 | ~~G8~~ | Datos de Samsara (millas, ubicación, fallas) y fallas → Jobs recomendados — **hecho (D35, D42, HU-M14, HU-M15)** | Manager, mecánico | LTR-202 |
-| G11 | Un camión en Ready to Go que ya salió de la yard sigue en el tablero (Return to Service es a mano), y al volver no aparece en "Arrived · Needs a Work Order" (HU-M5, HU-M22) | Manager | LTR-260 |
+| ~~G11~~ | Un camión en Ready to Go que salió de la yard pide confirmar Return to Service y, si vuelve, es una llegada nueva — **hecho (D52, HU-M22, 2026-10-21)** | Manager | LTR-260 |
 | G12 | El Dashboard no avisa que llegó a la yard un camión sin Work Order; solo lo dice Yard (HU-M7, HU-M22) | Manager | LTR-261 |
 | G13 | Incoming Trucks todavía no coincide con la vista "Truck returning" de Ninox: camiones de más y el 943 con otra fecha (sigue a LTR-254) | Manager | LTR-262 |
 | G14 | Upcoming Departures solo trae las salidas de hoy: las salidas planeadas no están en Supabase | Manager | LTR-255, LTR-73 |
