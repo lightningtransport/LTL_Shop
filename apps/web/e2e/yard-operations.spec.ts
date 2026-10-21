@@ -112,7 +112,7 @@ test.describe('Yard Operations Phase 1', () => {
     await expect(page.getByRole('heading', { name: 'Yard movement' })).toHaveCount(0);
     await expect(page.getByTestId('yard-data-boundary-workLocation')).toHaveCount(0);
     const card = page.getByRole('link', { name: 'Y-101', exact: true }).first();
-    await expect(card.getByTestId('yard-card-dispatch')).toHaveText('Dispatch: expected in Sep 28, 2026');
+    await expect(card.getByTestId('yard-card-dispatch')).toHaveText('Dispatch: expected Sep 28, 2026');
     await openMovementTab(page);
     await expect(page.getByRole('tab', { name: 'Dispatch', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('yard-truck-card')).toHaveCount(0);

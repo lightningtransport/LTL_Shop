@@ -19,7 +19,7 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
 
     await expect(page.getByLabel('Category')).toHaveCount(0);
     await expect(page.getByLabel('Custom job name')).toHaveCount(0);
-    await expect(page.getByText(/starts with PM, Alignment, Detailing and QC/)).toBeVisible();
+    await expect(page.getByText(/PM, Alignment, Detailing and QC come with it/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create Work Order' })).toBeDisabled();
 
     await chooseTruck(page, '105');
@@ -40,7 +40,7 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     await expect(page).toHaveURL(/\/admin/);
     await page.goto('/admin/setup/workflow');
     await expect(page.getByRole('heading', { name: 'Shop workflow' })).toBeVisible();
-    await expect(page.getByTestId('workflow-step-quality_check')).toContainText('The Shop Manager can do QC as backup.');
+    await expect(page.getByTestId('workflow-step-quality_check')).toContainText('You can do Quality Check yourself.');
     await expect(page.getByTestId('workflow-step-quality_check').getByRole('link', { name: 'Open Quality Check' })).toHaveAttribute('href', '/qc');
 
     for (const [stepKey, step, person] of [['pm', 'PM', 'Daniel PM'], ['detailing', 'Detailing', 'Anthony']] as const) {

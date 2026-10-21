@@ -741,6 +741,22 @@ createServer(async (request, response) => {
       json(response, 200, partsState.externalJobs.filter((job) => job.truckId === truckId).map(({ truckId: _truck, ...job }) => job));
       return;
     }
+    // LTR-259 (tablet walk): Finance invoices and the month's close, so the page shows real rows.
+    if (path === '/api/admin/parts-costs/internal-invoices/month' && request.method === 'GET') {
+      const month = new URL(request.url, 'http://fixture').searchParams.get('month') ?? '2026-10';
+      json(response, 200, {
+        month,
+        periodStart: `${month}-01`,
+        periodEnd: `${month}-30`,
+        rows: [{ truck: { id: 'truck-606', truckNumber: '606' }, invoice: null, uncharged: { count: 1, totalCents: 4820 } }],
+        totals: { trucksToCharge: 1, unchargedCents: 4820, invoicedCents: 0 },
+      });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/internal-invoices' && request.method === 'GET') {
+      json(response, 200, []);
+      return;
+    }
     if (path === '/api/admin/parts-costs/outside-repairs' && request.method === 'GET') {
       const items = [...partsState.repairs].reverse();
       const live = items.filter((item) => !item.voidedAt);
@@ -938,6 +954,71 @@ createServer(async (request, response) => {
       job.status = status;
     }
     json(response, 200, { id: job.id, displayName: job.displayName, status: job.status, aliases: job.aliases, categoryId: category.id });
+    return;
+  }
+  // LTR-259 (tablet walk): Custom Jobs to review, so the inbox shows its cards (admin-custom-jobs-review.spec mocks its own).
+  if (request.url?.startsWith('/api/admin/catalog/custom-jobs?') && request.method === 'GET') {
+    const reviewed = new URL(request.url, 'http://fixture').searchParams.get('status') === 'reviewed';
+    const customGroup = (displayName, extra = {}) => ({
+      categoryId: '00000000-0000-4000-8000-000000000301', categoryName: 'Brakes', nameNorm: displayName.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      displayName, otherNames: [], count: 1, lastAddedAt: '2026-10-08T15:00:00.000Z',
+      workOrders: [{ id: '00000000-0000-4000-8000-000000000106', displayId: 'WO-106', truckNumber: 'Y-101' }], descriptions: ['Cable under the dash'],
+      status: 'pending_review', mappedTo: null, suggestions: [], ...extra,
+    });
+    json(response, 200, reviewed ? [] : [
+      customGroup('Fix dash light', { count: 2, otherNames: ['fix  DASH light'], suggestions: [{ catalogJobId: '00000000-0000-4000-8000-000000000801', displayName: 'Inspect brake chamber', categoryName: 'Brakes', matchedAlias: null }] }),
+      customGroup('Replace mirror bracket'),
+    ]);
+    return;
+  }
+  // LTR-259 (tablet walk): Setup → Inspection checklist.
+  if (request.url === '/api/admin/inspection-checklist' && (request.method === 'GET' || request.method === 'PUT')) {
+    const pmJob = { id: '00000000-0000-4000-8000-000000000851', displayName: 'PM A Service', categoryName: 'PM', active: true };
+    const brakeJob = { id: catalogJobs[0].id, displayName: catalogJobs[0].displayName, categoryName: 'Brakes', active: true };
+    const item = (n, section, label, catalogJob, workflowStepKey = null) => ({ id: `00000000-0000-4000-8000-000000000c00${n}`, section, label, sortOrder: n, active: true, catalogJob, workflowStepKey });
+    const body = request.method === 'PUT' ? await readJson(request) : null;
+    json(response, 200, {
+      items: [
+        item(1, 'interior', 'Dash lights and gauges', null, 'detailing'),
+        item(2, 'interior', 'Seats and seat belts', null, 'detailing'),
+        item(3, 'engine', 'Oil level and leaks', pmJob),
+        item(4, 'engine', 'Belts and hoses', pmJob),
+        item(5, 'exterior', 'Brake chambers', brakeJob),
+        item(6, 'exterior', 'Lights and reflectors', null, 'detailing'),
+      ].map((row, index) => body?.items?.[index] ? { ...row, ...body.items[index], id: row.id } : row),
+      limits: body?.limits ?? { steerTargetPsi: 110, driveTargetPsi: 105, steerMinTread: 4, driveMinTread: 2, watchPct: 10, fixPct: 20 },
+      canEdit: true,
+      catalogJobs: [{ id: pmJob.id, displayName: pmJob.displayName, categoryName: pmJob.categoryName }, ...catalogJobs.map((job) => ({ id: job.id, displayName: job.displayName, categoryName: adminCatalog.find((category) => category.id === job.categoryId)?.name ?? 'Brakes' }))],
+    });
+    return;
+  }
+  // LTR-259 (tablet walk): Setup → Samsara, with connected, proposed and unconnected trucks.
+  if (request.url === '/api/admin/integrations/samsara/pairing' || request.url === '/api/admin/integrations/samsara/sync') {
+    const now = new Date().toISOString();
+    const sync = { lastRunAt: now, lastSuccessAt: now, lastError: null, lastTrigger: 'cron', vehicles: 5, trucksUpdated: 4, faultsOpened: 1, faultsCleared: 0, activeFaults: 2, durationMs: 1800 };
+    if (request.url.endsWith('/sync')) { json(response, 200, { status: 'ok', state: sync }); return; }
+    const truckRef = (number, n) => ({ id: yardOperations.find((candidate) => candidate.truck.truckNumber === number)?.truck.id ?? `truck-${number}`, truckNumber: number, vin: `4V4NC9EH0RN12345${n}`, owner: 'Lightning Transport', company: 'Lightning Transport', mileage: 412000 + n * 1000 });
+    const vehicle = (number, n) => ({ id: `28147${n}`, name: `Truck ${number}`, vin: `4V4NC9EH0RN12345${n}`, odometer: { miles: 412300 + n * 1000, source: 'obd', at: now } });
+    json(response, 200, {
+      sync,
+      status: 'ok',
+      checkedAt: now,
+      summary: { samsaraVehicles: 5, trucks: 5, paired: 3, pairedBy: { connected: 2, samsara_id: 1 }, proposed: 1, unpairedTrucks: 1, unpairedVehicles: 1, warnings: 0 },
+      paired: [
+        { truck: truckRef('Y-101', 1), vehicle: vehicle('Y-101', 1), method: 'connected', warnings: [] },
+        { truck: truckRef('Y-104', 4), vehicle: vehicle('Y-104', 4), method: 'connected', warnings: [] },
+        { truck: truckRef('Y-105', 5), vehicle: vehicle('Y-105', 5), method: 'samsara_id', warnings: [] },
+      ],
+      proposed: [{ truck: truckRef('Y-102', 2), vehicle: vehicle('Y-102', 2) }],
+      unpairedTrucks: [{ truck: { ...truckRef('Y-103', 3), vin: null }, reason: 'no_match' }],
+      unpairedVehicles: [{ id: '281479', name: 'Truck 977', vin: '1XKYD49X0RJ000977', odometer: { miles: 98000, source: 'gps', at: now } }],
+      odometersAvailable: true,
+    });
+    return;
+  }
+  // LTR-259 (tablet walk): a Truck's Samsara codes (none in the fixture).
+  if (/^\/api\/admin\/trucks\/[^/]+\/faults$/.test(request.url ?? '') && request.method === 'GET') {
+    json(response, 200, { lamps: null, active: [], history: [], syncedAt: null, paired: false });
     return;
   }
   if (request.url === '/api/admin/catalog/categories') {
@@ -2253,6 +2334,7 @@ function makeWorkOrder(id, displayId, truckNumber, priority, status, options = {
 /** Stage 3: a reduced Next step rule for Work Orders (the API's is deriveTruckNextStep). */
 function fixtureNextStepForWorkOrder(workOrder) {
   const workOrderId = workOrder.id;
+  if (workOrder.status === 'cancelled') return null;
   if (workOrder.status === 'completed') return workOrder.returnedToServiceAt ? null : { kind: 'return_to_service', workOrderId };
   const blocker = workOrder.latestReportedBlocker;
   if (blocker && !blocker.resolvedAt) return { kind: 'resolve_blocker', workOrderId, blockerId: blocker.id, jobName: blocker.job?.displayName, reason: blocker.reason };

@@ -101,9 +101,20 @@ Label.displayName = 'Label';
 
 export const Select = React.forwardRef<
   HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement>
->(({ className, children, ...props }, ref) => (
-  <div className="relative w-full min-w-0">
+  React.SelectHTMLAttributes<HTMLSelectElement> & {
+    /** LTR-259: width classes for the box. The chevron follows the wrapper, so a narrow select sets its width
+     * here (e.g. `w-auto sm:w-48`), not on the `<select>`. */
+    wrapperClassName?: string;
+  }
+>(({ className, wrapperClassName, children, ...props }, ref) => (
+  <div
+    className={cn(
+      'relative min-w-0',
+      // A caller that still narrows the <select> itself (`w-auto`) gets a wrapper that hugs it, so the chevron stays inside.
+      !wrapperClassName && /(^|\s)w-auto(\s|$)/.test(className ?? '') ? 'inline-block max-w-full' : 'w-full',
+      wrapperClassName,
+    )}
+  >
     <select
       ref={ref}
       className={cn('field appearance-none pr-11', className)}
@@ -831,7 +842,8 @@ export function AdminBackLink({
 
 /**
  * LTR-169: the Admin list filter bar, the same shape as Work Orders and Yard. A search field, then:
- * - with extra `filters`: inline when the card itself is at least 56rem wide; narrower (phones, tablets, a
+ * - with extra `filters`: inline (wrapping under the search, never overlapping) when the card itself is at least
+ *   48rem wide (LTR-259: an iPad Pro in landscape); narrower (phones, tablets, a
  *   window beside the sidebar) a "Filters" button (with the active count) opens a sheet holding the fields and
  *   Clear / Apply. UX-4-001: decided by a container query on the card, not the window, so the search never
  *   collapses next to the sidebar (Tailwind 3 arbitrary `@container` variant, no plugin);
@@ -879,16 +891,17 @@ export function AdminFilterToolbar({
     setSheetOpen(false);
     onClear();
   };
+  // LTR-259: Clear and Apply wrap together and sit at the end of the row, never split across lines.
   const actions = (
-    <>
-      <Button type="button" variant="ghost" className="shrink-0" onClick={clear}>{clearLabel}</Button>
-      <Button type="submit" className="shrink-0">{applyLabel}</Button>
-    </>
+    <div className="ml-auto flex items-end gap-2">
+      <Button type="button" variant="ghost" onClick={clear}>{clearLabel}</Button>
+      <Button type="submit">{applyLabel}</Button>
+    </div>
   );
 
   return (
     <Card className={cn('min-w-0 p-3 [container-type:inline-size]', className)}>
-      <form role="search" className="flex min-w-0 items-end gap-2" onSubmit={submit}>
+      <form role="search" className="flex min-w-0 flex-wrap items-end gap-2" onSubmit={submit}>
         {/* UX-4-001: the search keeps 14rem once there is room for it; on the phone it takes what is left. */}
         <Input
           type="search"
@@ -902,12 +915,12 @@ export function AdminFilterToolbar({
         />
         {filters ? (
           <>
-            <div className="hidden min-w-0 items-end gap-2 [@container(min-width:56rem)]:flex">{filters}{actions}</div>
+            <div className="hidden min-w-0 flex-wrap items-end gap-2 [@container(min-width:48rem)]:flex">{filters}{actions}</div>
             <Button
               ref={filtersButtonRef}
               type="button"
               variant="outline"
-              className="shrink-0 [@container(min-width:56rem)]:hidden"
+              className="shrink-0 [@container(min-width:48rem)]:hidden"
               aria-expanded={sheetOpen}
               onClick={() => setSheetOpen(true)}
             >
@@ -1147,7 +1160,7 @@ export function LoadFailure({
       aria-live="assertive"
     >
       <p>{message}</p>
-      <Button type="button" variant="secondary" className="mt-3 w-full" onClick={onRetry}>
+      <Button type="button" variant="secondary" className="mt-3 w-full sm:w-auto" onClick={onRetry}>
         {retryLabel}
       </Button>
     </div>

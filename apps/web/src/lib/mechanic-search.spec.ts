@@ -29,7 +29,7 @@ describe('Next step actions in place (stage 2)', () => {
 
   it('the close confirmation names the Work Order and the Truck, in both languages', () => {
     expect(fillPlaceholders(en.closeWorkOrderDialogBody, { workOrder: 'WO-004', truck: '601' }))
-      .toBe('WO-004 closes as Completed and Truck 601 becomes Ready to Go. You can reopen it from the Work Order, with a reason.');
+      .toBe('WO-004 closes as Completed and Truck 601 becomes Ready to Go.');
     expect(fillPlaceholders(getAdminMessages('es').closeWorkOrderDialogTitle, { workOrder: 'WO-004' })).toBe('¿Cerrar WO-004?');
   });
 });

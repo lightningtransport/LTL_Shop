@@ -66,7 +66,7 @@ test.describe('shared UI consistency', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');
     // Stage 8 (mockup): Return to Service is the completed Work Order's Next step.
     await page.getByTestId('admin-wo-next-step').getByRole('button', { name: 'Return to Service' }).click();
-    await expect(page.getByText(/The Truck leaves Ready to Go\./)).toBeVisible();
+    await expect(page.getByText(/leaves Ready to Go\./)).toBeVisible();
     await expect(page.getByText(/does not change Work Order status, Ready to Go/)).toHaveCount(0);
   });
 

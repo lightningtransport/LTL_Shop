@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserRole, type AdminMechanicSummaryDto } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
 import { ActivateMechanicDialog, CreateMechanicDialog } from './admin-mechanic-roster';
-import { AdminWriteTip } from './admin-write-tip';
 import { stepLabel } from './admin-shop-workflow';
 import { currentMode } from './admin-mechanic-roster';
 import { AdminFilterToolbar, DataTable, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, Select } from './ui';
@@ -62,13 +61,8 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
       <PageHeader
         title={messages.mechanicsTitle}
         subtitle={canWrite ? (isSystemAdmin ? messages.mechanicsWriteDescriptionAdmin : messages.mechanicsWriteDescription) : messages.mechanicsDescription}
+        actions={canWrite ? <Button type="button" onClick={() => setCreateOpen(true)}>{messages.createMechanic}</Button> : undefined}
       />
-      {canWrite ? (
-        <div className="space-y-3">
-          <Button type="button" onClick={() => setCreateOpen(true)}>{messages.createMechanic}</Button>
-          <AdminWriteTip testId>{messages.mechanicRosterTip}</AdminWriteTip>
-        </div>
-      ) : null}
       <AdminFilterToolbar
         search={search}
         onSearchChange={setSearch}
@@ -77,9 +71,9 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         closeLabel={messages.closeDialog}
         activeFilterCount={showFrom(searchParams) === 'active' ? 0 : 1}
         filters={(
-          <label className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm">
-            {messages.peopleShow}
-            <Select value={show} onChange={(event) => setShow(event.target.value as typeof show)} className="w-auto">
+          <label className="block min-w-[12rem] flex-1 space-y-2 text-sm font-medium">
+            <span className="block">{messages.peopleShow}</span>
+            <Select value={show} onChange={(event) => setShow(event.target.value as typeof show)}>
               <option value="active">{messages.peopleShowActive}</option>
               <option value="all">{messages.peopleShowActiveInactive}</option>
               <option value="removed">{messages.peopleShowRemoved}</option>

@@ -328,6 +328,8 @@ function TruckDetailBody({
           </div>
         ) : null}
       </div>
+      {/* No empty card: the stepper needs 2+ steps and the counts need an open Work Order. */}
+      {steps.length >= 2 || (workOrder && workOrder.status !== 'completed') ? (
       <div className="rounded-xl border bg-card p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <TruckStepper steps={steps} messages={messages} onSelect={selectStep} />
@@ -343,9 +345,10 @@ function TruckDetailBody({
                 </span>
               </div>
             ) : null
-          ) : <p className="text-muted-foreground">{messages.truckPlanStarts}</p>}
+          ) : null}
         </div>
       </div>
+      ) : null}
     </section>
 
     {actionError ? (
@@ -371,7 +374,7 @@ function TruckDetailBody({
       onChanged={onChanged}
     />}
 
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-5">
         <AdminTruckWorkPlan
           truckId={truckId}

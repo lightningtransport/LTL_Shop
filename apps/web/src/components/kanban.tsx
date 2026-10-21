@@ -112,7 +112,8 @@ export function KanbanColumn({ id, index, title, count, emptyLabel, open = true,
     <section
       aria-labelledby={headingId}
       className={cn(
-        'lg:flex lg:max-h-full lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
+        // LTR-259: columns share the board width (never under 18rem); more than fit scroll sideways.
+        'lg:flex lg:max-h-full lg:min-w-72 lg:flex-[1_0_18rem] lg:flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:bg-muted/30',
         empty && 'hidden',
       )}
       {...props}

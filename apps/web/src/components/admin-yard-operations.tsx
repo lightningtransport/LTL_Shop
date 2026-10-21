@@ -210,14 +210,14 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           ) : null}
         </p>
         {yardBoundary && [yardBoundary.incomingTrucks, yardBoundary.upcomingDepartures].some((section) => section.status === 'ok' && section.items.length > 0) ? (
-          <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 lg:w-72">
+          <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10 w-full">
             <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
             <span className="sr-only">{messages.yardMovementSearch}</span>
             <input
               type="search"
               className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
               aria-label={messages.yardMovementSearch}
-              placeholder={messages.yardMovementSearch}
+              placeholder={messages.yardSearchPlaceholder}
               value={movementSearch}
               onChange={(event) => setMovementSearch(event.target.value)}
             />
@@ -260,9 +260,10 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
         {!boardView && yardBoundary?.samsaraPlaces ? <YardSamsaraCounters messages={messages} places={yardBoundary.samsaraPlaces} /> : null}
         {/* Stage 8 (mockup): search and the quick filters on one row; no "More filters" (owner decision). The URL
             still accepts readiness, phase, Work Order status and priority from links on other screens. */}
-        <section className="flex flex-col gap-3 lg:flex-row lg:items-center" aria-label={messages.yardQuickFilters}>
+        {/* LTR-259: one row only from xl; on a tablet the search takes row 1 and the chips plus Full screen row 2. */}
+        <section className="flex flex-col gap-3 xl:flex-row xl:items-center" aria-label={messages.yardQuickFilters}>
           {/* UX-4-004: short placeholder, the full description in the aria-label, and a field that never cuts it. */}
-          <form role="search" className="w-full shrink-0 sm:w-80" onSubmit={(event) => { event.preventDefault(); commitFilters({ ...appliedFilters, search: filters.search }); }}>
+          <form role="search" className="w-full shrink-0 xl:w-80" onSubmit={(event) => { event.preventDefault(); commitFilters({ ...appliedFilters, search: filters.search }); }}>
             <label className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3 focus-within:border-ring [@media(pointer:fine)]:h-10">
               <Search aria-hidden="true" className="size-3.5 text-muted-foreground" />
               <span className="sr-only">{messages.yardSearch}</span>
@@ -278,6 +279,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
               />
             </label>
           </form>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:contents">
           <div role="group" aria-label={messages.yardQuickFilters} className="-mx-4 flex gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" data-testid="yard-quick-filters">
             {YARD_QUICK_FILTERS.map((value) => (
               <button
@@ -296,7 +298,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
               </button>
             ))}
           </div>
-          {anyFilter ? <Button type="button" variant="ghost" size="sm" className="self-start lg:ml-auto lg:self-auto" onClick={clearFilters}><X aria-hidden="true" />{messages.clearFilters}</Button> : null}
+          {anyFilter ? <Button type="button" variant="ghost" size="sm" className="self-start sm:ml-auto sm:self-auto" onClick={clearFilters}><X aria-hidden="true" />{messages.clearFilters}</Button> : null}
           {boardView ? (
             fullscreen.supported ? (
               <KanbanFullscreenButton
@@ -304,7 +306,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
                 onClick={fullscreen.toggle}
                 enterLabel={messages.yardFullscreenTv}
                 exitLabel={messages.yardExitFullscreen}
-                className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
+                className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'ml-auto')}
               />
             ) : null
           ) : (
@@ -312,16 +314,16 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
               href={boardHref}
               label={messages.yardFullscreen}
               title={messages.yardFullscreenNewTab}
-              className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'lg:ml-auto')}
+              className={cn('hidden shrink-0 lg:inline-flex', !anyFilter && 'ml-auto')}
             />
           )}
+          </div>
         </section>
 
         <p className="-mt-1 text-xs text-muted-foreground" data-testid="yard-showing">
           {matching !== undefined && total !== undefined
             ? matching === total ? fillYardText(messages.yardInShopCount, { count: String(total) }) : fillYardText(messages.yardShowing, { count: String(matching), total: String(total) })
             : null}
-          {' · '}{messages.yardFiltersStay}
         </p>
 
         {items.length === 0 ? (

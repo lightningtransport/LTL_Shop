@@ -12,9 +12,9 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
 
   await page.goto('/admin/mechanics');
   await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
-  await expect(page.getByText('Add Standard, PM or Safety people. The app creates their access account with a temporary password.')).toBeVisible();
+  await expect(page.getByText('Mechanics, PM and Safety people who use the app.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   // LTR-185: Safety shows on the roster with a people-facing label.
   await expect(page.getByRole('row', { name: /Retired Mechanic/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Alejandro 1' }).click();
@@ -25,7 +25,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Jobs catalog' })).toBeVisible();
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   // LTR-198 / D30: the Manager manages Categories too.
   await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
@@ -63,7 +63,7 @@ test('manager adds a Safety person and gets the temporary password once (D22, HU
   const panel = dialog.getByTestId('temporary-password-panel');
   await expect(panel).toBeVisible();
   await expect(panel.getByLabel('Temporary password')).toHaveValue(/^[A-Za-z2-9]{14}$/);
-  await expect(panel.getByText('Pass it to the person; the app will ask them to change it when they sign in. It is shown only once.')).toBeVisible();
+  await expect(panel.getByText('Shown only once. They change it when they sign in.')).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Copy' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await dialog.getByRole('button', { name: 'Done' }).click();
@@ -88,7 +88,7 @@ test('manager adds a Safety person and gets the temporary password once (D22, HU
   await page.getByRole('dialog').getByLabel('Email').fill('pedro@lightning.local');
   await page.getByRole('dialog').getByLabel('PM').check();
   await page.getByRole('dialog').getByRole('button', { name: 'Agregar persona' }).click();
-  await expect(page.getByRole('dialog').getByText('Pásala a la persona; la app le pedirá cambiarla al entrar. Se muestra una sola vez.')).toBeVisible();
+  await expect(page.getByRole('dialog').getByText('Se muestra una sola vez. La cambia al entrar.')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Listo' }).click();
 });
 
@@ -100,7 +100,7 @@ test('deactivating a person with open work is refused and lists the Jobs to reas
   await expect(page.getByRole('heading', { name: 'Alejandro 1' })).toBeVisible();
   await page.getByRole('button', { name: 'Deactivate' }).click();
   const deactivate = page.getByRole('dialog', { name: 'Deactivate person' });
-  await expect(deactivate.getByText('This person will stop signing in and appearing in assignee lists. Nothing is deleted; their history stays.')).toBeVisible();
+  await expect(deactivate.getByText('They stop signing in and leave assignee lists; their history stays.')).toBeVisible();
   await deactivate.getByRole('button', { name: 'Deactivate' }).click();
   const blocked = deactivate.getByTestId('mechanic-open-work');
   await expect(blocked).toContainText('Reassign first');
@@ -112,7 +112,7 @@ test('deactivating a person with open work is refused and lists the Jobs to reas
 
   await page.getByRole('button', { name: 'Reset password' }).click();
   const reset = page.getByRole('dialog', { name: 'Reset password' });
-  await expect(reset.getByText('A new temporary password replaces the current one. The person must change it at the next sign-in.')).toBeVisible();
+  await expect(reset.getByText('They get a new temporary password to change at the next sign-in.')).toBeVisible();
   await reset.getByRole('button', { name: 'Reset password' }).click();
   await expect(reset.getByLabel('Temporary password')).toHaveValue(/^[A-Za-z2-9]{14}$/);
   await reset.getByRole('button', { name: 'Done' }).click();
@@ -141,7 +141,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await page.goto('/admin/catalog');
   await expect(page.getByRole('heading', { name: 'Jobs catalog' })).toBeVisible();
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
 
@@ -160,9 +160,9 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await page.goto('/admin/mechanics');
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
   // LTR-253 / D48: a System Admin also adds Shop Managers and System Admins.
-  await expect(page.getByText('Add Standard, PM, Safety, Shop Manager or System Admin people. The app creates their access account with a temporary password.')).toBeVisible();
+  await expect(page.getByText('Everyone who uses the app and what they can do.')).toBeVisible();
   await expect(page.getByText(/read-only/i)).toHaveCount(0);
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Add person' }).click();
   const dialog = page.getByRole('dialog');
@@ -182,7 +182,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await loginToAdmin(page, 'admin@lightning.local');
 
   await page.goto('/admin/catalog');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Manager or System Admin');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add Job' }).click();
   const jobDialog = page.getByRole('dialog');
   // The Modal focuses its first control one frame after opening (ui.tsx); wait so typing is not redirected.
@@ -221,7 +221,7 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.goto('/admin/mechanics');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Open a person to rename them');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add person' }).click();
   const createDialog = page.getByRole('dialog');
   // LTR-163: the dialog focuses Name when it opens; typing before that lands the email in Name.
@@ -262,11 +262,11 @@ test('system admin adds, renames, and activates a Job, then creates and activate
   await expect(page.getByRole('heading', { name: 'Luz Mendez' })).toBeVisible();
 
   await switchLanguage(page, 'es');
-  await expect(page.getByTestId('pd-light-tip')).toContainText('Abre a una persona para renombrarla');
+  await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeVisible();
   await page.goto('/admin/mechanics');
   // LTR-253 / D48: the System Admin's People subtitle names the Shop Manager and System Admin types too.
-  await expect(page.getByText('Agrega personas Standard, PM, Safety, Shop Manager o System Admin. La app crea su cuenta de acceso con una contraseña temporal.')).toBeVisible();
+  await expect(page.getByText('Todas las personas que usan la app y lo que pueden hacer.')).toBeVisible();
   await expect(page.getByText(/solo lectura/i)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

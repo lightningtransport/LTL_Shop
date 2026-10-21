@@ -20,7 +20,11 @@ export default defineConfig({
       ?? (process.env.ADMIN_E2E_FIXTURE ? 'http://127.0.0.1:3010' : 'http://localhost:3000'),
     trace: 'on-first-retry',
   },
-  projects: [
+  // LTR-259: TABLET_WALK=1 runs only the iPad Pro 11" projects (e2e/tablet-walk.spec.ts), both orientations.
+  projects: process.env.TABLET_WALK ? [
+    { name: 'ipad-portrait', use: { ...devices['iPad Pro 11'], browserName: 'webkit' } },
+    { name: 'ipad-landscape', use: { ...devices['iPad Pro 11 landscape'], browserName: 'webkit' } },
+  ] : [
     {
       name: 'mobile-chromium',
       use: {

@@ -187,8 +187,8 @@ function MonthClose({ locale, messages, canWrite, onChanged }: { locale: AdminLo
         <p className="min-w-60 flex-1 text-xs text-muted-foreground">{fillPlaceholders(messages.pcCloseHint, { month: monthLabel })}</p>
       </div>
       {actionError ? <InlineAlert className="mx-4 mb-3">{actionError}</InlineAlert> : null}
-      {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcCloseTitle} header={false} /> : null}
+      {error ? <div className="px-4 pb-3"><LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /></div> : null}
+      {isLoading && !data ? <div className="px-4 pb-3"><PageSkeleton label={messages.pcCloseTitle} header={false} /></div> : null}
       {data ? (
         <p className="border-t px-4 py-2 text-sm" data-testid="invoice-month-summary-line">
           {fillPlaceholders(messages.pcCloseSummary, { trucks: String(data.totals.trucksToCharge), uncharged: formatCents(data.totals.unchargedCents, locale), invoiced: formatCents(data.totals.invoicedCents, locale) })}
@@ -203,16 +203,18 @@ function MonthClose({ locale, messages, canWrite, onChanged }: { locale: AdminLo
           getKey={(row) => row.truck.id}
           getRowLabel={(row) => row.truck.truckNumber}
           columns={[
-            { key: 'truck', header: messages.pcCloseColTruck, primary: true, cell: (row) => fillPlaceholders(messages.pcTruckLabel, { truck: row.truck.truckNumber }) },
+            { key: 'truck', header: messages.pcCloseColTruck, primary: true, className: 'md:align-middle', cell: (row) => fillPlaceholders(messages.pcTruckLabel, { truck: row.truck.truckNumber }) },
             {
               key: 'uncharged',
+              className: 'md:align-middle',
               header: messages.pcCloseColUncharged,
               cell: (row) => row.uncharged.count
-                ? <span className="tabular-nums">{fillPlaceholders(messages.pcCloseUncharged, { count: String(row.uncharged.count), amount: formatCents(row.uncharged.totalCents, locale) })}</span>
+                ? <span className="tabular-nums">{fillPlaceholders(row.uncharged.count === 1 ? messages.pcCloseUnchargedOne : messages.pcCloseUncharged, { count: String(row.uncharged.count), amount: formatCents(row.uncharged.totalCents, locale) })}</span>
                 : <span className="text-muted-foreground">{messages.pcCloseNothing}</span>,
             },
             {
               key: 'invoice',
+              className: 'md:align-middle',
               header: messages.pcCloseColInvoice,
               cell: (row) => {
                 if (!row.invoice) return <span className="text-muted-foreground">—</span>;
@@ -228,6 +230,7 @@ function MonthClose({ locale, messages, canWrite, onChanged }: { locale: AdminLo
             },
             ...(canWrite ? [{
               key: 'action',
+              className: 'md:align-middle md:text-right',
               header: '',
               cell: (row: AdminInvoiceMonthDto['rows'][number]) => toCharge(row)
                 ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void run(() => createAdminInternalInvoice({ truckId: row.truck.id, month }), () => messages.pcInvoiceDraft)}>{messages.pcCloseMakeDraft}</Button>

@@ -8,7 +8,7 @@ import {
   WorkPlanInspectionOutcome,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
-import { Building2, Check, ChevronDown, ClipboardCheck, CircleSlash, CornerDownRight, Info, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
+import { Building2, Check, ChevronDown, ClipboardCheck, CircleSlash, CornerDownRight, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import {
@@ -350,9 +350,6 @@ export function AdminTruckWorkPlan({
           );
         })}
       </ul>
-      {!plan.workOrder ? (
-        <p className="flex items-center gap-2 border-t bg-sunken px-4 py-3 text-muted-foreground"><Info aria-hidden="true" className="size-3.5 shrink-0" />{messages.workPlanStepsAppear}</p>
-      ) : null}
       {!canAddWork && !canInspect ? (
         <p className="flex items-center gap-2 border-t bg-sunken px-4 py-3 text-muted-foreground"><Lock aria-hidden="true" className="size-3.5 shrink-0" />{messages.permissionReadOnly}</p>
       ) : null}

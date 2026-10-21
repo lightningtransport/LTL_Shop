@@ -144,7 +144,7 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
               const isQc = step.stepKey === ShopWorkflowStepKey.QUALITY_CHECK;
               return (
                 // UX-4-007: three columns only from `xl`; narrower, the team goes under the step name with the full width.
-                <li key={step.stepKey} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 p-4 xl:grid-cols-[2rem_minmax(0,16rem)_minmax(0,1fr)]" data-testid={`workflow-step-${step.stepKey}`}>
+                <li key={step.stepKey} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 p-4 lg:grid-cols-[2rem_minmax(0,18rem)_minmax(0,1fr)]" data-testid={`workflow-step-${step.stepKey}`}>
                   <span className="text-sm font-semibold text-muted-foreground">{index + 1}</span>
                   <div className="min-w-0 space-y-1">
                     <p className="font-semibold">
@@ -161,7 +161,7 @@ function WorkflowSteps({ messages, locale, canWrite }: { messages: AdminMessages
                     ) : null}
                     {!step.catalogJob.active ? <p className="text-xs text-warning-foreground">{messages.shopWorkflowStepInactive}</p> : null}
                   </div>
-                  <div className="col-start-2 min-w-0 space-y-2 xl:col-start-3">
+                  <div className="col-start-2 min-w-0 space-y-2 lg:col-start-3">
                     <p className="text-xs font-medium text-muted-foreground">{teamLabel(step, messages)}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {members.map((member) => (
@@ -357,7 +357,7 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
   return (
     <section className="space-y-3" aria-labelledby="shop-hours-title" data-testid="shop-hours">
       <div>
-        <h2 id="shop-hours-title" className="text-lg font-semibold">{messages.shopHours}</h2>
+        <h2 id="shop-hours-title" className="sr-only">{messages.shopHours}</h2>
         <p className="text-sm text-muted-foreground">{messages.shopHoursDescription}</p>
       </div>
       {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
@@ -383,7 +383,7 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
               <legend className="text-sm font-medium">{messages.shopHoursWorkdays}</legend>
               <div className="flex flex-wrap gap-2">
                 {WEEKDAYS.map((day) => (
-                  <label key={day} className="flex min-h-10 items-center gap-2 rounded-md border px-3 text-sm">
+                  <label key={day} className="flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm">
                     <input
                       type="checkbox"
                       checked={workdays.includes(day)}

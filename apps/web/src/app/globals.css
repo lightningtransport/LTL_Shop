@@ -284,6 +284,18 @@ select.field {
   padding-right: 2.75rem;
 }
 
+/* LTR-259: WebKit draws date/month/time inputs ~49px tall; pin them to the 44px of every other field so
+   labels and bottom edges line up in filter rows. */
+input.field[type='date'],
+input.field[type='month'],
+input.field[type='time'] {
+  height: 2.75rem;
+  padding-block: 0;
+}
+input.field::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 /* Stage 8: small pieces of the approved mockups (the mockup.html files in docs/proposals). */
 .tnum { font-variant-numeric: tabular-nums; }
 .seg[aria-pressed='true'], .seg[aria-checked='true'] {

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { CatalogStatus } from '@ltl-shop/shared';
 import { AdminCatalogWriteActions } from './admin-catalog-write';
 import { CatalogJobRow, CategoryMenu, CategoryStatusNote } from './admin-catalog-manage';
-import { AdminWriteTip } from './admin-write-tip';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
 import { AdminBackLink, PageHeader, Badge, Button, EmptyState, LoadFailure, PageSkeleton, SectionCard } from './ui';
 import { ApiError } from '@/lib/api';
@@ -47,7 +46,6 @@ export function AdminCatalogCategoryDetail({ id, messages }: { id: string; local
           </div>
         ) : null}
       />
-      {canWrite ? <AdminWriteTip testId>{messages.catalogAddJobTip}</AdminWriteTip> : null}
       <SectionCard title={messages.catalogJobsColumn} count={activeJobs}>
         {data.jobs.length ? (
           <ul className="divide-y">

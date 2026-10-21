@@ -53,7 +53,7 @@ test.describe('LTR-247 one Parts… sheet on the Job', () => {
     await expect(preview.locator('[data-status="from_stock"]')).toContainText('Leaves stock · $24.10');
     await expect(preview.locator('[data-status="not_in_stock"]')).toContainText('Not in stock · not charged');
     await expect(preview).toContainText('On completing · $109.10');
-    await expect(page.getByTestId('job-parts-pm-loose')).toContainText('Purchase 88412093 for this truck has Fuel Filter Volvo with no Job');
+    await expect(page.getByTestId('job-parts-pm-loose')).toContainText('Purchase 88412093 has Fuel Filter Volvo with no Job');
     // The PM takes its parts by itself: the picked ones are not offered from stock.
     const sheet = page.getByTestId('job-stock-dialog');
     await expect(sheet.getByRole('heading', { name: 'Other parts from stock' })).toBeVisible();

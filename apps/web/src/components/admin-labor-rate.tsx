@@ -108,13 +108,13 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
               <Label htmlFor="labor-rate-from">{messages.pcLaborRateFrom}</Label>
               <Input id="labor-rate-from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} />
             </div>
-            <div className="flex min-w-60 flex-1 flex-col gap-2 pt-6">
+            <div className="pt-6">
+              <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcLaborRateSave}</Button>
+            </div>
+            <div className="basis-full space-y-1">
               <p className="text-xs text-muted-foreground">{messages.pcLaborRateHelp}</p>
               {previewText ? <p className="text-xs" data-testid="labor-rate-preview">{previewText}</p> : null}
               {saveError && !removing ? <InlineAlert>{saveError}</InlineAlert> : null}
-            </div>
-            <div className="pt-6">
-              <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcLaborRateSave}</Button>
             </div>
           </form>
         </SectionCard>

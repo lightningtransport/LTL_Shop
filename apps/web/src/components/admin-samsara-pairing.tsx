@@ -167,7 +167,7 @@ export function AdminSamsaraPairing({ locale, messages }: { locale: AdminLocale;
     <div className="space-y-6">
       {header}
 
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-6" data-testid="samsara-summary">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6" data-testid="samsara-summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border bg-card px-4 py-3">
             <dt className="text-xs text-muted-foreground">{stat.label}</dt>
@@ -319,7 +319,9 @@ function SyncCard({ sync, canSync, syncing, onSync, locale, messages }: {
               ago: formatAdminAgo(sync.lastRunAt, locale),
               trigger: sync.lastTrigger === 'manual' ? messages.samsaraSyncTriggerManual : messages.samsaraSyncTriggerCron,
               trucks: String(sync.trucksUpdated),
-              opened: String(sync.faultsOpened),
+              faults: sync.faultsOpened === 1
+                ? messages.samsaraSyncFaultsOne
+                : fillPlaceholders(messages.samsaraSyncFaultsMany, { n: String(sync.faultsOpened) }),
               cleared: String(sync.faultsCleared),
               active: String(sync.activeFaults),
             })}

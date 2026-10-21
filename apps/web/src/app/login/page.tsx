@@ -109,7 +109,7 @@ export default function LoginPage() {
         enterDemo
           ? DEMO_HOSTED
             ? 'The demo is not ready right now. Try again in a minute.'
-            : 'No active account with this email in the demo database. Use one of the demo accounts, or rebuild the demo (npm run prisma:demo-local).'
+            : 'No demo account with this email. Use one of the demo accounts.'
           : apiErrorMessage(err, messages, messages.accountNotConfigured),
       );
     } finally {

@@ -140,7 +140,7 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
       ) : null}
       {failure ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive-text">{failure}</p> : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           {SECTIONS.map((section) => {
             const list = rows.filter((row) => row.section === section.key);
@@ -192,11 +192,11 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
           <p className="text-xs text-muted-foreground">{copy.applyNote}</p>
         </div>
 
-        <div className="space-y-6 lg:sticky lg:top-20">
+        <div className="space-y-6 xl:sticky xl:top-20">
           <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.tiresLimitsTitle}</>}>
             <div className="space-y-4 p-4">
               <p className="text-muted-foreground">{copy.tiresLimitsHint}</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-2">
                 {limitField('steerTargetPsi', copy.steerPsi)}
                 {limitField('driveTargetPsi', copy.drivePsi)}
                 {limitField('steerMinTread', copy.steerMinTread)}
