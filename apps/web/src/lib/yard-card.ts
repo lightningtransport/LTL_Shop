@@ -110,26 +110,30 @@ export type DispatchRowPlace = 'missing' | 'ready_to_go' | 'in_shop' | 'in_yard'
 /**
  * D50/D51: one Dispatch row. `done`: arrived (Incoming) or left (Departures). `rank` orders a day by what asks for action:
  * Incoming — arrived without a Work Order (0), still coming (1), arrived and in the shop (2);
- * Departures — not ready, an open Work Order (0), ready (1), not in the app (2), already left (3).
+ * Departures — not ready, an open Work Order, or left while Ready to Go (0), ready (1), not in the app (2), already left (3).
+ * D52 (LTR-260): a Ready to Go truck that left and came back is a new arrival; one that left asks to confirm Return to Service.
  */
 export function dispatchRowPlace(
-  truck: Pick<YardDispatchShopTruckDto, 'readyToGo' | 'openWorkOrder' | 'samsara'> | undefined,
+  truck: Pick<YardDispatchShopTruckDto, 'readyToGo' | 'openWorkOrder' | 'samsara' | 'yardMove'> | undefined,
   list: 'incoming' | 'departures',
   day: string | null,
   today: string | null,
-): { place: DispatchRowPlace; done: boolean; rank: number; needsWorkOrder: boolean; notReady: boolean } {
-  if (!truck) return { place: 'missing', done: false, rank: list === 'incoming' ? 1 : 2, needsWorkOrder: false, notReady: false };
+): { place: DispatchRowPlace; done: boolean; rank: number; needsWorkOrder: boolean; notReady: boolean; confirmReturn: boolean } {
+  if (!truck) return { place: 'missing', done: false, rank: list === 'incoming' ? 1 : 2, needsWorkOrder: false, notReady: false, confirmReturn: false };
   const open = Boolean(truck.openWorkOrder);
   const yard = truckPlace(truck.samsara, open);
-  const place: DispatchRowPlace = truck.readyToGo ? 'ready_to_go' : yard ?? (truck.samsara?.locationAt ? 'outside' : 'no_gps');
+  const backInYard = Boolean(truck.readyToGo) && truck.yardMove === 'back_in_yard';
+  const readyToGo = Boolean(truck.readyToGo) && !backInYard;
+  const place: DispatchRowPlace = readyToGo ? 'ready_to_go' : yard ?? (truck.samsara?.locationAt ? 'outside' : 'no_gps');
   if (list === 'incoming') {
-    const needsWorkOrder = yard === 'in_yard' && !truck.readyToGo;
-    return { place, done: yard !== null, rank: needsWorkOrder ? 0 : yard ? 2 : 1, needsWorkOrder, notReady: false };
+    const needsWorkOrder = yard === 'in_yard' && !readyToGo;
+    return { place, done: yard !== null, rank: needsWorkOrder ? 0 : yard ? 2 : 1, needsWorkOrder, notReady: false, confirmReturn: false };
   }
   const notReady = open && !truck.readyToGo;
+  const confirmReturn = Boolean(truck.readyToGo) && truck.yardMove === 'left_yard';
   // Left: its day came and Samsara sees it outside (with nothing open: an open Work Order stays "not ready").
-  const done = !notReady && yard === null && Boolean(truck.samsara?.locationAt) && Boolean(day && today && day <= today);
-  return { place, done, rank: notReady ? 0 : done ? 3 : 1, needsWorkOrder: false, notReady };
+  const done = confirmReturn || (!notReady && yard === null && Boolean(truck.samsara?.locationAt) && Boolean(day && today && day <= today));
+  return { place, done, rank: notReady || confirmReturn ? 0 : done ? 3 : 1, needsWorkOrder: false, notReady, confirmReturn };
 }
 
 /** D51: a day's rows by `rank`, each rank in the API order. */

@@ -1,7 +1,9 @@
 import {
   deriveTruckNextStep,
   isPmCategory,
+  readyToGoYardMove,
   type TruckNextStepDto,
+  type TruckSamsaraDto,
 } from '@ltl-shop/shared';
 import { Prisma, ReadinessAssessmentStatus, ReadinessRequirementType } from '@prisma/client';
 import { deriveInspectionOutcome, toWorkPlanJobDto } from './yard-work-plan-derivation';
@@ -16,6 +18,7 @@ import { deriveInspectionOutcome, toWorkPlanJobDto } from './yard-work-plan-deri
 export type NextStepWorkOrderRow = {
   id: string;
   status: string;
+  completedAt?: Date | null;
   primaryCategory: { name: string };
   jobs: Array<{
     id?: string;
@@ -48,7 +51,12 @@ export type NextStepWorkOrderRow = {
 
 export function workOrderNextStep(
   row: NextStepWorkOrderRow,
-  options: { inspectionRequirementOutcome?: string | null; returnedToService?: boolean } = {},
+  options: {
+    inspectionRequirementOutcome?: string | null;
+    returnedToService?: boolean;
+    /** D52 (LTR-260): the truck's Samsara reading, to say it left the yard (or came back) while Ready to Go. */
+    samsara?: TruckSamsaraDto | null;
+  } = {},
 ): TruckNextStepDto | null {
   // A legacy PM Work Order has no Work Plan steps.
   if (isPmCategory(row.primaryCategory.name)) return null;
@@ -73,7 +81,7 @@ export function workOrderNextStep(
   });
   const blocker = (row.pauseEvents ?? []).find((pause) => pause.isOfficialPause === false && !pause.resolvedAt) ?? null;
   const pause = (row.pauseEvents ?? []).find((item) => item.isOfficialPause !== false && !item.endedAt) ?? null;
-  return deriveTruckNextStep({
+  const step = deriveTruckNextStep({
     workOrder: { id: row.id, status: row.status },
     inspectionOutcome: deriveInspectionOutcome(jobs, options.inspectionRequirementOutcome as never),
     jobs,
@@ -89,6 +97,9 @@ export function workOrderNextStep(
       : null,
     currentPause: pause ? { reason: pause.reason } : null,
   });
+  if (step?.kind !== 'return_to_service') return step;
+  const yardMove = readyToGoYardMove(options.samsara, row.completedAt);
+  return yardMove ? { ...step, yardMove } : step;
 }
 
 /** The truck's active readiness assessment Inspection outcome, as Truck Detail reads it. */

@@ -107,6 +107,17 @@ describe('D50: Dispatch rows with the Samsara place', () => {
     expect(dispatchRowPlace(undefined, 'departures', '2026-10-19', '2026-10-19').rank).toBe(2);
   });
 
+  it('D52 (LTR-260): Ready to Go and back in the yard is a new arrival; Ready to Go and left asks to confirm Return to Service', () => {
+    const back = dispatchRowPlace({ readyToGo: true, yardMove: 'back_in_yard', openWorkOrder: null, samsara: samsara('12839282') }, 'incoming', '2026-10-22', '2026-10-22');
+    expect([back.place, back.needsWorkOrder, back.rank]).toEqual(['in_yard', true, 0]);
+    const waiting = dispatchRowPlace({ readyToGo: true, yardMove: null, openWorkOrder: null, samsara: samsara('12839282') }, 'incoming', '2026-10-22', '2026-10-22');
+    expect([waiting.place, waiting.needsWorkOrder]).toEqual(['ready_to_go', false]);
+    const left = dispatchRowPlace({ readyToGo: true, yardMove: 'left_yard', openWorkOrder: null, samsara: samsara(null) }, 'departures', '2026-10-25', '2026-10-22');
+    expect([left.confirmReturn, left.done, left.rank]).toEqual([true, true, 0]);
+    const gone = dispatchRowPlace({ readyToGo: false, yardMove: null, openWorkOrder: null, samsara: samsara(null) }, 'departures', '2026-10-22', '2026-10-22');
+    expect([gone.confirmReturn, gone.rank]).toEqual([false, 3]);
+  });
+
   it('orders by rank, keeping the API order inside a rank, and groups by day with undated last', () => {
     expect(orderDispatchRows([{ n: 1, rank: 2 }, { n: 2, rank: 0 }, { n: 3, rank: 1 }, { n: 4, rank: 0 }]).map((row) => row.n)).toEqual([2, 4, 3, 1]);
     expect(groupDispatchDays([{ day: '2026-10-26' }, { day: null }, { day: '2026-10-19' }, { day: '2026-10-26' }]).map((group) => [group.day, group.rows.length])).toEqual([['2026-10-19', 1], ['2026-10-26', 2], [null, 1]]);

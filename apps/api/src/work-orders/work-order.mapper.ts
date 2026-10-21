@@ -515,7 +515,7 @@ export const workOrderDetailInclude = {
       completedBy: { select: { id: true, name: true } },
       // D42 / S-6: the Samsara faults a Job takes care of, shown to the mechanic.
       // D46 / SQ-3: and the Safety findings it takes care of.
-      // D52: and the tires and sheet notes from the inspection, so the mechanic sees which tire and why.
+      // D53: and the tires and sheet notes from the inspection, so the mechanic sees which tire and why.
       sources: {
         select: {
           kind: true,

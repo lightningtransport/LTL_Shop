@@ -29,6 +29,7 @@ import {
 } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
+import { truckNextStepText } from '@/lib/truck-next-step';
 import { useActionToast } from './action-toast';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { NextStepAction } from './next-step-action';
@@ -238,10 +239,11 @@ export function AdminTruckNextStep({
       return (
         <>
           {box({
-            tone: 'success',
+            // D52 (LTR-260): Samsara saw it leave the yard after the close (or leave and come back).
+            tone: step.yardMove ? 'warning' : 'success',
             icon: CircleCheck,
             eyebrow: messages.calloutReadyToGo,
-            title: messages.calloutRtsTitle,
+            title: step.yardMove ? truckNextStepText(step, messages) ?? messages.calloutRtsTitle : messages.calloutRtsTitle,
             sub: fillPlaceholders(messages.calloutRtsSub, { workOrder: workOrder?.displayId ?? '', date: date(workOrder?.completedAt) }),
             actions: step.workOrderId ? act(messages.returnToServiceTitle, TruckIcon, () => setReturnOpen(true)) : null,
           })}

@@ -252,7 +252,7 @@ describe('Setup → Inspection checklist (D41, HU-M17)', () => {
   });
 });
 
-describe('Las llantas de la inspección van a Alignment y dicen qué llanta y por qué (D52)', () => {
+describe('Las llantas de la inspección van a Alignment y dicen qué llanta y por qué (D53)', () => {
   beforeEach(resetDb);
 
   it('A152 | Flat Repair y Tires nacen con el mecánico de Alignment, que ve la posición, los PSI o el tread y el motivo; "Assign later" a propósito los deja sin dueño', async () => {

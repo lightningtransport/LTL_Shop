@@ -116,11 +116,13 @@ export function WorkOrderNextStep({
     if (data.returnedToServiceAt) {
       return box({ tone: 'success', icon: CircleCheck, eyebrow: messages.calloutDone, title: messages.calloutReturnedTitle, sub: fillPlaceholders(messages.calloutReturnedSub, { completed: date(data.completedAt), returned: date(data.returnedToServiceAt) }), kind: 'returned' });
     }
+    // D52 (LTR-260): Samsara saw it leave the yard after the close (or leave and come back).
+    const moved = data.nextStep?.yardMove ? truckNextStepText(data.nextStep, messages) : null;
     return box({
-      tone: 'primary',
+      tone: moved ? 'warning' : 'primary',
       icon: Truck,
       eyebrow: messages.calloutNextStep,
-      title: messages.calloutReturnTitle,
+      title: moved ?? messages.calloutReturnTitle,
       sub: fillPlaceholders(messages.calloutReturnSub, { date: date(data.completedAt) }),
       actions: canManage ? <Button type="button" disabled={pending} onClick={onReturnToService}>{messages.returnToServiceTitle}</Button> : null,
       kind: 'return_to_service',

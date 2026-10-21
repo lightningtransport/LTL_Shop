@@ -11,7 +11,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  // D52: the mechanic and PM screens use the tablet width; login, reset and Safety keep the phone column.
+  // D53: the mechanic and PM screens use the tablet width; login, reset and Safety keep the phone column.
   const wide = pathname === '/' || /^\/(mechanic|work-orders|trucks)(\/|$)/.test(pathname);
   return (
     <main

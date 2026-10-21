@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Stage MG-2 (MG1, D21): one strip under the header on every General mechanic screen that says which Truck
- * I am working on ("Working on Truck 922") or that nothing is active. D52: never since when or how long. Without a connection it
+ * I am working on ("Working on Truck 922") or that nothing is active. D53: never since when or how long. Without a connection it
  * becomes the single offline notice (UX-6-007). It reads the same list the home screen reads.
  */
 export function MechanicClockStrip({ className }: { className?: string }) {

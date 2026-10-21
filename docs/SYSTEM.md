@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-21 (D52: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-21 (D53: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -260,7 +260,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   todos los puntos, la nota de cada defecto y las 10 llantas (PSI y tread). Cada
   defecto crea su Job; los del mismo Job van en uno; si el Job ya está en la WO
   solo se suma la nota; la limpieza va a Detailing; una llanta en "fix" crea
-  Flat Repair (presión) o Tires (tread). **D52:** Flat Repair y Tires nacen con el
+  Flat Repair (presión) o Tires (tread). **D53:** Flat Repair y Tires nacen con el
   equipo de **Alignment** (uno → a él; varios → su cola, `workflow_step_key =
   alignment`; vacío → sin dueño), salvo que el Manager elija otro o "Assign
   later" (`assignedMechanicId: null`); también si inspecciona un mecánico. El
@@ -731,6 +731,12 @@ en [`USER_FLOWS.md`](USER_FLOWS.md).
 3. El Truck pasa a **Ready to Go** y se queda así hasta Return to Service.
 4. **Return to Service** (motivo opcional) desde el Truck, el WO o la tarjeta
    del Yard. El camión sale del tablero.
+5. **D52 (LTR-260):** si Samsara ve el camión fuera de la yard después del
+   cierre, el siguiente paso dice "Left the yard · Confirm Return to Service"
+   y va primero en su grupo del Dashboard y arriba del día en Departures. Si
+   vuelve a entrar sin Return to Service, dice "Back in the yard" y Dispatch ›
+   Incoming lo pone en "Arrived · Needs a Work Order". La app no hace Return
+   to Service sola.
 
 Además el Manager puede cancelar el WO o un Job (con motivo), reabrir
 (admin), cambiar la prioridad (las notas solo se agregan) y corregir tiempos
@@ -756,7 +762,7 @@ Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 **MECH-INSP — Inspeccionar (con "Can inspect trucks", D41):** My work →
 "To inspect" → Start → la misma hoja (`/mechanic/{standard,pm}/inspect/[truckId]`).
 Sus Jobs nacen sin dueño y el Manager los asigna, salvo Flat Repair y Tires,
-que van a Alignment (D52).
+que van a Alignment (D53).
 
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar
@@ -764,7 +770,7 @@ bloqueo** (LTR-189 W12) → al terminar el último ve "Terminaste tu parte" y su
 tiempo se detiene. Su reloj corre en un solo camión (D21) y se cierra
 solo a las 5:00 p.m. (D20); al volver toca Continue.
 
-**Sin tiempo a la vista (D52):** el mecánico ve en qué camión está trabajando
+**Sin tiempo a la vista (D53):** el mecánico ve en qué camión está trabajando
 ("Working on Truck 922", "Active"), nunca desde qué hora ni cuánto lleva. Las
 sesiones de `work_sessions` siguen igual para el labor (D34); el Admin ve las
 horas. En el iPad (desde 768 px) las pantallas de mecánico usan el ancho
@@ -856,7 +862,7 @@ aplique:
 | 6 | `external` | "En taller externo: <Job>" — lo único pendiente fuera de QC está afuera (D24); "Regresó" está en la fila del Job |
 | 7 | `qc` | Esperando a Safety (Manager: Mark QC complete como respaldo) |
 | 8 | `close` | Close Work Order |
-| 9 | `return_to_service` | Return to Service |
+| 9 | `return_to_service` | Return to Service. Con `yardMove` (D52): `left_yard` = Samsara lo vio fuera de la yard después del cierre ("Left the yard · Confirm Return to Service"); `back_in_yard` = salió y volvió a entrar sin Return to Service |
 | 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan) |
 | — | `create_work_order` | Truck sin WO abierto |
 

@@ -296,7 +296,7 @@ function DispatchRow({
   today: string | null;
   soonUntil: string | null;
 }) {
-  const { item, truck, day, place, done, needsWorkOrder, notReady } = row;
+  const { item, truck, day, place, done, needsWorkOrder, notReady, confirmReturn } = row;
   const drivers = formatYardBoundaryDrivers(item.drivers);
   const phase = truck?.phase && PHASE_KEY[truck.phase] ? (messages[PHASE_KEY[truck.phase]] as string) : null;
   const jobsLeft = truck?.jobsLeft ?? 0;
@@ -333,6 +333,14 @@ function DispatchRow({
         <span className="text-muted-foreground">{place === 'in_shop' && phase ? fillYardText(messages.yardInShopPhase, { phase }) : where ?? ''}</span>
       </>
     );
+  } else if (confirmReturn) {
+    // D52 (LTR-260): it left while Ready to Go; the Manager confirms Return to Service on the Truck or the Dashboard.
+    status = (
+      <>
+        <span className="rounded-md border border-warning/40 bg-warning-surface/60 px-1.5 py-px font-medium text-warning-foreground" data-testid="yard-confirm-return">{messages.yardConfirmReturn}</span>
+        <span className="text-muted-foreground">{where ?? ''}</span>
+      </>
+    );
   } else if (place === 'ready_to_go') {
     status = <span className="rounded-md border border-success/40 px-1.5 py-px text-success">{messages.readyToGo}</span>;
   } else if (place === 'in_shop') {
@@ -349,7 +357,7 @@ function DispatchRow({
 
   return (
     <li
-      className={cn('flex min-h-11 items-center gap-3 px-4 py-2', done && !needsWorkOrder && 'bg-muted/30')}
+      className={cn('flex min-h-11 items-center gap-3 px-4 py-2', done && !needsWorkOrder && !confirmReturn && 'bg-muted/30')}
       title={drivers || undefined}
       data-testid="yard-movement-row"
       data-place={place}

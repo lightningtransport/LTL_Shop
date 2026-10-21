@@ -243,7 +243,7 @@ function SheetFlow({
   const [tireOpen, setTireOpen] = useState<TirePosition | null>(null);
   const [signed, setSigned] = useState(false);
   const [owners, setOwners] = useState<Record<string, string>>({});
-  // D52: Flat Repair and Tires start on the Alignment team (its mechanic, or its queue); the Manager can change it.
+  // D53: Flat Repair and Tires start on the Alignment team (its mechanic, or its queue); the Manager can change it.
   const tireJobIds = new Set([state.tireJobs?.flatRepair.id, state.tireJobs?.tires.id].filter((id): id is string => Boolean(id)));
   const goTo = state.tireJobsGoTo ?? null;
   const ownerOf = (catalogJobId: string) => owners[catalogJobId]
@@ -925,7 +925,7 @@ function ResultCallout({ copy, issues, jobs, notes, watch, sub }: { copy: Inspec
     : <NextStepCallout tone="success" icon={CircleCheck} eyebrow={copy.result} title={copy.noIssuesFound} sub={copy.noIssuesSub(watch)} />;
 }
 
-/** D52: the select value for "leave it in the Alignment queue" (never sent to the server). */
+/** D53: the select value for "leave it in the Alignment queue" (never sent to the server). */
 const ALIGNMENT_QUEUE = '__alignment_queue';
 
 function PreviewJobRow({
@@ -943,7 +943,7 @@ function PreviewJobRow({
   mechanics: ReadonlyArray<{ id: string; name: string }>;
   owner: string;
   onOwner: (id: string) => void;
-  /** D52: set for Flat Repair and Tires, which go to the Alignment team. */
+  /** D53: set for Flat Repair and Tires, which go to the Alignment team. */
   alignment?: TruckInspectionStateDto['tireJobsGoTo'];
 }) {
   return (

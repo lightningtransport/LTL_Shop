@@ -125,7 +125,7 @@ export function tireReadingStatus(
 }
 
 /**
- * D52: why a tire made a Job, from the saved reading alone. A Job is only made for `fix`, and on a tie tread
+ * D53: why a tire made a Job, from the saved reading alone. A Job is only made for `fix`, and on a tie tread
  * wins (D41), so a tread under the minimum is `worn`; otherwise the pressure was off one way or the other.
  */
 export function tireFindingReason(reading: { psi: number; tread: number; targetPsi: number; minTread: number }): 'low_pressure' | 'high_pressure' | 'worn' {
@@ -151,7 +151,7 @@ export const inspectionTireAnswerSchema = z.object({
 
 /**
  * Who does a Job the inspection creates (Manager only). Keyed by the catalog Job the defects point to.
- * D52: `null` is "Assign later" said on purpose, so Flat Repair and Tires skip the Alignment team.
+ * D53: `null` is "Assign later" said on purpose, so Flat Repair and Tires skip the Alignment team.
  */
 export const inspectionJobAssignmentSchema = z.object({
   catalogJobId: z.string().uuid(),
@@ -294,7 +294,7 @@ export type TruckInspectionStateDto = {
   /** D45 / ST-4: the last tire put at each position (from a confirmed Tires Job, still in place). */
   installedTires?: InstalledTireDto[];
   /**
-   * D52: Flat Repair and Tires go to the Alignment team (the tire machine is in his area): its one mechanic, or its
+   * D53: Flat Repair and Tires go to the Alignment team (the tire machine is in his area): its one mechanic, or its
    * queue when it has several. Null when the team is empty: the Jobs are born unowned.
    */
   tireJobsGoTo?: { mechanic: { id: string; name: string } | null; queue: boolean } | null;

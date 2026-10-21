@@ -425,7 +425,7 @@ export class InspectionService {
       where: { id: { in: plan.create.map((item) => item.catalogJobId) } },
       include: { category: { select: { id: true, name: true, status: true } } },
     });
-    // D52: Flat Repair and Tires go to the Alignment team unless the Manager picked someone (or "Assign later").
+    // D53: Flat Repair and Tires go to the Alignment team unless the Manager picked someone (or "Assign later").
     const tireJobIds = new Set(catalogJobs.filter((row) => row.seedKey === jobSeedKey(TIRES_CATEGORY, 'Flat Repair') || row.seedKey === jobSeedKey(TIRES_CATEGORY, 'Tires')).map((row) => row.id));
     const alignment = plan.create.some((item) => tireJobIds.has(item.catalogJobId) && !ownerOf.has(item.catalogJobId))
       ? await this.alignmentTeam(tx)
@@ -443,7 +443,7 @@ export class InspectionService {
       const ownerId = ownerIdOf(item.catalogJobId);
       const owner = ownerId ? owners.get(ownerId) : undefined;
       if (ownerId && !owner) throw new BadRequestException('One or more selected mechanics cannot perform standard work');
-      // D52 / D28: with several on the Alignment team, the tire Job waits in its queue.
+      // D53 / D28: with several on the Alignment team, the tire Job waits in its queue.
       const toAlignmentQueue = !ownerOf.has(item.catalogJobId) && tireJobIds.has(item.catalogJobId) && alignment?.mode === 'queue';
       const job = await tx.workOrderJob.create({
         data: {
@@ -646,7 +646,7 @@ export class InspectionService {
     return { flatRepair, tires };
   }
 
-  /** D52 / D28: the Alignment step's team decides who gets the tire Jobs (one → them, several → the queue). */
+  /** D53 / D28: the Alignment step's team decides who gets the tire Jobs (one → them, several → the queue). */
   private async alignmentTeam(client: Tx | PrismaService) {
     const step = await client.shopWorkflowStep.findFirst({
       where: { stepKey: ShopWorkflowStepKey.ALIGNMENT, active: true },
