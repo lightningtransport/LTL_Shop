@@ -311,6 +311,8 @@ input.field[type='datetime-local'] {
   display: block;
   min-width: 0;
   max-width: 100%;
+  /* Without the native look WebKit puts the value at the top; center it in the 44px field. */
+  line-height: calc(2.75rem - 2px);
 }
 input.field[type='datetime-local'] {
   height: 2.75rem;

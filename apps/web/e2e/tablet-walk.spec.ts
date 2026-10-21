@@ -127,7 +127,9 @@ test('tablet walk', async ({ page }, info) => {
     if (only && !only.includes(name)) continue;
     const user = options?.user ?? MANAGER;
     if (user !== signedIn) {
+      // The session also lives in the browser storage: clear it, or /login sends the old user back in.
       await page.context().clearCookies();
+      await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ } });
       await devLogin(page, user);
       signedIn = user;
     }
@@ -139,6 +141,7 @@ test('tablet walk', async ({ page }, info) => {
       await page.screenshot({ path: `${dir}/${name}-1.png` });
       const inDialog = await measure(page, '[role=dialog]');
       report[name] = { path, ...inDialog, error: (await page.getByText('Something went wrong').count()) > 0 };
+      writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
       await page.keyboard.press('Escape');
       continue;
     }
@@ -163,6 +166,7 @@ test('tablet walk', async ({ page }, info) => {
     }
     const errors = await page.getByText('Something went wrong').count();
     report[name] = { path, ...found, error: errors > 0 };
+    writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
   }
   writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
   expect(Object.keys(report).length).toBeGreaterThan(0);
