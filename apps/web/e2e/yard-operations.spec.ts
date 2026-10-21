@@ -219,6 +219,39 @@ test.describe('Yard Operations Phase 1', () => {
     await board.close();
   });
 
+  test('the Full screen tab fits a TV: every step side by side, every truck, compact cards in a full list (D52)', async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.goto('/admin/yard-operations?display=board');
+    const lanes = page.getByTestId('yard-lanes');
+    await expect(lanes).toHaveAttribute('data-fit', 'true');
+    // Every truck, without "Load more" (nobody taps a TV).
+    await expect(lanes.getByRole('link', { name: 'Y-108', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Load more Trucks' })).toHaveCount(0);
+    for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }]) {
+      await page.setViewportSize(viewport);
+      expect(await lanes.evaluate((element) => element.scrollWidth <= element.clientWidth), `sideways scroll at ${viewport.width}px`).toBe(true);
+      const last = await page.locator('[data-phase="ready_to_go"]').boundingBox();
+      expect(last!.x + last!.width).toBeLessThanOrEqual(viewport.width);
+      await expect(page.locator('[data-phase][data-compact]')).toHaveCount(0);
+    }
+    // A short screen: the list whose cards don't fit turns compact, and nothing needs scrolling down.
+    await page.setViewportSize({ width: 1280, height: 380 });
+    await expect(page.locator('[data-phase="inspection"]')).toHaveAttribute('data-compact', 'true');
+    const overflowing = await lanes.evaluate((element) => [...element.querySelectorAll<HTMLElement>(':scope > [data-phase]')]
+      .filter((column) => {
+        const body = column.lastElementChild as HTMLElement;
+        return body.scrollHeight > body.clientHeight + 1;
+      })
+      .map((column) => column.dataset.phase));
+    expect(overflowing).toEqual([]);
+    // Room again: normal cards.
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await expect(page.locator('[data-phase][data-compact]')).toHaveCount(0);
+    // The Yard inside the app keeps its Trello lists that scroll sideways (D33).
+    await page.goto('/admin/yard-operations');
+    await expect(page.getByTestId('yard-lanes')).not.toHaveAttribute('data-fit', 'true');
+  });
+
   test('a mouse drags the empty board sideways; a drag that starts on a card does not (LTR-227)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     const lanes = page.getByTestId('yard-lanes');

@@ -18,6 +18,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
+| Yard | LTR-266 | En la TV del taller el tablero del Yard pide scroll de lado y hacia abajo (D52) | B |
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
