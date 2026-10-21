@@ -157,7 +157,7 @@ describe('Manager: Samsara (D35, D42)', () => {
     await resetDb();
   });
 
-  it('A152 | D52 (LTR-260): un camión en Ready to Go que Samsara ve fuera de la yard después del cierre pide confirmar Return to Service en todas las pantallas y va primero en el Dashboard; si vuelve a entrar sin Return to Service, es una llegada nueva', async () => {
+  it('A150 | D52 (LTR-260): un camión en Ready to Go que Samsara ve fuera de la yard después del cierre pide confirmar Return to Service en todas las pantallas y va primero en el Dashboard; si vuelve a entrar sin Return to Service, es una llegada nueva', async () => {
     await resetDb();
     const sync = async (label: string, at: string, address: string, geofence?: { id: string; name: string }) => {
       await setSamsara({ vehicles: [vehicle()], stats: [stat(418_612, address, at, geofence)] });

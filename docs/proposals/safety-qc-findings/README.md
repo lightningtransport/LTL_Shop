@@ -1,6 +1,6 @@
 # Propuesta: ajustes de Safety en el Quality Check (D46)
 
-**Clasificación:** PROPUESTA aprobada por el dueño el 2026-10-16. Se construye por etapas: SQ-1, SQ-2 y SQ-3. **SQ-4 (fotos y videos) queda declarada y no se construye** hasta que el dueño la pida.
+**Estado (2026-10-21): construida y en producción** (SQ-1, SQ-2 y SQ-3; D46 en prod desde el 2026-10-18). **SQ-4 (fotos y videos) queda declarada y no se construye** hasta que el dueño la pida (LTR-233, Gated). Aprobada por el dueño el 2026-10-16.
 **Origen:** cinco ajustes que el equipo le pasó al dueño para Safety, que es quien hace el QC (D19).
 **Linear:** Epic LTR-229. Etapas: SQ-1 LTR-230, SQ-2 LTR-231, SQ-3 LTR-232, SQ-4 LTR-233 (Gated).
 

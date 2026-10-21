@@ -1,7 +1,7 @@
 # Glossary (EN / ES)
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-09-29 (LTR-170; retired readiness terms removed)
+**Updated:** 2026-10-21 (LTR-273: menu names, Samsara place words D49–D52, Dispatch and Full screen); before 2026-09-29 (LTR-170; retired readiness terms removed)
 
 Domain words stay in English in much of the Admin ES catalog (Work Order,
 Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
@@ -20,19 +20,30 @@ API error codes have one EN/ES sentence each in `apps/web/src/lib/api-error-copy
 | PM / PM service | PM / servicio de PM | Mandatory PM Job inside the truck Work Order; the PM mechanic starts and finishes it |
 | Work Order | Work Order (masculine: el Work Order, abierto, pausado) | One open intervention per Truck |
 | Job | Job | Unit of work on a Standard Work Order |
-| Category | Categoría | Job Catalog grouping (Brakes, PM, …). "Job Catalog" stays English |
+| Category | Categoría | Grouping in Setup → Jobs (Brakes, PM, …) |
 | Alias | Alias | Other names a catalog Job is found by (plural stays "Alias") |
-| Job Catalog | Job Catalog | Admin catalog (UI read-only; System Admin writes by API) |
+| Jobs (menu; page title "Jobs catalog") | Jobs | The Job catalog in Setup (`/admin/catalog`); was "Job Catalog" until LTR-248 |
+| People | Personas | Setup → People (`/admin/mechanics`): mechanics, Safety, Managers and System Admins (D48) |
+| Shop rates | Tarifas del taller | Setup → hourly labor rate and PM oil change price (`/admin/parts/labor-rate`); was "Labor rate" |
+| Dashboard | Panel | `/admin`, the "Needs you" queue |
 | Truck | Truck (Admin, including the nav and page title) / unidad (mechanic ES) | Fleet asset |
 | Mechanic | Mecánico | Assigned technician |
 | Manager | Manager / Shop Manager | Plans Standard work; `work_orders.manage` |
-| Yard Operations | Operaciones del patio | Board of trucks by Work Plan phase at `/admin/yard-operations` |
+| Yard Operations | Patio | `/admin/yard-operations`. Tabs: **Shop** / Taller (the board by phase) and **Dispatch** / Dispatch (plan the week, D51); **Full screen** / Pantalla completa opens the board for the TV (D53) |
+| In yard | En la yard | Samsara sees the truck inside one of our yard geofences (D49), with "since {time}" |
+| In shop | En el shop | In yard **and** with an open Work Order (D49) |
+| In yard without a Work Order | En la yard sin Work Order | Shop board counter and Trucks filter (D51) |
+| Arrived · Needs a Work Order | Llegó · Necesita Work Order | Dashboard group and Dispatch row: in yard, no WO; action **Create WO** / Crear WO (D51, LTR-261) |
+| Arrived / Left | Llegó / Salió | Dispatch rows by Samsara (D50) |
+| Not ready · N Jobs left | No está listo · N Jobs pendientes | Dispatch Departures: leaves soon with work left (D51) |
+| Left the yard · Confirm Return to Service | Salió de la yard · Confirma Return to Service | Ready to Go truck Samsara sees outside the yard; the app asks, never does it alone (D52) |
+| Add from Samsara | Agregar desde Samsara | Create and connect a truck Dispatch names but the app lacks (D50) |
 | Phase | Fase | Derived Work Plan step (not a persisted WO status) |
 | Ready to close | Listo para cerrar | Every step resolved; Work Order still open |
 | Ready to Go | Ready to Go / Listo para salir | Derived: every step resolved and Work Order completed (D1); lasts until Return to Service |
 | Return to Service | Return to Service (ES keeps the English name) | Post-completion truck service event |
-| Last reported location | Ubicación reportada | Display-only address (`location` / `locationUpdatedOn`). Not Presence. Never “in yard”. |
-| Presence | Presencia | Physical in-yard evidence. CURRENT UI hides this (Phase 1 is always UNKNOWN). Do not rename Presence → Ubicación. |
+| Last reported location | Ubicación reportada | Display-only address typed in Dispatch (`location` / `locationUpdatedOn`). It never decides "In yard": only Samsara geofences do (D49) |
+| Presence | Presencia | Physical in-yard evidence. Since D49 it comes from Samsara geofences and shows as In yard / In shop; without Samsara, nothing is shown (never invented). Do not rename Presence → Ubicación. |
 | Incoming Trucks | Incoming Trucks | Canonical English in ES UI (same as nav). Phase 1 card via `YARD_DATA_BOUNDARY_COPY`. |
 | Work location | Ubicación de trabajo | Yard Phase 1 card. Empty: “No work location yet.” / “Aún no hay ubicación de trabajo.” Not Presence. |
 | Upcoming Departures | Salidas próximas | Yard Phase 1 card. Empty: “No upcoming departures.” / “No hay salidas próximas.” |

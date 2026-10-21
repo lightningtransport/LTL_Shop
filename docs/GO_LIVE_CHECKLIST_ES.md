@@ -1,10 +1,12 @@
 # Salida en vivo — paso a paso
 
-**Para:** Cristian · **Fecha:** 2026-10-05, actualizada el 2026-10-09 · **Ticket:** LTR-45
+**Para:** Cristian · **Fecha:** 2026-10-05, actualizada el 2026-10-21 · **Ticket:** LTR-45
 
 > **En espera (2026-10-09):** el dueño decidió no salir en vivo todavía. La guía queda al día para cuando se
-> retome. Estado de producción al 2026-10-14: **todas las migraciones aplicadas** (la última,
-> `20261020120000_samsara_fault_jobs`, Release safety sobre `311adb9`), la API y la web en `main` (`79f19d9`).
+> retome. Desde entonces: **grupo piloto** dado de alta por SQL el 2026-10-19 (D48) y en producción D45–D54.
+> La última migración en `main` es `20261029100000_samsara_geofence_in_shop` (D49, 2026-10-19). Antes de
+> retomar, confirma en la Fase 1 que producción tiene todas las migraciones y que la web y la API están en el
+> último `main` (con Vercel Hobby a veces un merge no despliega solo).
 > El seguimiento de la salida en vivo está en Linear, proyecto **Plataforma y Go-live** (LTR-45, LTR-52). Las fases 1 a 3 ya se
 > hicieron de hecho; al retomar alcanza con repetir la 1 para confirmar que no apareció nada nuevo.
 **Lista anterior (Ninox, septiembre):** [`archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md`](archive/GO_LIVE_CHECKLIST_ES_2026-09-20.md)
@@ -27,7 +29,8 @@ nueva no se entienden.
   (Yo no tengo acceso a ese equipo; esos pasos son tuyos.)
 - Acceso a **Supabase**, proyecto de producción `mjlfynzqmxoezanvyniw`, y la
   CLI de Supabase con sesión iniciada.
-- Un **iPhone** con Safari para la prueba final.
+- Un **iPhone** con Safari y una **tablet** (iPad) para la prueba final: los mecánicos usan la app
+  instalada en su teléfono o en su tablet.
 - La lista del personal del día 1: nombre, correo y tipo (Standard, PM,
   Safety) de cada persona.
 
@@ -184,12 +187,12 @@ manda sus Jobs a la cola del equipo desde ahí mismo, o haz primero la fase 6.
 algún camión que el taller va a buscar, avísame; la carga se hace una sola
 vez con el script de Ninox (nunca con `db:seed`, que pisaría datos reales).
 
-**5.3 · Catálogo de Jobs:** ya lo cargó la fase 3. Abre Admin → Job Catalog y
+**5.3 · Catálogo de Jobs:** ya lo cargó la fase 3. Abre Admin → Setup → Jobs y
 confirma que están las categorías que usa el taller; activa o desactiva las
 que hagan falta (D30).
 
 **5.4 · Tú — Parts & costs** (D32, D34):
-- **Labor rate:** la tarifa por hora del taller y desde qué fecha vale.
+- **Shop rates** (Setup): la tarifa por hora del taller y desde qué fecha vale.
 - **Vendors:** los proveedores de partes y los talleres externos.
 - **Parts:** el costo de referencia y el proveedor habitual de las partes
   del PM que más se usan (puede hacerse de a poco).
@@ -215,8 +218,10 @@ nada: quedan tachadas y su costo sale del camión.
 
 ## Fase 7 — Un día de prueba con gente real
 
-Con tu iPhone (Safari) y al menos un mecánico, Daniel y una persona de Safety.
-Primero instala la app: Safari → Compartir → **Agregar a pantalla de inicio**.
+Con tu iPhone (Safari), una tablet y al menos un mecánico, Daniel y una persona de Safety.
+Primero instala la app en cada equipo: Safari → Compartir → **Agregar a pantalla de inicio** (en
+Android, Chrome → **Instalar app**). Revisa en teléfono y tablet, vertical y horizontal, que nada se
+corte ni pida scroll de lado.
 
 | # | Quién | Qué | Debe pasar |
 |---|---|---|---|

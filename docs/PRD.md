@@ -1,6 +1,6 @@
 # PRD — Lightning Shop
 
-**Actualizado:** 2026-10-14 · **Dueño del producto:** Cristian Perez
+**Actualizado:** 2026-10-21 (D52–D54, LTR-261, mecánicos en teléfono o tablet como PWA, columna Hoy / Pendiente por módulo; LTR-273) · antes 2026-10-14 · **Dueño del producto:** Cristian Perez
 
 Este documento responde **qué es el producto, para quién, qué módulos tiene,
 qué no hace y hacia dónde va**. Es corto a propósito: no repite el detalle,
@@ -10,7 +10,9 @@ enlaza a donde vive.
 |---|---|
 | Cómo funciona hoy, pantalla por pantalla y regla por regla | [`SYSTEM.md`](SYSTEM.md) |
 | Historias de usuario (HU), jobs (J) y flujos paso a paso, con su prueba | [`USER_FLOWS.md`](USER_FLOWS.md) |
-| Por qué es así: decisiones D1–D42 y preguntas abiertas P | [`DECISIONS.md`](DECISIONS.md) |
+| Por qué es así: decisiones D1–D54 y preguntas abiertas P | [`DECISIONS.md`](DECISIONS.md) |
+| Cómo está organizado el menú y qué ve cada rol (arquitectura de información) | [`reference/IA_MAP.md`](reference/IA_MAP.md) |
+| El recorrido del camión, de la llegada a Return to Service | [`proposals/truck-journey/`](proposals/truck-journey/README.md) |
 | Qué falta hacer | **Linear**, equipo LTR, un proyecto por módulo (resumen en [`OPEN_ISSUES.md`](OPEN_ISSUES.md)) |
 
 ---
@@ -24,7 +26,7 @@ dinero costó, y si Safety lo aprobó.
 
 Reemplaza las hojas en papel, los mensajes y las preguntas de pasillo con una
 sola lista de trabajo por camión que el Manager ve en la computadora y cada
-mecánico en su teléfono.
+mecánico en su teléfono o tablet (la app instalada como PWA).
 
 **Principio (D43): la base es nuestra.** Camiones, trabajo, personas y costos
 viven en nuestra base. Ninox se usó una sola vez para cargar los camiones y ya
@@ -42,8 +44,8 @@ en vivo con todo el personal está **en espera** por decisión del dueño
 | Persona | Dónde la usa | Su trabajo en la app |
 |---|---|---|
 | **Shop Manager** | Computadora y teléfono | Abre el trabajo de cada camión, inspecciona, reparte, destraba, cierra y devuelve a servicio. Configura el taller, el personal, el catálogo y los costos. |
-| **Mecánico General (Standard)** | Teléfono | Ve solo sus Jobs, los trabaja con su reloj, avisa si algo lo detiene. Si tiene el permiso, inspecciona. |
-| **Mecánico PM** | Teléfono | Hace el mantenimiento preventivo: millaje, partes, listo. |
+| **Mecánico General (Standard)** | Teléfono o tablet (PWA) | Ve solo sus Jobs, los trabaja con su reloj, avisa si algo lo detiene. Si tiene el permiso, inspecciona. |
+| **Mecánico PM** | Teléfono o tablet (PWA) | Hace el mantenimiento preventivo: millaje, partes, listo. |
 | **Safety (QC)** | Teléfono | Revisa los camiones terminados y los aprueba o los devuelve con una nota. |
 | **System Admin** | Computadora | Lo mismo que el Manager, más correcciones con rastro. |
 | **Finanzas** | Fuera de la app | Recibe el PDF de la factura interna de cada camión por mes. |
@@ -53,7 +55,7 @@ completos (el taller usa los dos).
 
 ## 3. Problemas que resuelve
 
-Los 21 jobs to be done (J1–J21) están en [`USER_FLOWS.md`](USER_FLOWS.md) §1.
+Los jobs to be done (J1–J30) están en [`USER_FLOWS.md`](USER_FLOWS.md) §1.
 En resumen:
 
 - **El Manager** quiere saber, sin caminar el taller, qué tiene cada camión, quién lo hace y qué lo frena (J1–J5, J15–J16, J21).
@@ -76,8 +78,15 @@ marca. Incluye ayudante en un Job y taller externo.
 
 ### 4.2 Yard — 🟡
 Dashboard "Needs you" con lo que espera al Manager, y tablero Kanban del patio
-por paso, con filtros y la pestaña Dispatch.
-**Decisiones:** D26, D33 · **Historias:** HU-M7.
+por paso, con filtros. Pestañas **Shop** (tablero, con los contadores de Samsara
+*In shop* e *In yard without a Work Order*), **Dispatch** (planear la semana:
+Incoming y Departures por día, D51) y **Full screen** (el tablero entero en la TV
+del taller, sin scroll, D53). El Dashboard avisa la llegada de un camión sin
+Work Order con Create WO (LTR-261), y un Ready to Go que salió de la yard pide
+confirmar Return to Service (D52).
+**Hoy:** tablero, Dispatch, Full screen, avisos de llegada y salida.
+**Pendiente:** LTR-255 (salidas planeadas), LTR-262 (Incoming vs. Ninox), LTR-256, LTR-73.
+**Decisiones:** D26, D33, D49–D53 · **Historias:** HU-M7, HU-M21, HU-M22.
 
 ### 4.3 Trucks & Inspección — 🟡
 Lista y ficha del camión (trabajo, fallas, ubicación, costos, historial).
@@ -88,10 +97,18 @@ Samsara desde el Shop; la sincronización solo propone por VIN.
 **Decisiones:** D10, D41, D43, D44 · **Historias:** HU-M2, HU-M16, HU-M17, HU-M18, HU-ME7.
 
 ### 4.4 Mecánicos — 🟡
-Espacios del Mecánico General y del PM en el teléfono: My work, Trucks,
-Completed; un reloj por persona y en un solo camión a la vez; cierre del día a
-las 5:00 p.m.
-**Decisiones:** D2, D12, D18, D20, D21, D-MG1–5, D-PM1–5 · **Historias:** HU-ME1–HU-ME6, HU-PM1.
+Espacios del Mecánico General y del PM: My work, Trucks, Completed; un reloj
+por persona y en un solo camión a la vez; cierre del día a las 5:00 p.m.
+**Dispositivos:** cada mecánico usa **teléfono o tablet**, con la app instalada
+como **PWA** en su equipo; tiene que verse bien en los dos. En teléfono es una
+columna; desde 768 px (iPad, también en el modo escritorio de Safari) usa todo
+el ancho, sin franjas vacías (D54, LTR-271).
+**Sin tiempo a la vista (D54):** el mecánico ve qué trabajo está activo, nunca
+cuánto lleva; el reloj sigue midiendo para el labor y el Admin ve las horas.
+Los Jobs de llantas de la inspección van a **Alignment** y dicen qué llanta y
+por qué.
+**Pendiente:** cierre del rediseño General/PM (LTR-194).
+**Decisiones:** D2, D12, D18, D20, D21, D54, D-MG1–5, D-PM1–5 · **Historias:** HU-ME1–HU-ME6, HU-PM1.
 
 ### 4.5 Safety / QC — ✅
 Cola `/qc` de Safety: tomar, aprobar o devolver con nota; el Manager como
@@ -99,26 +116,26 @@ respaldo.
 **Decisiones:** D19, D29, D-QC1–7 · **Historias:** HU-QC1.
 
 ### 4.6 Setup, People & Permisos — 🟡
-Shop workflow (equipos y colas por paso), horario del taller, Job Catalog con
-categorías y aliases, bandeja de Custom Jobs, People (alta, desactivar, quitar; también Managers y System Admins, que solo maneja un System Admin),
+Shop workflow (equipos y colas por paso), horario del taller, Jobs (el catálogo, con
+categorías y aliases), bandeja de Custom Jobs, People (alta, desactivar, quitar; también Managers y System Admins, que solo maneja un System Admin),
 checklist de inspección, Setup → Samsara.
 **Pendiente:** modelo de roles y permisos con pantalla propia (LTR-161).
 **Decisiones:** D16, D22, D25, D28, D30, D31, D48, D-SET1–9 · **Historias:** HU-M8, HU-M9, HU-A2.
 
 ### 4.7 Parts, Costs & Finance — ✅
 Catálogo de partes, proveedores, compras y reparaciones externas con su factura,
-costo por camión, tarifa de mano de obra, cierre del mes y factura interna
+costo por camión, tarifa de mano de obra (Shop rates), cierre del mes y factura interna
 `SHOP-AAAA-NNNN` en PDF para Finanzas.
 **Construido (D45, ST-1 a ST-6, en producción desde el 2026-10-16):** repuestos y
 llantas en el catálogo, compra atada al Job, **stock** (entra con la compra o a
 mano, sale a un Job o con el PM al costo promedio), llantas propuestas desde la
 inspección y lectura de facturas de proveedores en PDF
 ([`proposals/parts-stock-tires/`](proposals/parts-stock-tires/README.md)).
-**Defecto abierto:** LTR-242 (B), el PM cobra dos veces una parte ya comprada al camión.
-**Aprobado (D47, sin construir):** Parts como inventario único (sin menú Stock aparte),
-acciones de stock con nombre (Add to stock, Adjust, Edit minimum) y un solo
-"Parts…" en el Job ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)).
-**Decisiones:** D32, D34, D37, D45, D-PC1–10 · **Preguntas:** P24, P26, P28, P31 · **Decisión:** D47 · **Historias:** HU-M12, HU-M13, HU-M19, HU-M20.
+**Construido (D47, LTR-244 a LTR-248):** Parts como inventario único (sin menú Stock aparte),
+acciones de stock con nombre (Count stock, Add to stock, Remove from stock) y un solo
+"Parts…" en el Job; el PM cobra una sola vez una parte ya comprada (LTR-242) ([`proposals/parts-stock-ia-v2/`](proposals/parts-stock-ia-v2/README.md)).
+**Pendiente:** P24, P26, P28, P31 (para Randy).
+**Decisiones:** D32, D34, D37, D45, D47, D-PC1–10 · **Historias:** HU-M12, HU-M13, HU-M19, HU-M20.
 
 ### 4.8 Samsara — ✅
 Sincronización cada hora (millas, ubicación, fallas) solo de lectura. Las fallas
@@ -128,7 +145,9 @@ falla se fue o volvió.
 en Samsara (Home Office y Lightning Transport and Logistics), con la hora de llegada;
 "In shop" si además tiene Work Order abierta (LTR-55, LTR-257). D50/D51: la pestaña Dispatch sirve
 para planear la semana (por día, primero lo que pide acción) y agrega desde Samsara los que faltan.
-**Decisiones:** D35, D42, D49, D50, D51 (P12 y P37 cerradas) · **Historias:** HU-M14, HU-M15, HU-M21, HU-M22.
+**D52:** un Ready to Go que Samsara ve fuera de la yard pide confirmar Return to Service; si
+vuelve a entrar es una llegada nueva. La app nunca hace Return to Service ni abre Work Orders sola.
+**Decisiones:** D35, D42, D49, D50, D51, D52 (P12 y P37 cerradas) · **Historias:** HU-M14, HU-M15, HU-M21, HU-M22.
 
 ### 4.9 Demo & Landing — ✅
 Modo demo que cambia de usuario sin cerrar sesión, con guía, cursor y Play;
@@ -145,13 +164,12 @@ Salida en vivo, deploy y migraciones (Release safety), login, app instalable
 Trailers como activos, API para terceros
 y, solo si hace falta un dato que no tenemos, leer algo de Ninox (P4). Nada se
 empieza sin decisión (etiqueta **Gated** en Linear).
-**Preguntas:** P4, P13, P14.
+**Preguntas:** P4, P14.
 
 ## 5. Qué NO hace
 
 - Despachar cargas, nómina, reemplazar un sistema completo de flotas.
 - Off Duty, notificaciones push (solo avisos dentro de la app).
-- Inventario de partes (stock): propuesto en D45, no se construye hasta el OK y P25–P27.
 - Rendimiento o tiempos por Job, espera por motivo.
 - Espacios propios para Detailing, Body Shop, Trailer o Inspector.
 - Escribir en Samsara o en Ninox (solo lectura).
@@ -160,7 +178,7 @@ empieza sin decisión (etiqueta **Gated** en Linear).
 ## 6. Cómo sabemos que funciona
 
 **Hoy (comprobado):** las pruebas de flujo contra la API real
-(`npm run test:real`, filas A1–A110 de `USER_FLOWS.md`) definen "funciona".
+(`npm run test:real`, filas A de `USER_FLOWS.md` y `apps/api/test-real/results/matrix.md`) definen "funciona".
 La salida en vivo termina cuando el taller trabaja un día completo con usuarios
 reales sin un defecto B.
 
@@ -179,9 +197,10 @@ reales sin un defecto B.
 
 | Cuándo | Qué | Proyecto Linear |
 |---|---|---|
-| **Ahora** | Alta de camiones y conectar Samsara (D44); pendientes chicos de UX por módulo | Yard, Trucks & Inspección, Mecánicos, Setup |
+| **Hecho** | Alta de camiones y Samsara (D44), stock y llantas (D45, D47), geocerca In yard / In shop (D49), Dispatch para la semana (D51), salida de la yard (D52), TV (D53), mecánicos en tablet (D54) | — |
+| **Ahora** | Dispatch con datos completos (LTR-255, LTR-262), cierre del rediseño de mecánicos (LTR-194), preguntas de Randy (P24–P31) | Yard, Mecánicos, Parts |
 | **Salida en vivo** | Retomar la checklist, roster real, un día de prueba | Plataforma y Go-live |
-| **Después** | Roles y permisos (LTR-161), trailers, API para terceros (P14), geocerca | Setup, Integraciones V3 |
+| **Después** | Roles y permisos (LTR-161), trailers, API para terceros (P14) | Setup, Integraciones V3 |
 
 ## 8. Cómo se mantiene este documento
 

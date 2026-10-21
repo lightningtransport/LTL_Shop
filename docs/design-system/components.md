@@ -1,6 +1,6 @@
 # Components
 
-**Classification:** CURRENT STATE
+**Classification:** CURRENT STATE · **Updated:** 2026-10-21 (LTR-273: shared feature components up to D54; TARGET gaps reviewed)
 **Source:** `apps/web/src/components/ui.tsx`,
 `apps/web/src/components/admin-shell.tsx`,
 `apps/web/src/components/app-frame.tsx`
@@ -11,7 +11,7 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 
 | Export | CURRENT use |
 |---|---|
-| `Button` | CVA variants `default`, `secondary`, `outline`, `ghost`, `destructive`, with one disabled look for all of them (muted fill and text, AA in both themes; LTR-169); sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
+| `Button`, `buttonVariants` | CVA variants (`buttonVariants` styles a link as a button) `default`, `secondary`, `outline`, `ghost`, `destructive`, with one disabled look for all of them (muted fill and text, AA in both themes; LTR-169); sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
 | `Input` | Text fields (`.field`) |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |
@@ -53,6 +53,26 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `mechanic-picker.tsx` | Search list of mechanics with avatars; popover on desktop, bottom sheet on phones; "Unassign" last |
 | `side-sheet.tsx` | Add work: a 460px panel on the right; a 92vh bottom sheet on phones; the form brings its own sticky footer |
 
+## Shared feature components (up to D54, 2026-10-21)
+
+Reused across screens; use them instead of building a new one.
+
+| File | Use |
+|---|---|
+| `kanban.tsx` | `KanbanBoard` / lanes (D33): Trello-like lists of 18 rem side by side with sideways scroll and drag-to-pan (LTR-227); on phones a foldable list per column, no sideways scroll. `fit` (D53, the Full screen tab for the TV): lists share the width with no scroll; a list whose cards don't fit gets `data-compact` and cards restyle with `group-data-[compact=true]/lane:` |
+| `admin-yard-samsara-counters.tsx` | `YardSamsaraCounters` (D51): In shop / In yard without a Work Order above the Shop board; each opens Trucks with that filter |
+| `admin-add-from-samsara.tsx` | `AddFromSamsaraDialog` (D50): creates and connects a truck Dispatch names but the app lacks |
+| `return-to-service-dialog.tsx` | `ReturnToServiceDialog` (D7): confirm with optional reason, same on Dashboard, Yard, Truck; also for "Left the yard · Confirm Return to Service" (D52) |
+| `close-work-order-dialog.tsx` | `CloseWorkOrderDialog`: closing confirms, the same on Truck, Work Order and Dashboard |
+| `truck-stepper.tsx` | The steps to leave the shop as colored pills with chevrons (`STEP_TONE`, `TruckStepIcon`) |
+| `action-toast.tsx` | `useActionToast` / `ActionToastProvider`: neutral toast with a colored icon and optional Undo (LTR-218); rises above bottom bars via `--toast-lift` |
+| `offline-strip.tsx` | `OfflineStrip`: one no-connection notice on every field-role screen (phone or tablet) |
+| `open-work-order-tag.tsx` | `OpenWorkOrderTag`: a search result says the truck already has an open WO |
+| `mechanic-tabs.tsx` | `MechanicTabs`: My work · Trucks · Completed; at the bottom on phones (D-MG1), on top from `sm` |
+| `team-queue-card.tsx` | `TeamQueueCard` (D28): unowned Jobs of my steps, Take to make one mine |
+| `admin-job-tires-dialog.tsx` | `JobTiresDialog` (D45): confirm the tires a Tires Job needs; the Job shows which tire and why (D54) |
+| `admin-work-order-item.tsx` | `AdminWorkOrderItem`, with a `compact` variant for lists inside a card |
+
 ## Loading, empty, failure (see `patterns.md`)
 
 | Export | CURRENT use |
@@ -91,9 +111,9 @@ today. Marked TARGET so nobody documents them as existing:
 
 | PRD name | CURRENT substitute | TARGET |
 |---|---|---|
-| Tabs | Separate routes or view toggle buttons (Yard Board/List) | Shared Tabs |
-| Sheet | `DialogContent` is bottom-sheet on small screens | Dedicated Sheet |
-| Dropdown | Profile and MultiSelect use Dialog, not a menu | Shared Dropdown |
+| Tabs | Hand-written `role="tablist"` in `admin-yard-operations.tsx` (Shop / Dispatch) and `admin-custom-jobs-review.tsx` | Shared Tabs |
+| Sheet | `DialogContent` and `side-sheet.tsx` are bottom sheets on small screens | Dedicated Sheet |
+| Dropdown | Done: `ResponsiveMenu` uses Radix `DropdownMenu` on desktop | — |
 | Skeleton | `PageSkeleton` / `CardListSkeleton` | Already covered; no extra kit |
 
 Do not build those TARGET primitives in a UI-only pass unless a queue task

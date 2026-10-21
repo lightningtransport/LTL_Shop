@@ -771,7 +771,8 @@ function DoneTab({ enabled, onBack }: { enabled: boolean; onBack: () => void }) 
                   <p className="text-xs text-muted-foreground">
                     {item.outcome === 'approved' ? t.approvedLabel : t.returnedLabel} · {formatShopDateTime(item.at, messages.locale)}
                   </p>
-                  {item.note ? <p className="mt-0.5 truncate italic text-muted-foreground">“{item.note}”</p> : null}
+                  {/* LTR-273: the whole note, as on Returned; cut at one line Safety could not read what it wrote. */}
+                  {item.note ? <p className="mt-0.5 break-words italic text-muted-foreground">“{item.note}”</p> : null}
                 </div>
               </li>
             ))}

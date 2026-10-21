@@ -1,6 +1,6 @@
 # Foundations
 
-**Classification:** CURRENT STATE
+**Classification:** CURRENT STATE · **Updated:** 2026-10-21 (LTR-273: type scale matches the code, shadows, PWA safe areas, mechanic shells on phone and tablet)
 **Source:** `apps/web/src/app/globals.css`, `apps/web/tailwind.config.js`,
 `apps/web/src/app/layout.tsx`
 
@@ -29,6 +29,8 @@ Defined as CSS custom properties in `apps/web/src/app/globals.css`:
 | `--success` | Positive status |
 | `--warning`, `--warning-foreground`, `--warning-surface` | Caution banners (Yard Phase 1) |
 | `--sunken` | A step below the card: table headers, folded groups (R6) |
+
+Other `:root` tokens, not colors: `--shadow-2xs` … `--shadow-xl` (and `--shadow`), stronger in `.dark`; Tailwind `shadow-soft` is `var(--shadow-lg)`. Since Stage 8 cards and fields carry no shadow, so shadows are for floating things (toasts, menus). `--font-serif` exists only as an alias of `--font-sans`.
 
 Tailwind maps these 1:1 in `apps/web/tailwind.config.js` (`background`,
 `primary`, `destructive`, `warning-surface`, `sunken`, and so on). Each one
@@ -92,8 +94,8 @@ ad-hoc size/weight combinations.
 
 | Step | Class | Value | Use |
 |---|---|---|---|
-| Page title | `.page-title` | 24px bold, 30px from `md` | The one `h1`, only through `PageHeader` |
-| Section title | `.section-title` | 18px semibold | A page section (`CardTitle` uses it) |
+| Page title | `.page-title` | 24px semibold, 28px from `md` | The one `h1`, only through `PageHeader` |
+| Section title | `.section-title` | 16px semibold | A page section (`CardTitle` uses it) |
 | Card title | `.card-title` | 16px semibold | A card or list item heading |
 | Group title | `.group-title` | 14px semibold | A group inside a card ("Notes", "Your Jobs") |
 | Body | `text-sm` | 14px | Default text |
@@ -102,7 +104,7 @@ ad-hoc size/weight combinations.
 
 Rules:
 
-- Nothing under 12px. No `text-[10px]` / `text-[11px]`.
+- Nothing under 12px. No `text-[10px]` / `text-[11px]`. Known leftovers are tracked in LTR-274.
 - Sentence case. No `uppercase`, no wide tracking: eyebrows, form labels,
   badges, and nav group labels all read as normal text. `e2e/ui-consistency`
   fails if Admin list pages render uppercase text.
@@ -144,9 +146,18 @@ Buttons also use `whitespace-nowrap`; if an action group does not fit, the
 group wraps or stacks. Individual action labels must never be allowed to form
 an accidental two-line button.
 
-## Installed app (LTR-171)
+## Installed app (PWA, LTR-171)
 
-Mechanics and managers install the web app on the phone's home screen.
+Mechanics install the web app on **their phone or their tablet**; managers on the phone or iPad. One app
+for every role, so every screen must work on both, portrait and landscape (the manifest fixes no
+orientation), with no sideways scroll.
+
+- **Mode**: `display: standalone`; `viewportFit: 'cover'` and `interactiveWidget: 'resizes-content'` in
+  `layout.tsx` (Android shrinks the page for the keyboard; iOS uses `<KeyboardInset />`, LTR-234).
+- **Safe areas**: `--app-safe-top/right/bottom/left` (`env(safe-area-inset-*)`, 0 without a notch). `.app-shell`
+  derives `--app-shell-top/left/right` from them, so the first line sits 1rem below the status bar (LTR-167).
+- **Bottom tabs**: on phones (under 640px) with the mechanic tab bar, `main` and toasts (`--toast-lift`) leave
+  room above it (D-MG1).
 
 - **Name**: "Lightning Shop" (`name`), "LTL Shop" under the icon (`short_name`); one app for every role.
 - **Icon**: the green bolt from `public/ltl-logo.png` on white (the wordmark is unreadable at 60pt).
@@ -176,11 +187,14 @@ The tokens already matched the mockups (Stage 7). Stage 8 changed how they are u
 
 | Surface | Constraint |
 |---|---|
-| Mechanic / auth (`.app-shell`) | `max-w-md` mobile, `md:max-w-xl` desktop; safe-area padding |
+| Auth (`.app-shell`) | `max-w-md` mobile, `md:max-w-xl` from `md`; safe-area padding |
+| Mechanic General and PM, and Safety `/qc` (`.app-shell .app-shell-wide`, LTR-272) | Phone: one column. From `md` (768px, every iPad, also Safari's ~980px desktop mode): no width cap, margins 1.5rem (2rem from `lg`), cap `90rem` only on `2xl` (D54, LTR-271). Cards in `.card-grid`: two per row, a card alone on its row takes the row; `.card-grid-lead` gives the first card a row of its own |
 | Admin (`AdminShell` main) | Data screens (Dashboard, Yard, the lists) `max-w-none`; Work Order and Truck detail, Setup and forms `max-w-[1440px]` (`FULL_WIDTH_PATHS` in `admin-shell.tsx`, UX-4-003). Sidebar fixed from `lg` (1024 px); below, the header menu (UX-4-002) |
 
-Mechanic remains mobile-first. The `md:max-w-xl` widen is a cheap desktop
-polish only; do not turn mechanic Home into an Admin-density layout.
+Mechanic screens are designed for the phone first and must also fill a tablet
+(D54 replaced UX-4-008 "mechanics stay in a phone column"). Do not leave empty
+bands at the sides or half rows; do not turn them into an Admin-density layout
+either. Mechanics never see elapsed time (D54).
 
 ## Focus
 
