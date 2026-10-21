@@ -1,6 +1,6 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-19 (D49 ajustada, LTR-257: "In yard" por los geofences de nuestra yard, "In shop" con Work Order abierta; P37 cerrada); antes 2026-10-18
+**Actualizado:** 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
@@ -19,6 +19,11 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
 | Yard | LTR-73 | Cobertura de Upcoming Schedule_Teams | — |
+| Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
+| Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
+| Yard | LTR-260 | Un camión en Ready to Go que ya salió de la yard sigue en el tablero, y al volver no pide Work Order (G11) | C |
+| Yard | LTR-261 | El Dashboard no avisa que llegó a la yard un camión sin Work Order (G12) | C |
+| Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Mecánicos | LTR-194 | Cierre del rediseño General/PM (bloque B) | — |
 | Parts, Costs & Finance | LTR-220 (Epic) | Repuestos, stock y llantas (D45): ST-1 a ST-6 hechas (LTR-221–226); faltan P24, P26, P28 y P31 de Randy | — |
