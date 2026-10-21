@@ -436,7 +436,8 @@ export default function NewWorkOrderPage() {
             <InlineAlert className="mb-3">{error}</InlineAlert>
           ) : null}
 
-          <div className="fixed inset-x-4 bottom-[max(1rem,var(--app-safe-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
+          {/* LTR-271: on an iPad the bar follows the page width and margins (.app-shell-wide), not a phone column. */}
+          <div className="fixed inset-x-4 bottom-[max(1rem,var(--app-safe-bottom))] z-30 mx-auto max-w-[calc(28rem-2rem)] md:inset-x-6 md:max-w-none lg:inset-x-8 2xl:max-w-[calc(90rem-4rem)] rounded-xl border border-shop-border bg-background/95 p-2 shadow-lg backdrop-blur">
             <Button
               className="w-full"
               disabled={createBlocked}

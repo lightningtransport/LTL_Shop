@@ -62,13 +62,13 @@ export function PmHome({ data, loading }: { data: HomeLists | undefined; loading
         <h2 className="section-title mb-1 flex items-center gap-2">{messages.pmWaitingTitle}<CountChip>{waiting.length}</CountChip></h2>
         <p className="mb-2 text-sm text-muted-foreground">{messages.mostUrgentFirst}</p>
         {waiting.length ? (
-          // D54: two per row on an iPad; the next-up card takes the whole row.
-          <ul className="grid gap-2 md:grid-cols-2">
+          // D54: two per row on an iPad; the next-up card takes the whole row. LTR-271: so does one alone on its row.
+          <ul className={`card-grid items-stretch gap-2 ${running ? '' : 'card-grid-lead'}`}>
             {waiting.map((wo, index) => {
               const next = !running && index === 0;
               const href = `/work-orders/${wo.id}${wo.pmJob ? '?view=pm' : ''}`;
               return (
-                <li key={wo.id} className={`flex flex-col rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary md:col-span-2' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
+                <li key={wo.id} className={`flex flex-col rounded-xl border bg-card ${next ? 'border-primary ring-1 ring-primary' : ''}`} data-testid={`pm-waiting-${wo.truckNumber}`}>
                   <div className="flex-1 space-y-1 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</span>

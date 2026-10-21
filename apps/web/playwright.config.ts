@@ -20,10 +20,24 @@ export default defineConfig({
       ?? (process.env.ADMIN_E2E_FIXTURE ? 'http://127.0.0.1:3010' : 'http://localhost:3000'),
     trace: 'on-first-retry',
   },
-  // LTR-259: TABLET_WALK=1 runs only the iPad Pro 11" projects (e2e/tablet-walk.spec.ts), both orientations.
+  // LTR-259: TABLET_WALK=1 runs only the iPad Pro 11" projects (e2e/tablet-walk.spec.ts), both orientations and
+  // Safari's desktop mode.
   projects: process.env.TABLET_WALK ? [
     { name: 'ipad-portrait', use: { ...devices['iPad Pro 11'], browserName: 'webkit' } },
     { name: 'ipad-landscape', use: { ...devices['iPad Pro 11 landscape'], browserName: 'webkit' } },
+    // LTR-271: Safari on an iPad asks for the desktop site by default and lays the page out about 980 px wide
+    // (the owner's iPad Pro 11" in portrait). Same screen, scaled: 980 × 1403.
+    {
+      name: 'ipad-desktop-mode',
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 980, height: 1403 },
+        deviceScaleFactor: 1.7,
+        hasTouch: true,
+        isMobile: false,
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+      },
+    },
   ] : [
     {
       name: 'mobile-chromium',

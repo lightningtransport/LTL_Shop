@@ -1949,7 +1949,7 @@ createServer(async (request, response) => {
     else json(response, 200, fixtureWorkOrderDetail(summary));
     return;
   }
-  const historyMatch = request.url?.match(/^\/api\/admin\/trucks\/([0-9a-f-]+)\/repair-history(?:\?(.*))?$/i);
+  const historyMatch = request.url?.match(/^\/api(?:\/admin)?\/trucks\/([0-9a-f-]+)\/repair-history(?:\?(.*))?$/i);
   if (historyMatch) {
     const params = new URLSearchParams(historyMatch[2] ?? '');
     const categoryId = params.get('categoryId');

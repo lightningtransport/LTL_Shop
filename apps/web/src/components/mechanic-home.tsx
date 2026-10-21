@@ -138,8 +138,8 @@ function Section({ title, count, hint, testId, cards = false, children }: { titl
     <section data-testid={testId}>
       <h2 className="section-title mb-1 flex items-center gap-2">{title}<CountChip>{count}</CountChip></h2>
       {hint ? <p className="mb-2 text-sm text-muted-foreground">{hint}</p> : <div className="mb-2" />}
-      {/* D54: on an iPad the cards sit two per row. */}
-      <div className={cards ? 'grid items-start gap-3 md:grid-cols-2' : 'space-y-3'}>{children}</div>
+      {/* D54: on an iPad the cards sit two per row; LTR-271: one alone on its row takes the whole row. */}
+      <div className={cards ? 'card-grid' : 'space-y-3'}>{children}</div>
     </section>
   );
 }
