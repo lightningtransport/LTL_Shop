@@ -23,6 +23,9 @@ Load only:
 2. the relevant `docs/DECISIONS.md` rows;
 3. the selected item from `docs/OPEN_ISSUES.md` or its Linear issue;
 4. affected code and related tests.
+5. new notes in `docs/notas/` (`estado: nueva`): route each one to a Linear
+   issue, a `DECISIONS.md` row or an open question (P), then mark it
+   `estado: pasada a …`. Notes never override the documents above.
 
 Do not read `docs/archive/` unless the task explicitly needs historical
 reasoning. Archived documents never override `SYSTEM.md`, `DECISIONS.md` or
