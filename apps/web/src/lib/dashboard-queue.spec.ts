@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WorkOrderStatus, type AdminWorkOrderSummaryDto, type TruckNextStepDto } from '@ltl-shop/shared';
-import { dashboardCounts, dashboardGroupOf, groupDashboardQueue, leavingSoonNotReady, nextShopDay, shopDay } from './dashboard-queue';
+import { arrivedNeedsWorkOrder, dashboardCounts, dashboardGroupOf, groupDashboardQueue, leavingSoonNotReady, nextShopDay, shopDay } from './dashboard-queue';
 
 function item(id: string, step: TruckNextStepDto['kind'], extra: Partial<AdminWorkOrderSummaryDto> = {}): AdminWorkOrderSummaryDto {
   return {
@@ -12,6 +12,17 @@ function item(id: string, step: TruckNextStepDto['kind'], extra: Partial<AdminWo
 }
 
 describe('Dashboard queue (stage 3 / D1, UX-5-002)', () => {
+  it('LTR-261: trucks Samsara sees in the yard without a Work Order, last to arrive first', () => {
+    const truck = (truckNumber: string, inYardSince: string | null, openWorkOrder: { id: string; displayId: string } | null = null) => ({ truckNumber, truckId: `t-${truckNumber}`, inYardSince, openWorkOrder, dispatch: null });
+    const places = {
+      inShop: [truck('904', '2026-10-21T12:00:00.000Z', { id: 'w', displayId: 'WO-1' })],
+      inYard: [truck('918', '2026-10-20T13:00:00.000Z'), truck('951', null), truck('877', '2026-10-21T13:00:00.000Z'), truck('880', '2026-10-21T13:00:00.000Z')],
+      outside: 0, noGps: 0, dispatchDisagrees: [],
+    };
+    expect(arrivedNeedsWorkOrder(places).map((row) => row.truckNumber)).toEqual(['877', '880', '918', '951']);
+    expect(arrivedNeedsWorkOrder(undefined)).toEqual([]);
+  });
+
   it('D52 (LTR-260): in Return to Service, a truck Samsara saw leave the yard (or come back) goes first', () => {
     const plain = item('r1', 'return_to_service', { status: WorkOrderStatus.COMPLETED });
     const left = item('r2', 'return_to_service', { status: WorkOrderStatus.COMPLETED, nextStep: { kind: 'return_to_service', workOrderId: 'r2', yardMove: { kind: 'left_yard', at: '2026-10-21T15:00:00.000Z' } } });

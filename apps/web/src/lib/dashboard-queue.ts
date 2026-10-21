@@ -1,4 +1,4 @@
-import type { AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
+import type { AdminWorkOrderSummaryDto, YardSamsaraPlacesDto, YardSamsaraTruckDto } from '@ltl-shop/shared';
 
 /**
  * Stage 3 (D1, UX-5-002, D26): the Dashboard answers "what do I do now?". Every open Work Order and
@@ -54,6 +54,19 @@ export function dashboardCounts(items: AdminWorkOrderSummaryDto[]): Record<Dashb
     return_to_service: items.filter((item) => dashboardGroupOf(item) === 'return_to_service').length,
     assign: items.filter((item) => dashboardGroupOf(item) === 'assign').length,
   };
+}
+
+/** LTR-261: how many arrivals the Dashboard lists; the rest open in Trucks › In yard without a Work Order. */
+export const DASHBOARD_ARRIVED_LIMIT = 5;
+
+/**
+ * LTR-261: the trucks Samsara sees in our yard with no open Work Order (D49, the same list as the Yard counter "In yard
+ * without a Work Order"). Last to arrive first: a truck that just came in is the one nobody has looked at yet.
+ */
+export function arrivedNeedsWorkOrder(places: YardSamsaraPlacesDto | null | undefined): YardSamsaraTruckDto[] {
+  return [...(places?.inYard ?? [])]
+    .filter((truck) => !truck.openWorkOrder)
+    .sort((left, right) => (right.inYardSince ?? '').localeCompare(left.inYardSince ?? '') || left.truckNumber.localeCompare(right.truckNumber, 'en', { numeric: true }));
 }
 
 /** YYYY-MM-DD of `date` in the shop's time zone (Eastern, D20). */
