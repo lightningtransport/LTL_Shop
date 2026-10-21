@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, Flag, MessageSquarePlus, OctagonPause, Plus, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
-import { AppCapability, BlockerReason, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto } from '@ltl-shop/shared';
+import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, FilePlus, Flag, MessageSquarePlus, OctagonPause, Plus, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { AppCapability, BlockerReason, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto, type YardSamsaraTruckDto } from '@ltl-shop/shared';
 import { NextStepAction } from './next-step-action';
+import { NewWorkOrderDialog } from './new-work-order-dialog';
 import { useActionToast } from './action-toast';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge, Textarea } from './ui';
 import { formatAdminDateOnly } from '@/lib/admin-format';
@@ -18,8 +19,11 @@ import { useAuth } from '@/lib/auth-context';
 import { formatVehicleYmm } from '@/lib/format';
 import { adminPriorityLabel } from '@/lib/status-chips';
 import { truckNextStepText } from '@/lib/truck-next-step';
+import { yardSinceWhen } from '@/lib/samsara-view';
 import {
+  DASHBOARD_ARRIVED_LIMIT,
   DASHBOARD_COUNTERS,
+  arrivedNeedsWorkOrder,
   dashboardCounts,
   groupDashboardQueue,
   leavingSoonNotReady,
@@ -47,8 +51,9 @@ const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: Luc
 export function AdminDashboard({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminDashboard();
-  const { data: dispatch } = useAdminYardDataBoundary();
+  const { data: dispatch, mutate: mutateDispatch } = useAdminYardDataBoundary();
   const [focus, setFocus] = useState<DashboardGroup | null>(null);
+  const [opening, setOpening] = useState<{ id: string; truckNumber: string } | null>(null);
   const queue = useMemo(() => data?.queue ?? data?.attention ?? [], [data]);
   if (isLoading) return <PageSkeleton label={messages.currentOperations} />;
   if (error || !data) return <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} />;
@@ -57,6 +62,8 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
   const counts = dashboardCounts(queue);
   const groups = groupDashboardQueue(queue, focus);
   const requests = focus ? [] : data.openWorkRequests ?? [];
+  // LTR-261: a truck that arrived without a Work Order waits on the Manager too, not only on the Yard.
+  const arrived = focus ? [] : arrivedNeedsWorkOrder(dispatch?.samsaraPlaces);
   const departures = dispatch?.upcomingDepartures.status === 'ok' ? dispatch.upcomingDepartures.items : [];
   const today = shopDay(new Date(data.generatedAt));
   const leaving = focus ? [] : leavingSoonNotReady(queue, departures, today);
@@ -66,7 +73,7 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
     const day = departure.outDate?.slice(0, 10);
     if (day && day >= today && (!leavesOn.has(departure.truckNumber) || day < leavesOn.get(departure.truckNumber)!)) leavesOn.set(departure.truckNumber, day);
   }
-  const waiting = groups.reduce((total, entry) => total + entry.items.length, 0) + requests.length;
+  const waiting = groups.reduce((total, entry) => total + entry.items.length, 0) + requests.length + arrived.length;
   const listHref = (entries: Record<string, string>) => `/admin/work-orders?${new URLSearchParams(entries).toString()}`;
   const openStatuses = 'created,in_progress,waiting_paused';
   const refresh = () => mutate();
@@ -160,6 +167,27 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
           <p>{fillPlaceholders(messages.dashboardNothingWaitingBody, { time: formatShortDateTime(data.generatedAt, locale) })}</p>
         </div>
       ) : null}
+      {/* LTR-261: where the flow starts — Samsara saw it arrive and nobody opened a Work Order (D49, D51). */}
+      {arrived.length ? (
+        <section aria-label={messages.dashboardGroupArrived} data-testid="dashboard-group-arrived">
+          <h3 className="flex items-center gap-2 border-b bg-sunken px-4 py-2 text-xs font-medium text-warning-foreground dark:text-warning">
+            <FilePlus aria-hidden="true" className="size-3.5" />{messages.dashboardGroupArrived}
+            <span className="tnum text-muted-foreground">{arrived.length}</span>
+          </h3>
+          <ul className="divide-y border-b last:border-b-0">
+            {arrived.slice(0, DASHBOARD_ARRIVED_LIMIT).map((truck) => (
+              <ArrivedRow key={truck.truckId} truck={truck} locale={locale} messages={messages} canManage={canManage} onCreateWo={setOpening} />
+            ))}
+            {arrived.length > DASHBOARD_ARRIVED_LIMIT ? (
+              <li className="px-4 py-2.5 text-sm">
+                <Link className="tap-inline inline-flex items-center gap-1 font-medium text-primary hover:underline" href="/admin/trucks?place=in_yard_no_wo" data-testid="dashboard-arrived-see-all">
+                  {fillPlaceholders(messages.dashArrivedSeeAll, { count: String(arrived.length) })}<ArrowRight aria-hidden="true" className="size-3.5" />
+                </Link>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+      ) : null}
       {groups.map(({ group, items }) => {
         const { label, Icon, tone } = GROUP_META[group];
         return (
@@ -207,7 +235,37 @@ export function AdminDashboard({ locale, messages }: { locale: AdminLocale; mess
         </section>
       ) : null}
     </section>
+    {opening ? (
+      <NewWorkOrderDialog open truck={opening} messages={messages} onClose={() => setOpening(null)} onCreated={() => { setOpening(null); return Promise.all([mutate(), mutateDispatch()]); }} />
+    ) : null}
   </div>;
+}
+
+/** LTR-261: "Truck 918 · In yard · since 9:00 AM", and Create WO right here (D26), like Dispatch (D51). */
+function ArrivedRow({ truck, locale, messages, canManage, onCreateWo }: {
+  truck: YardSamsaraTruckDto;
+  locale: AdminLocale;
+  messages: AdminMessages;
+  canManage: boolean;
+  onCreateWo: (truck: { id: string; truckNumber: string }) => void;
+}) {
+  const where = truck.inYardSince ? fillPlaceholders(messages.presenceInYardSince, { since: yardSinceWhen(truck.inYardSince, locale) }) : messages.presenceInYard;
+  return (
+    <li className="grid gap-x-4 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" data-testid="dashboard-arrived-row">
+      <div className="min-w-0 space-y-0.5">
+        <Link className="tap-inline font-semibold text-primary hover:underline" href={adminTruckHref(truck.truckId, '/admin')}>{fillPlaceholders(messages.woTitle, { truck: truck.truckNumber })}</Link>
+        <p>{where}</p>
+        <p className="text-xs text-muted-foreground">{messages.dashArrivedSub}</p>
+      </div>
+      {canManage ? (
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <Button type="button" onClick={() => onCreateWo({ id: truck.truckId, truckNumber: truck.truckNumber })} data-testid="dashboard-create-wo">
+            <Plus aria-hidden="true" />{messages.yardCreateWo}
+          </Button>
+        </div>
+      ) : null}
+    </li>
+  );
 }
 
 /** "{job} is blocked · {reason}" → the named keys in bold, the rest plain. */
