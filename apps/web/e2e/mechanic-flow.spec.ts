@@ -92,7 +92,7 @@ test.describe('Mechanic P0 critical path', () => {
 
     await devLogin(page);
     await expect(page.getByRole('heading', { name: 'My assigned work' })).toBeVisible();
-    await expect(page.getByTestId('clock-stopped-tap-continue').first()).toHaveText('Your clock is on Truck 944 · tap Continue');
+    await expect(page.getByTestId('clock-stopped-tap-continue').first()).toHaveText('You are working on Truck 944 · tap Continue to work here');
     // Block A (MG4): the card that says "tap Continue" offers Continue, not "View work".
     await expect(page.getByRole('button', { name: /^Continue truck / }).first()).toBeVisible();
 

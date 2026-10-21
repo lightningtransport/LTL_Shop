@@ -202,15 +202,13 @@ type Copy = {
   startPmOn: (truckNumber: string) => string;
   lastPmLine: (mileage: string, date: string) => string;
   pmCreateAfter: (truckNumber: string) => string;
-  pmStartedLine: (service: string, time: string) => string;
+  pmStartedLine: (service: string) => string;
   pmEmptyTitle: string;
   pmEmptyHint: string;
   pmPausedSince: (reason: string, when: string) => string;
   noJobsAssignedYet: string;
   /** Stage MG-4/5: the General mechanic's Truck screen and its sheets. */
   yourJobsDoneCount: (done: number, total: number) => string;
-  yourTimeLabel: string;
-  laborStoppedLabel: string;
   blockerSinceBy: (since: string, who: string) => string;
   addNoteOpen: string;
   noteForManager: string;
@@ -239,7 +237,6 @@ type Copy = {
   yourPartDone: (jobs: string) => string;
   clockRunning: string;
   viewShort: string;
-  clockStripSince: (time: string) => string;
   clockStripOpen: string;
   clockStripStopped: string;
   offlineNotSent: string;
@@ -298,6 +295,8 @@ type Copy = {
   jobSamsaraFault: (code: string, description: string) => string;
   jobParts: (parts: string) => string;
   jobQcFinding: (text: string) => string;
+  jobFromInspectionTitle: string;
+  jobTireFinding: (finding: { position: string; psi: number; targetPsi: number; tread: number; minTread: number; reason: 'low_pressure' | 'high_pressure' | 'worn' }) => string;
   jobTire: (position: string, type: 'new' | 'recap', size: string | null, status: 'proposed' | 'issued' | 'to_buy') => string;
   pmSamsaraGap: (gap: string, samsara: string) => string;
   mileageJumpWarning: (current: string) => string;
@@ -380,7 +379,6 @@ type Copy = {
   startWorkToCompleteJobs: string;
   continueToCompleteJobs: string;
   laborTime: (duration: string) => string;
-  laborRunningLabel: string;
   pmServiceLabel: string;
   noPendingJobs: string;
   noCompletedJobs: string;
@@ -638,9 +636,9 @@ const copy: Record<ShopLocale, Copy> = {
     managerNote: (note) => `Manager note: ${note}`,
     resolvedBlockerHint: 'Tap Continue to keep working.',
     dayCloseTapContinue: 'Yesterday\'s work is still open · tap Continue',
-    clockOnTruckTapContinue: (truckNumber) => `Your clock is on Truck ${truckNumber} · tap Continue`,
+    clockOnTruckTapContinue: (truckNumber) => `You are working on Truck ${truckNumber} · tap Continue to work here`,
     // Block A (MG3): with no clock open anywhere, "moved to another Truck" was not true.
-    clockSwitchedTapContinue: 'Your clock is stopped · tap Continue',
+    clockSwitchedTapContinue: 'Not active here · tap Continue',
     otherWorkReadOnly: 'Other mechanics do this work. You can see it, not change it.',
     helperJobSuffix: ' · helper',
     jobAtExternalShop: 'At external shop',
@@ -671,8 +669,8 @@ const copy: Record<ShopLocale, Copy> = {
     startWork: 'Start work',
     startingWork: 'Starting…',
     workStartedSuccess: 'Work started.',
-    clockMovedFromTo: (fromTruck, toTruck) => `Work started. Your clock moved from Truck ${fromTruck} to Truck ${toTruck}.`,
-    clockStripYourClock: 'Your clock',
+    clockMovedFromTo: (fromTruck, toTruck) => `Work started. You moved from Truck ${fromTruck} to Truck ${toTruck}.`,
+    clockStripYourClock: 'Working on',
     pmSummaryMileage: (mileage) => `Mileage ${mileage}`,
     pmSummaryMileageMissing: 'Mileage · enter it',
     pmSummaryMileageConfirm: 'Mileage · confirm it',
@@ -718,14 +716,12 @@ const copy: Record<ShopLocale, Copy> = {
     startPmOn: (truckNumber) => `Start PM on Truck ${truckNumber}`,
     lastPmLine: (mileage, date) => `Last PM: ${mileage} · ${date}`,
     pmCreateAfter: (truckNumber) => `Create PM service opens when Truck ${truckNumber} is finished. One PM at a time.`,
-    pmStartedLine: (service, time) => `${service} · Started ${time}`,
+    pmStartedLine: (service) => `${service} · In progress`,
     pmEmptyTitle: 'No trucks waiting for PM',
     pmEmptyHint: 'When the Manager plans a PM, the truck shows up here.',
     pmPausedSince: (reason, when) => `${reason} · paused ${when}`,
     noJobsAssignedYet: 'No Jobs assigned yet',
     yourJobsDoneCount: (done, total) => `${done} of ${total} done`,
-    yourTimeLabel: 'Your time',
-    laborStoppedLabel: 'stopped',
     blockerSinceBy: (since, who) => `Since ${since} · reported by ${who}. Only the Manager resolves it.`,
     addNoteOpen: 'Add note',
     noteForManager: 'Note for the Manager',
@@ -751,11 +747,10 @@ const copy: Record<ShopLocale, Copy> = {
     blockedSectionHint: 'Only the Manager resolves a blocker. Open the Truck to add a note.',
     blockedSince: (when) => `Since ${when}`,
     yourPartDone: (jobs) => `Your part is done · ${jobs}`,
-    clockRunning: 'Clock running',
+    clockRunning: 'Active',
     viewShort: 'View',
-    clockStripSince: (time) => `since ${time}`,
     clockStripOpen: 'Open',
-    clockStripStopped: 'Your clock is stopped · tap Continue on a Truck',
+    clockStripStopped: 'No active work · tap Continue on a Truck',
     offlineNotSent: 'Offline · your changes are not sent',
     offlineKeptOnPhone: "Offline · your changes are kept on this phone and will be sent when you're back online",
     reportBlocker: 'Report blocker',
@@ -809,6 +804,10 @@ const copy: Record<ShopLocale, Copy> = {
     jobSamsaraFault: (code, description) => `Samsara fault ${code}: ${description}`,
     jobParts: (parts) => `Parts: ${parts}`,
     jobQcFinding: (text) => `From Safety QC: ${text}`,
+    jobFromInspectionTitle: 'From the inspection',
+    jobTireFinding: ({ position, psi, targetPsi, tread, minTread, reason }) => (reason === 'worn'
+      ? `${position} · tread ${tread}/32 (min ${minTread}) · worn, replace`
+      : `${position} · ${psi} PSI (should be ${targetPsi}) · ${reason === 'low_pressure' ? 'low' : 'high'} pressure`),
     jobTire: (position, type, size, status) => `${position} · ${type === 'new' ? 'New' : 'Recap'}${size ? ` ${size}` : ''}${status === 'to_buy' ? ' · waiting for the tire' : status === 'proposed' ? ' · to confirm' : ''}`,
     pmSamsaraGap: (gap, samsara) => `This is ${gap} away from Samsara (${samsara}). Check the dashboard; you can still save.`,
     mileageJumpWarning: (current) => `This is more than 50,000 mi above the truck's current mileage (${current}). Confirm the odometer reading.`,
@@ -887,7 +886,6 @@ const copy: Record<ShopLocale, Copy> = {
     startWorkToCompleteJobs: 'Press Start work to be able to complete Jobs.',
     continueToCompleteJobs: 'Press Continue to be able to complete Jobs.',
     laborTime: (duration) => `Labor time: ${duration}`,
-    laborRunningLabel: 'running',
     pmServiceLabel: 'PM service',
     noPendingJobs: 'No pending jobs',
     noCompletedJobs: 'No completed jobs',
@@ -1149,8 +1147,8 @@ const copy: Record<ShopLocale, Copy> = {
     managerNote: (note) => `Nota del Manager: ${note}`,
     resolvedBlockerHint: 'Toca Continuar para seguir trabajando.',
     dayCloseTapContinue: 'Ayer quedó en curso · toca Continuar',
-    clockOnTruckTapContinue: (truckNumber) => `Tu reloj está en la unidad ${truckNumber} · toca Continuar`,
-    clockSwitchedTapContinue: 'Tu reloj está detenido · toca Continuar',
+    clockOnTruckTapContinue: (truckNumber) => `Estás trabajando en la unidad ${truckNumber} · toca Continuar para trabajar aquí`,
+    clockSwitchedTapContinue: 'Sin trabajo activo aquí · toca Continuar',
     otherWorkReadOnly: 'Este trabajo lo hacen otros mecánicos. Puedes verlo, no cambiarlo.',
     helperJobSuffix: ' · ayudante',
     jobAtExternalShop: 'En taller externo',
@@ -1181,8 +1179,8 @@ const copy: Record<ShopLocale, Copy> = {
     startWork: 'Iniciar trabajo',
     startingWork: 'Iniciando…',
     workStartedSuccess: 'Trabajo iniciado.',
-    clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Tu reloj pasó de la unidad ${fromTruck} a la ${toTruck}.`,
-    clockStripYourClock: 'Tu reloj',
+    clockMovedFromTo: (fromTruck, toTruck) => `Trabajo iniciado. Pasaste de la unidad ${fromTruck} a la ${toTruck}.`,
+    clockStripYourClock: 'Trabajando en',
     pmSummaryMileage: (mileage) => `Millaje ${mileage}`,
     pmSummaryMileageMissing: 'Millaje · ingrésalo',
     pmSummaryMileageConfirm: 'Millaje · confírmalo',
@@ -1228,14 +1226,12 @@ const copy: Record<ShopLocale, Copy> = {
     startPmOn: (truckNumber) => `Iniciar PM en la unidad ${truckNumber}`,
     lastPmLine: (mileage, date) => `Último PM: ${mileage} · ${date}`,
     pmCreateAfter: (truckNumber) => `Crear servicio PM se abre cuando termines la unidad ${truckNumber}. Un PM a la vez.`,
-    pmStartedLine: (service, time) => `${service} · Iniciado ${time}`,
+    pmStartedLine: (service) => `${service} · En curso`,
     pmEmptyTitle: 'No hay unidades esperando PM',
     pmEmptyHint: 'Cuando el Manager planee un PM, la unidad aparece aquí.',
     pmPausedSince: (reason, when) => `${reason} · pausado ${when}`,
     noJobsAssignedYet: 'Todavía no tienes Jobs',
     yourJobsDoneCount: (done, total) => `${done} de ${total} hechos`,
-    yourTimeLabel: 'Tu tiempo',
-    laborStoppedLabel: 'detenido',
     blockerSinceBy: (since, who) => `Desde ${since} · lo reportó ${who}. Solo el Manager lo resuelve.`,
     addNoteOpen: 'Agregar nota',
     noteForManager: 'Nota para el Manager',
@@ -1261,11 +1257,10 @@ const copy: Record<ShopLocale, Copy> = {
     blockedSectionHint: 'Solo el Manager resuelve un bloqueo. Abre la unidad para agregar una nota.',
     blockedSince: (when) => `Desde ${when}`,
     yourPartDone: (jobs) => `Terminaste tu parte · ${jobs}`,
-    clockRunning: 'Reloj corriendo',
+    clockRunning: 'Activo',
     viewShort: 'Ver',
-    clockStripSince: (time) => `desde ${time}`,
     clockStripOpen: 'Abrir',
-    clockStripStopped: 'Tu reloj está detenido · toca Continuar en una unidad',
+    clockStripStopped: 'Sin trabajo activo · toca Continuar en una unidad',
     offlineNotSent: 'Sin conexión · no se envía nada',
     offlineKeptOnPhone: 'Sin conexión · lo que anotas queda en este teléfono y se envía cuando vuelva la conexión',
     reportBlocker: 'Reportar bloqueo',
@@ -1319,6 +1314,10 @@ const copy: Record<ShopLocale, Copy> = {
     jobSamsaraFault: (code, description) => `Falla de Samsara ${code}: ${description}`,
     jobParts: (parts) => `Partes: ${parts}`,
     jobQcFinding: (text) => `Del QC de Safety: ${text}`,
+    jobFromInspectionTitle: 'De la inspección',
+    jobTireFinding: ({ position, psi, targetPsi, tread, minTread, reason }) => (reason === 'worn'
+      ? `${position} · tread ${tread}/32 (mín. ${minTread}) · gastada, cambiar`
+      : `${position} · ${psi} PSI (debe ser ${targetPsi}) · presión ${reason === 'low_pressure' ? 'baja' : 'alta'}`),
     jobTire: (position, type, size, status) => `${position} · ${type === 'new' ? 'Nueva' : 'Recap'}${size ? ` ${size}` : ''}${status === 'to_buy' ? ' · esperando la llanta' : status === 'proposed' ? ' · por confirmar' : ''}`,
     pmSamsaraGap: (gap, samsara) => `Hay ${gap} de diferencia con Samsara (${samsara}). Revisa el tablero; igual puedes guardar.`,
     mileageJumpWarning: (current) => `Son más de 50,000 mi sobre el millaje actual del truck (${current}). Confirma la lectura del odómetro.`,
@@ -1397,7 +1396,6 @@ const copy: Record<ShopLocale, Copy> = {
     startWorkToCompleteJobs: 'Pulsa Iniciar trabajo para poder completar Jobs.',
     continueToCompleteJobs: 'Pulsa Continuar para poder completar Jobs.',
     laborTime: (duration) => `Tiempo de labor: ${duration}`,
-    laborRunningLabel: 'en curso',
     pmServiceLabel: 'Servicio de PM',
     noPendingJobs: 'No hay Jobs pendientes',
     noCompletedJobs: 'No hay Jobs completados',

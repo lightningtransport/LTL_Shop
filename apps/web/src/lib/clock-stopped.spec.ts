@@ -13,10 +13,10 @@ describe('clockStoppedLine (LTR-186)', () => {
 
   it('names the Truck where my clock runs after a switch, or says it moved', () => {
     const elsewhere = { id: 'wo-2', displayId: 'WO-002', truckNumber: '944' };
-    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: elsewhere }, en)).toBe('Your clock is on Truck 944 · tap Continue');
-    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: elsewhere }, es)).toBe('Tu reloj está en la unidad 944 · toca Continuar');
-    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: null }, en)).toBe('Your clock is stopped · tap Continue');
-    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: null }, es)).toBe('Tu reloj está detenido · toca Continuar');
+    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: elsewhere }, en)).toBe('You are working on Truck 944 · tap Continue to work here');
+    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: elsewhere }, es)).toBe('Estás trabajando en la unidad 944 · toca Continuar para trabajar aquí');
+    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: null }, en)).toBe('Not active here · tap Continue');
+    expect(clockStoppedLine({ reason: 'switched_truck', elsewhereWorkOrder: null }, es)).toBe('Sin trabajo activo aquí · toca Continuar');
   });
 
   it('nothing when the clock was not stopped by the app', () => {

@@ -1,6 +1,6 @@
 # Historias de usuario, flujos y casos límite
 
-**Actualizado:** 2026-10-19 (D51: HU-M22 planear la semana; D50: HU-M22 la pestaña Dispatch con el lugar de Samsara, fila A151; D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
+**Actualizado:** 2026-10-21 (D54: HU-ME1 sin tiempo a la vista y a lo ancho en iPad; HU-M16 llantas a Alignment con qué llanta y por qué, filas A152–A153); antes 2026-10-19 (D51: HU-M22 planear la semana; D50: HU-M22 la pestaña Dispatch con el lugar de Samsara, fila A151; D49 ajustada, LTR-257: "In yard" por los tres geofences de nuestra yard y "In shop" con Work Order abierta, J27 y HU-M21, fila A149); antes 2026-10-18 (LTR-245: volver desde un camión o una WO conserva los filtros, HU-M7); antes 2026-10-16 (D46 / SQ-1 a SQ-3: el Shop ve "Safety", el QC no se asigna, Safety ve la hoja de inspección y deja hallazgos que el Manager convierte en Jobs, filas A128–A132; ST-6 construida: leer el PDF de la factura; ST-5 construida: el PM descuenta del stock y cobra el aceite, filas A125–A127; ST-4 construida: llantas desde la inspección, filas A122–A124; ST-3 construida: stock del taller, filas A117–A121; ST-2 construida: repuestos y llantas en el catálogo, filas A114–A116; ST-1 construida: la compra se ata al Job, filas A111–A113; D45 propuesta: J22–J26 y HU-M19 repuestos, stock y llantas, sin construir); antes 2026-10-15 (LTR-113: Make / Model se normalizan, fila A110); antes 2026-10-14 (HU-M18 alta de camiones y conectar Samsara construida, D44, filas A98–A109); antes 2026-10-14 (HU-M14 y HU-M15 Samsara construidas, filas A91–A97); antes 2026-10-13 (D41 construida: J20–J21, HU-M16 hoja de inspección, HU-ME7 el mecánico inspecciona, HU-M17 editar la hoja y dar el permiso; filas A82–A88. D42: J15–J19, HU-M14 flota con ubicación y fallas de Samsara, HU-M15 fallas → Jobs recomendados; no construidas)
 
 Este documento dice **qué quiere lograr cada persona, cómo lo hace en la app
 paso a paso y qué pasa en los casos raros**. Cada historia está comprobada
@@ -330,20 +330,24 @@ Supabase: la persona se crea sin cuenta de acceso y la app lo dice.
 
 **Flujo**
 1. Entra. La pantalla de inicio es **My assigned work** (pestañas abajo en el
-   teléfono: My work · Trucks · Completed). Arriba, la **franja del reloj** dice
-   en qué camión corre ("Your clock · Truck 922 · since 10:45 AM") o que está
-   detenido. Hay un solo botón principal: el camión del reloj o el siguiente
+   teléfono: My work · Trucks · Completed). Arriba, la franja dice en qué
+   camión está trabajando ("Working on Truck 922") o "No active work · tap
+   Continue on a Truck". **Nunca cuánto tiempo lleva ni desde qué hora** (D54):
+   el reloj mide por detrás para el labor. Hay un solo botón principal: el camión activo o el siguiente
    trabajo. Lo bloqueado va aparte ("Blocked · waiting on the Manager") y lo
    que ya terminé, en "Waiting on Manager".
-2. Abre un Work Order: arriba el resumen (**Your Jobs N of M done · Your time**,
-   solo su tiempo), el bloqueo si hay, **Your Jobs**, y **Other work on this
-   Truck** plegado (solo lectura).
+2. Abre un Work Order: arriba el resumen (**Your Jobs N of M done** y "Active"
+   si está trabajando ahí), el bloqueo si hay, **Your Jobs**, y **Other work on this
+   Truck** plegado (solo lectura). En el iPad (D54) usa el ancho: las tarjetas
+   van de a dos y en el Work Order los Jobs quedan a la izquierda y Notas e
+   Información del camión a la derecha; el PM pone el millaje a la izquierda y
+   las partes a la derecha.
 
 | ¿Qué pasa si…? | Respuesta | Estado | Fila |
 |---|---|---|---|
 | Tiene Jobs en un camión | Ve ese Work Order, con solo sus Jobs como suyos | ✅ | A5 |
-| Quiere saber dónde corre su reloj | La franja del reloj lo dice en todas sus pantallas, y la tarjeta de ese camión dice "Clock running" | ✅ | E7 · e2e |
-| Quiere saber cuánto lleva en un camión | "Your time" suma solo sus tramos en ese Work Order, todos los días (D-MG2); el total queda para el Manager | ✅ | E7 |
+| Quiere saber en qué está trabajando | La franja lo dice en todas sus pantallas ("Working on Truck 922"), y la tarjeta de ese camión dice "Active" | ✅ | E7 · e2e |
+| Quiere saber cuánto lleva en un camión | No lo ve (D54: mostrar el tiempo puede ser contraproducente). El reloj sigue midiendo para el labor y el Manager ve las horas | ✅ | E7 |
 | Busca cuándo terminó un Job y qué nota dejó | Completed lo agrupa por día (hoy, ayer, antes) con la hora y la nota de cierre | ✅ | E7 · e2e |
 | No tiene Jobs en un camión | No lo ve en su lista ni puede abrirlo | ✅ | A5 |
 | Le cancelan su único Job | Deja de ver ese Work Order | ✅ | A16 |
@@ -726,7 +730,7 @@ Ver la fila E7 en HU-ME2.
    - **Jobs to create**, con los defectos del mismo Job juntos
    - las notas a pasos que la WO ya tiene
    - **To watch** (llantas cerca del límite)
-6. Elige **quién hace** cada Job o deja "Assign later", firma ("I inspected Truck 601") y toca **Save · create N Jobs**.
+6. Elige **quién hace** cada Job o deja "Assign later". **Flat Repair** y **Tires** ya vienen puestos al mecánico de **Alignment** (o a su cola si el equipo tiene varios; D54), y se pueden cambiar. Firma ("I inspected Truck 601") y toca **Save · create N Jobs**.
 
 **Resultado:** los Jobs quedan en Shop Work con su dueño o sin dueño, y el paso Inspection dice "Issues found · N Jobs · quién · cuándo · View report". Sin defectos queda "No issues found" y el camión sigue a PM. La tarjeta **Tires** del camión muestra la lectura y cuánto cambió desde la anterior.
 
@@ -742,6 +746,8 @@ Ver la fila E7 en HU-ME2.
 | Una llanta con el tread bajo el mínimo (D45 / ST-4) | El Job Tires trae además la llanta a poner en esa posición: steer New, drive Recap. La presión sola (Flat Repair) no | ✅ | A122 |
 | El Manager confirma las llantas | Steer no puede ser recap. La que hay en el estante sale al costo promedio a ese camión en esa WO; la que no hay queda "to buy". El mecánico ve "RF · New 11R22.5", sin costo | ✅ | A123 |
 | Llega la llanta que faltaba, o se devuelve una | Se toma desde el mismo lugar; la tarjeta Tires del camión dice qué tiene montado cada posición y la próxima vez propone esa medida. Devuelta al stock, vuelve a "to buy" | ✅ | A124 |
+| Sale Flat Repair o Tires (D54) | Van al equipo de **Alignment**, que tiene la máquina de llantas y alinea de paso: con uno, a él; con varios, a la cola de Alignment. También si inspecciona un mecánico. El Manager puede elegir otro o "Assign later" | ✅ | A152, A153 |
+| El mecánico abre Flat Repair o Tires (D54) | Ve **qué llanta y por qué**: "LFO · 72 PSI (should be 95) · low pressure", "RRO · tread 1/32 (min 2) · worn, replace", y los demás hallazgos de la hoja con su nota | ✅ | A152 |
 | Deja un Job sin dueño | El siguiente paso de hoy: "Nobody is assigned to Lights · Assign" (A3) | 👁 revisado en pantalla | — |
 | Cierra la app a mitad de la hoja | Lo marcado sigue en el teléfono hasta guardar | sin prueba | — |
 | Encuentra algo después de guardar | **Add defects** reabre la hoja solo para agregar. El defecto nuevo crea su Job o suma su nota, y el reporte lo marca "Added later · quién · hora" | ✅ | A85 |

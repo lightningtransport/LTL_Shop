@@ -77,7 +77,7 @@ export const Input = React.forwardRef<
   <input
     ref={ref}
     type={type}
-    className={cn('field', className)}
+    className={cn('field min-w-0', className)}
     {...props}
   />
 ));

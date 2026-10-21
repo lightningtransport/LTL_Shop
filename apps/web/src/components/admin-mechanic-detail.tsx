@@ -199,7 +199,7 @@ function InspectPermissionCard({ person, messages, onSaved }: { person: AdminMec
   return (
     <SectionCard title={messages.peopleExtraPermissions} data-testid="person-inspect-permission">
       <label className="flex min-h-12 items-start gap-3 p-4">
-        <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={checked} disabled={pending} onChange={(event) => void toggle(event.target.checked)} />
+        <input type="checkbox" className="mt-0.5" checked={checked} disabled={pending} onChange={(event) => void toggle(event.target.checked)} />
         <span>
           <span className="font-medium">{messages.peopleCanInspect}</span>
           <span className="block text-xs text-muted-foreground">{messages.peopleCanInspectHint}</span>

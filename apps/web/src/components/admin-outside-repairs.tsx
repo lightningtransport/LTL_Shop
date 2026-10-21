@@ -90,11 +90,11 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
                 {(formData?.trucks ?? []).map((truck) => <option key={truck.id} value={truck.id}>{fillPlaceholders(messages.pcTruckLabel, { truck: truck.truckNumber })}</option>)}
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="min-w-[9.5rem] flex-1 space-y-1">
               <Label htmlFor="outside-filter-from">{messages.pcFrom}</Label>
               <Input id="outside-filter-from" type="date" value={draft.from} onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))} />
             </div>
-            <div className="space-y-1">
+            <div className="min-w-[9.5rem] flex-1 space-y-1">
               <Label htmlFor="outside-filter-to">{messages.pcTo}</Label>
               <Input id="outside-filter-to" type="date" value={draft.to} onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))} />
             </div>

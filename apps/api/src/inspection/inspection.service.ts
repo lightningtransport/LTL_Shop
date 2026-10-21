@@ -44,6 +44,7 @@ import { idempotencyFingerprint } from '../common/idempotency';
 import { lockTruckMutation } from '../common/truck-mutation-lock';
 import { PrismaService } from '../prisma/prisma.service';
 import { joinWorkOrderTeam } from '../work-orders/work-order-team';
+import { teamAssignment } from '../work-orders/mandatory-jobs';
 import { classifyWorkPlanLane } from '../admin/yard-work-plan-derivation';
 import { YardWorkPlanService, childIdempotencyKey } from '../admin/yard-work-plan.service';
 import { InspectionPlanError, planInspectionFindings, type InspectionPlan, type PlanFinding } from './inspection-plan';
@@ -155,6 +156,7 @@ export class InspectionService {
       previousTires: previous.map(toTireDto),
       // D45 / ST-4: what each position has mounted, from confirmed Tires Jobs.
       installedTires: await installedTires(this.prisma, truckId),
+      tireJobsGoTo: await this.tireJobsGoTo(this.prisma),
       canInspect: actor !== null,
       canAssign: actor === 'manager',
       legacyInspection: legacy
@@ -406,7 +408,7 @@ export class InspectionService {
     user: AuthUser,
     wo: OpenWorkOrder,
     findings: PlanFinding[],
-    assignments: Array<{ catalogJobId: string; assignedMechanicId: string }>,
+    assignments: Array<{ catalogJobId: string; assignedMechanicId: string | null }>,
   ) {
     if (!findings.length) return { jobsCreated: 0, jobsUpdated: 0 };
     if (wo.primaryCategory.name === 'PM') throw new BadRequestException('PM Work Orders do not use jobs');
@@ -423,16 +425,26 @@ export class InspectionService {
       where: { id: { in: plan.create.map((item) => item.catalogJobId) } },
       include: { category: { select: { id: true, name: true, status: true } } },
     });
-    const owners = await this.standardMechanics(tx, plan.create.map((item) => ownerOf.get(item.catalogJobId)).filter((id): id is string => Boolean(id)));
+    // D54: Flat Repair and Tires go to the Alignment team unless the Manager picked someone (or "Assign later").
+    const tireJobIds = new Set(catalogJobs.filter((row) => row.seedKey === jobSeedKey(TIRES_CATEGORY, 'Flat Repair') || row.seedKey === jobSeedKey(TIRES_CATEGORY, 'Tires')).map((row) => row.id));
+    const alignment = plan.create.some((item) => tireJobIds.has(item.catalogJobId) && !ownerOf.has(item.catalogJobId))
+      ? await this.alignmentTeam(tx)
+      : null;
+    const ownerIdOf = (catalogJobId: string) => (ownerOf.has(catalogJobId)
+      ? ownerOf.get(catalogJobId) ?? null
+      : tireJobIds.has(catalogJobId) ? alignment?.ownerId ?? null : null);
+    const owners = await this.standardMechanics(tx, plan.create.map((item) => ownerIdOf(item.catalogJobId)).filter((id): id is string => Boolean(id)));
 
     for (const item of plan.create) {
       const catalogJob = catalogJobs.find((row) => row.id === item.catalogJobId);
       if (!catalogJob || catalogJob.status !== 'active' || catalogJob.category.status !== 'active') {
         throw new ConflictException({ code: 'INSPECTION_JOB_INACTIVE', message: 'A check points to a Job that is no longer in the catalog. Fix it in Setup → Inspection checklist.' });
       }
-      const ownerId = ownerOf.get(item.catalogJobId);
+      const ownerId = ownerIdOf(item.catalogJobId);
       const owner = ownerId ? owners.get(ownerId) : undefined;
       if (ownerId && !owner) throw new BadRequestException('One or more selected mechanics cannot perform standard work');
+      // D54 / D28: with several on the Alignment team, the tire Job waits in its queue.
+      const toAlignmentQueue = !ownerOf.has(item.catalogJobId) && tireJobIds.has(item.catalogJobId) && alignment?.mode === 'queue';
       const job = await tx.workOrderJob.create({
         data: {
           workOrderId: wo.id,
@@ -443,6 +455,7 @@ export class InspectionService {
           isCustom: false,
           addedById: user.id,
           assignedMechanicId: owner?.id,
+          workflowStepKey: toAlignmentQueue ? ShopWorkflowStepKey.ALIGNMENT : null,
           status: 'to_do',
         },
       });
@@ -631,6 +644,24 @@ export class InspectionService {
     const tires = rows.find((row) => row.seedKey === jobSeedKey(TIRES_CATEGORY, 'Tires'))?.id;
     if (!flatRepair || !tires) throw new ConflictException({ code: 'INSPECTION_TIRE_JOBS_MISSING', message: 'Flat Repair and Tires must be in the catalog.' });
     return { flatRepair, tires };
+  }
+
+  /** D54 / D28: the Alignment step's team decides who gets the tire Jobs (one → them, several → the queue). */
+  private async alignmentTeam(client: Tx | PrismaService) {
+    const step = await client.shopWorkflowStep.findFirst({
+      where: { stepKey: ShopWorkflowStepKey.ALIGNMENT, active: true },
+      select: { members: { select: { user: { select: { id: true, name: true, active: true, role: true, capabilities: { select: { capability: true } } } } } } },
+    });
+    if (!step) return null;
+    const members = step.members.map((member) => member.user);
+    const team = teamAssignment(ShopWorkflowStepKey.ALIGNMENT, members);
+    return { ...team, ownerName: members.find((member) => member.id === team.ownerId)?.name ?? null };
+  }
+
+  private async tireJobsGoTo(client: PrismaService): Promise<TruckInspectionStateDto['tireJobsGoTo']> {
+    const team = await this.alignmentTeam(client);
+    if (!team || team.mode === 'none') return null;
+    return { mechanic: team.ownerId ? { id: team.ownerId, name: team.ownerName ?? '' } : null, queue: team.mode === 'queue' };
   }
 
   private async standardMechanics(tx: Tx, ids: string[]) {

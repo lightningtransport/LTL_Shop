@@ -243,6 +243,14 @@ function SheetFlow({
   const [tireOpen, setTireOpen] = useState<TirePosition | null>(null);
   const [signed, setSigned] = useState(false);
   const [owners, setOwners] = useState<Record<string, string>>({});
+  // D54: Flat Repair and Tires start on the Alignment team (its mechanic, or its queue); the Manager can change it.
+  const tireJobIds = new Set([state.tireJobs?.flatRepair.id, state.tireJobs?.tires.id].filter((id): id is string => Boolean(id)));
+  const goTo = state.tireJobsGoTo ?? null;
+  const ownerOf = (catalogJobId: string) => owners[catalogJobId]
+    ?? (tireJobIds.has(catalogJobId) && goTo ? goTo.mechanic?.id ?? ALIGNMENT_QUEUE : '');
+  const assignable = goTo?.mechanic && !standardMechanics.some((mechanic) => mechanic.id === goTo.mechanic!.id)
+    ? [...standardMechanics, goTo.mechanic]
+    : standardMechanics;
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const idempotencyKey = useRef<string | null>(null);
@@ -284,8 +292,14 @@ function SheetFlow({
     setPending(true);
     setFailure(null);
     idempotencyKey.current ??= crypto.randomUUID();
+    // Left as it came, a tire Job goes to Alignment on the server; "Assign later" on one is sent as null.
     const assignments = state.canAssign
-      ? preview.newJobs.filter((job) => owners[job.catalogJobId]).map((job) => ({ catalogJobId: job.catalogJobId, assignedMechanicId: owners[job.catalogJobId] }))
+      ? preview.newJobs.flatMap((job): Array<{ catalogJobId: string; assignedMechanicId: string | null }> => {
+          const picked = owners[job.catalogJobId];
+          if (picked === undefined || picked === ALIGNMENT_QUEUE) return [];
+          if (!picked) return tireJobIds.has(job.catalogJobId) && goTo ? [{ catalogJobId: job.catalogJobId, assignedMechanicId: null }] : [];
+          return [{ catalogJobId: job.catalogJobId, assignedMechanicId: picked }];
+        })
       : undefined;
     try {
       if (adding) {
@@ -374,9 +388,10 @@ function SheetFlow({
                       job={job}
                       copy={copy}
                       canAssign={state.canAssign}
-                      mechanics={standardMechanics}
-                      owner={owners[job.catalogJobId] ?? ''}
+                      mechanics={assignable}
+                      owner={ownerOf(job.catalogJobId)}
                       onOwner={(id) => setOwners({ ...owners, [job.catalogJobId]: id })}
+                      alignment={tireJobIds.has(job.catalogJobId) ? goTo : null}
                     />
                   ))}
                 </ul>
@@ -413,7 +428,7 @@ function SheetFlow({
             ) : null}
             <SectionCard title={copy.signature}>
               <label className="flex min-h-12 items-start gap-3 p-4" data-testid="inspection-sign-label">
-                <input type="checkbox" className="mt-0.5 size-4 accent-[var(--primary)]" checked={signed} onChange={(event) => setSigned(event.target.checked)} data-testid="inspection-sign" />
+                <input type="checkbox" className="mt-0.5" checked={signed} onChange={(event) => setSigned(event.target.checked)} data-testid="inspection-sign" />
                 <span>
                   <span className="font-medium">{adding ? copy.iFound(truckNumber) : copy.iInspected(truckNumber)}</span>
                   <span className="block text-xs text-muted-foreground">{copy.signedAs(myName, role)}</span>
@@ -910,6 +925,9 @@ function ResultCallout({ copy, issues, jobs, notes, watch, sub }: { copy: Inspec
     : <NextStepCallout tone="success" icon={CircleCheck} eyebrow={copy.result} title={copy.noIssuesFound} sub={copy.noIssuesSub(watch)} />;
 }
 
+/** D54: the select value for "leave it in the Alignment queue" (never sent to the server). */
+const ALIGNMENT_QUEUE = '__alignment_queue';
+
 function PreviewJobRow({
   job,
   copy,
@@ -917,6 +935,7 @@ function PreviewJobRow({
   mechanics,
   owner,
   onOwner,
+  alignment,
 }: {
   job: PreviewJob;
   copy: InspectionCopy;
@@ -924,6 +943,8 @@ function PreviewJobRow({
   mechanics: ReadonlyArray<{ id: string; name: string }>;
   owner: string;
   onOwner: (id: string) => void;
+  /** D54: set for Flat Repair and Tires, which go to the Alignment team. */
+  alignment?: TruckInspectionStateDto['tireJobsGoTo'];
 }) {
   return (
     <li className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4" data-testid="inspection-preview-job">
@@ -943,9 +964,11 @@ function PreviewJobRow({
           : canAssign ? (
             <select className="field !min-h-9 w-full !py-1.5 !text-sm sm:w-44" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
               <option value="">{copy.assignLater}</option>
+              {alignment?.queue ? <option value={ALIGNMENT_QUEUE}>{copy.alignmentQueue}</option> : null}
               {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}
             </select>
-          ) : <span className="text-xs text-muted-foreground">{copy.managerAssigns}</span>}
+          ) : alignment ? <span className="text-xs text-muted-foreground" data-testid="inspection-goes-to-alignment">{copy.goesToAlignment(alignment.mechanic?.name ?? null)}</span>
+            : <span className="text-xs text-muted-foreground">{copy.managerAssigns}</span>}
       </div>
     </li>
   );

@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory, jobWorkStatus, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
+import { isPmCategory, jobWorkStatus, tireFindingReason, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 import { workOrderTeam } from './work-order-team';
@@ -32,7 +32,12 @@ type JobRow = {
   externalKind?: string | null;
   externalNote?: string | null;
   workflowStepKey?: string | null;
-  sources?: Array<{ kind?: string; note?: string | null; truckFault: { code: string; description: string } | null }>;
+  sources?: Array<{
+    kind?: string;
+    note?: string | null;
+    truckFault: { code: string; description: string } | null;
+    tireReading?: { position: string; psi: number; tread: number; targetPsi: number; minTread: number } | null;
+  }>;
   purchaseLines?: Array<{ description: string; partNumber: string | null; quantity: { toFixed(digits: number): string } }>;
   stockMovements?: Array<{ quantity: { abs(): { toFixed(digits: number): string } }; part: { displayName: string; partNumber: string | null } }>;
   tireChanges?: Array<{ position: string; tireType: 'new' | 'recap'; confirmedAt: Date | null; part: { tireSize: string | null } | null; stockMovement: { reversals: Array<{ id: string }> } | null }>;
@@ -315,6 +320,15 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
       tireSize: change.part?.tireSize ?? null,
       status: tireChangeStatus(change),
     })),
+    tireFindings: (j.sources ?? []).flatMap((source) => (source.tireReading ? [{
+      position: source.tireReading.position,
+      psi: source.tireReading.psi,
+      targetPsi: source.tireReading.targetPsi,
+      tread: source.tireReading.tread,
+      minTread: source.tireReading.minTread,
+      reason: tireFindingReason(source.tireReading),
+    }] : [])),
+    inspectionNotes: (j.sources ?? []).flatMap((source) => (source.kind === 'inspection_item' && source.note ? [source.note] : [])),
     };
   });
   const viewerOwnsJobs = !!viewerId && wo.jobs.some((j) => jobAssigneeId(j) === viewerId);
@@ -501,9 +515,15 @@ export const workOrderDetailInclude = {
       completedBy: { select: { id: true, name: true } },
       // D42 / S-6: the Samsara faults a Job takes care of, shown to the mechanic.
       // D46 / SQ-3: and the Safety findings it takes care of.
+      // D54: and the tires and sheet notes from the inspection, so the mechanic sees which tire and why.
       sources: {
-        where: { kind: { in: ['samsara_fault' as const, 'qc_finding' as const] } },
-        select: { kind: true, note: true, truckFault: { select: { code: true, description: true } } },
+        select: {
+          kind: true,
+          note: true,
+          truckFault: { select: { code: true, description: true } },
+          tireReading: { select: { position: true, psi: true, tread: true, targetPsi: true, minTread: true } },
+        },
+        orderBy: { createdAt: 'asc' as const },
       },
       // D45 / ST-1: the parts bought for the Job (names only on this side).
       purchaseLines: {

@@ -220,6 +220,10 @@ body {
     padding-bottom: max(2.5rem, var(--app-safe-bottom));
     padding-left: var(--app-shell-left);
   }
+  /* D54: on an iPad the mechanic and PM screens use the width (two columns where the page has them). */
+  .app-shell-wide {
+    @apply md:max-w-3xl lg:max-w-6xl;
+  }
   /* Mechanic header: full-bleed and sticky, its background under the status bar, so scrolled content never
      sits in the blurred strip. Same 56px row as the Admin header. */
   .app-topbar {
@@ -294,6 +298,59 @@ input.field[type='time'] {
 }
 input.field::-webkit-date-and-time-value {
   text-align: left;
+}
+
+/* LTR-264: Safari on iPad gives date fields a built-in minimum width, so in a grid cell or a filter row
+   they spill over the next field. Let them shrink to their column like every other field. */
+input.field[type='date'],
+input.field[type='month'],
+input.field[type='time'],
+input.field[type='datetime-local'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  /* Without the native look WebKit puts the value at the top; center it in the 44px field. */
+  line-height: calc(2.75rem - 2px);
+}
+input.field[type='datetime-local'] {
+  height: 2.75rem;
+  padding-block: 0;
+}
+
+/* LTR-264: one checkbox look on every screen (iOS drew a black rounded square). :where keeps it
+   overridable by any class (sr-only checkboxes in MultiSelect stay hidden). */
+:where(input[type='checkbox']) {
+  -webkit-appearance: none;
+  appearance: none;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1px solid var(--input);
+  border-radius: 0.3rem;
+  background-color: var(--background);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.875rem;
+  cursor: pointer;
+}
+:where(input[type='checkbox']:checked) {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+}
+.dark :where(input[type='checkbox']:checked) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23111827' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+}
+:where(input[type='checkbox']:disabled) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+:where(input[type='checkbox']:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* Stage 8: small pieces of the approved mockups (the mockup.html files in docs/proposals). */
@@ -372,6 +429,9 @@ html[data-keyboard-open] body:has([data-bottom-tabs]) main {
   html[data-demo-panel='open'] main#main-content.app-shell {
     margin-left: max(1rem, calc((100vw - 392px - 36rem) / 2));
     margin-right: 392px;
+  }
+  html[data-demo-panel='open'] main#main-content.app-shell-wide {
+    max-width: 36rem;
   }
 }
 @media (min-width: 1200px) {

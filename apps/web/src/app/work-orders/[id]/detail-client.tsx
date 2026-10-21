@@ -53,14 +53,9 @@ import {
 } from '@/components/ui';
 import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
-import { jobCategoriesLine, liveLaborMs, vehicleLine } from '@/lib/work-order-identity';
+import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { optimisticCompleteJob } from '@/lib/optimistic-complete-job';
 
-function formatLaborDuration(milliseconds: number) {
-  const minutes = Math.max(0, Math.floor(milliseconds / 60_000));
-  const hours = Math.floor(minutes / 60);
-  return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
-}
 
 export default function WorkOrderDetailPage() {
   const { user, token, sessionLoading } = useAuth();
@@ -107,14 +102,6 @@ export default function WorkOrderDetailPage() {
   });
   const pauseTriggerRef = useRef<HTMLButtonElement>(null);
   const finishJobTriggerRef = useRef<HTMLButtonElement>(null);
-  // LTR-131: live labor clock (API total at fetch time + elapsed while running).
-  const fetchedAt = useMemo(() => Date.now(), [wo]);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!wo?.laborRunning) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, [wo?.laborRunning]);
 
   useEffect(() => {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
@@ -230,10 +217,6 @@ export default function WorkOrderDetailPage() {
   // LTR-164 (#6): a mechanic who has not worked here yet starts; one who stopped continues.
   const startedHereBefore = wo.myLaborStarted ?? wo.status !== 'created';
   const finishedMyPart = partDone && (wo.status === 'in_progress' || wo.status === 'created');
-  const laborMs = liveLaborMs(wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
-
-  // Stage MG-4 (MG5, D-MG2): my own time on this Work Order; it runs live while my clock is here.
-  const myLaborMs = liveLaborMs(wo.myActiveLaborMs ?? wo.totalActiveLaborMs, wo.laborRunning, fetchedAt, now);
   const myOpen = mine.filter((job) => job.status !== 'cancelled');
   const myDone = myOpen.filter((job) => job.status === 'completed').length;
   const nextJobId = myWorkable[0]?.id ?? null;
@@ -283,10 +266,11 @@ export default function WorkOrderDetailPage() {
         backHref="/mechanic/standard"
       />
 
-      {/* One column: the mechanic screens keep the phone width on a computer too (UX-4-008: the mechanic works on the phone). */}
-      <div>
-        <div>
-          {/* Stage MG-4 (UX-4-007, MG5): what matters to me here — my Jobs and my time. */}
+      {/* D54: one column on the phone; on an iPad my Jobs on the left, Notes and Truck Information on the right. */}
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:gap-4 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-6">
+        <div className="min-w-0">
+          {/* Stage MG-4 (UX-4-007): what matters to me here — my Jobs and whether I am working here.
+              D54: never how long; the clock still counts behind the scenes for labor (D34). */}
           <section
             className={`mb-4 rounded-xl border bg-card p-4 ${wo.laborRunning ? 'border-primary ring-1 ring-primary' : ''}`}
             data-testid="my-summary"
@@ -297,16 +281,12 @@ export default function WorkOrderDetailPage() {
                 <p className="text-xs text-muted-foreground">{messages.myJobs}</p>
                 <p className="text-lg font-semibold tnum">{messages.yourJobsDoneCount(myDone, myOpen.length)}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">{messages.yourTimeLabel}</p>
-                <div className="flex items-center justify-end gap-2 text-lg font-semibold tnum">
-                  {formatLaborDuration(myLaborMs)}
-                  <Badge variant={wo.laborRunning ? 'success' : 'secondary'}>
-                    <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-                    {wo.laborRunning ? messages.laborRunningLabel : messages.laborStoppedLabel}
-                  </Badge>
-                </div>
-              </div>
+              {wo.laborRunning ? (
+                <Badge variant="success" data-testid="working-here">
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                  {messages.clockRunning}
+                </Badge>
+              ) : null}
             </div>
             {wo.priority === 'high' || wo.priority === 'critical' ? (
               <div className="mt-2"><PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge></div>
@@ -532,7 +512,7 @@ export default function WorkOrderDetailPage() {
           ) : null}
         </div>
 
-        <div>
+        <div className="min-w-0">
           <WorkOrderNotesThread
             wo={wo}
             onUpdated={async (updated) => {
@@ -781,6 +761,18 @@ function MyJobRow({ job, next, currentUserId }: { job: WorkOrderJobDto; next: bo
         {job.qcFindings?.map((text) => (
           <p key={text} className="text-xs text-muted-foreground" data-testid="job-qc-finding">{messages.jobQcFinding(text)}</p>
         ))}
+        {/* D54: which tire the inspection found and why, and what the sheet said, so the mechanic knows what to fix. */}
+        {job.tireFindings?.length || job.inspectionNotes?.length ? (
+          <div className="mt-1.5 rounded-md border border-warning/40 bg-warning-surface px-2.5 py-1.5 text-sm text-warning-foreground dark:text-warning" data-testid="job-from-inspection">
+            <p className="text-xs font-medium">{messages.jobFromInspectionTitle}</p>
+            <ul className="mt-0.5 space-y-0.5">
+              {job.tireFindings?.map((finding) => (
+                <li key={finding.position} className="tnum" data-testid="job-tire-finding">{messages.jobTireFinding(finding)}</li>
+              ))}
+              {job.inspectionNotes?.map((text) => <li key={text} data-testid="job-inspection-note">{text}</li>)}
+            </ul>
+          </div>
+        ) : null}
         {/* D45 / ST-1: what the Manager bought for this Job (never its cost). */}
         {job.parts?.length ? (
           <p className="text-xs text-muted-foreground" data-testid="job-parts">

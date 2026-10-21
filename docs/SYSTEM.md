@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -260,7 +260,13 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   todos los puntos, la nota de cada defecto y las 10 llantas (PSI y tread). Cada
   defecto crea su Job; los del mismo Job van en uno; si el Job ya está en la WO
   solo se suma la nota; la limpieza va a Detailing; una llanta en "fix" crea
-  Flat Repair (presión) o Tires (tread). Cada hallazgo queda ligado a su Job en
+  Flat Repair (presión) o Tires (tread). **D54:** Flat Repair y Tires nacen con el
+  equipo de **Alignment** (uno → a él; varios → su cola, `workflow_step_key =
+  alignment`; vacío → sin dueño), salvo que el Manager elija otro o "Assign
+  later" (`assignedMechanicId: null`); también si inspecciona un mecánico. El
+  mecánico ve en el Job la lectura y el motivo (`tireFindings`: posición, PSI,
+  tread, `low_pressure` / `high_pressure` / `worn`, de `tireFindingReason` en
+  shared) y las notas de la hoja (`inspectionNotes`). Cada hallazgo queda ligado a su Job en
   `work_order_job_sources` (varios por Job; también lo usará Samsara S-6). El
   resultado (Issues found / No issues found) sale de la hoja y se guarda en el
   mismo requirement de readiness.
@@ -755,13 +761,21 @@ Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 
 **MECH-INSP — Inspeccionar (con "Can inspect trucks", D41):** My work →
 "To inspect" → Start → la misma hoja (`/mechanic/{standard,pm}/inspect/[truckId]`).
-Sus Jobs nacen sin dueño; el Manager los asigna.
+Sus Jobs nacen sin dueño y el Manager los asigna, salvo Flat Repair y Tires,
+que van a Alignment (D54).
 
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar
 bloqueo** (LTR-189 W12) → al terminar el último ve "Terminaste tu parte" y su
 tiempo se detiene. Su reloj corre en un solo camión (D21) y se cierra
 solo a las 5:00 p.m. (D20); al volver toca Continue.
+
+**Sin tiempo a la vista (D54):** el mecánico ve en qué camión está trabajando
+("Working on Truck 922", "Active"), nunca desde qué hora ni cuánto lleva. Las
+sesiones de `work_sessions` siguen igual para el labor (D34); el Admin ve las
+horas. En el iPad (desde 768 px) las pantallas de mecánico usan el ancho
+(`.app-shell-wide`): tarjetas de a dos, y en el Work Order los Jobs a la izquierda
+y Notas / Truck Information a la derecha.
 
 **MECH03 — Bloqueo:** reporta un bloqueo en uno de sus Jobs → si no le queda
 otro Job disponible, su tiempo se detiene → solo puede agregar notas → el
@@ -991,7 +1005,7 @@ Shop Admin, Yard, Work Orders).
 | `/work-orders/[id]` | Detalle del WO para el mecánico (Standard, o el PM job dentro del WO con `?view=pm`). Un Job de ayudante dice "· ayudante" (D23); un Job en taller externo aparece en "Other work on this Truck" en solo lectura con "En taller externo" y nunca es del mecánico (D24). |
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
-| (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Tu reloj está en la unidad 944 · toca Continuar", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |
+| (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Estás trabajando en la unidad 944 · toca Continuar para trabajar aquí", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |
 | `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
 
 ### Todos

@@ -6,7 +6,8 @@ import { devLogin } from './support/dev-login';
 /**
  * LTR-259: tablet UI walk (skill `mobile-ui-check`, tablet section). Off unless TABLET_WALK=1, which also swaps the
  * Playwright projects for iPad Pro 11" portrait (834×1194) and landscape (1194×834). For every Admin screen it
- * screenshots the page and measures four things:
+ * screenshots the page and measures four things (LTR-264: also the New purchase / New outside repair dialogs and the
+ * mechanic and PM screens, which use the iPad width since D54):
  * - overflow: `main` scrolls sideways.
  * - overlap: two visible controls (input, select, button, link) cover each other.
  * - gutter: a capped container or the content leaves more than 120 px empty on the right of the content column.
@@ -14,7 +15,9 @@ import { devLogin } from './support/dev-login';
  * Output: TABLET_WALK_OUT (default test-results/tablet-walk)/<project>/report.json.
  */
 const OUT = process.env.TABLET_WALK_OUT ?? 'test-results/tablet-walk';
-const PAGES: Array<[string, string]> = [
+type Walk = [name: string, path: string, options?: { user?: string; open?: RegExp }];
+const MANAGER = 'manager@lightning.local';
+const PAGES: Walk[] = [
   ['dashboard', '/admin'],
   ['yard', '/admin/yard-operations'],
   ['yard-dispatch', '/admin/yard-operations?tab=dispatch'],
@@ -40,12 +43,17 @@ const PAGES: Array<[string, string]> = [
   ['hours', '/admin/setup/workflow/hours'],
   ['inspection', '/admin/setup/inspection'],
   ['samsara', '/admin/setup/samsara'],
+  ['purchase-new', '/admin/parts/purchases', { open: /^(New purchase|Nueva compra)$/ }],
+  ['outside-new', '/admin/parts/outside-repairs', { open: /^(New outside repair|Nueva reparación externa)$/ }],
+  ['mechanic-home', '/mechanic/standard', { user: 'mechanic@lightning.local' }],
+  ['mechanic-wo', '/work-orders/00000000-0000-4000-8000-000000000106', { user: 'mechanic@lightning.local' }],
+  ['pm-home', '/mechanic/pm', { user: 'mpm@lightning.local' }],
 ];
 
 type Found = { overflow: string[]; overlap: string[]; gutter: string[]; copy: string[] };
 
-async function measure(page: Page): Promise<Found> {
-  return page.evaluate(() => {
+async function measure(page: Page, scope: string): Promise<Found> {
+  return page.evaluate((root) => {
     const label = (el: Element) => `${el.tagName.toLowerCase()} "${(el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || ''}"`;
     const visible = (el: Element) => {
       const r = el.getBoundingClientRect();
@@ -57,7 +65,7 @@ async function measure(page: Page): Promise<Found> {
     if (main && main.scrollWidth > main.clientWidth + 1) overflow.push(`main scrollWidth ${main.scrollWidth} > ${main.clientWidth}`);
 
     // Overlap: controls whose boxes intersect, neither inside the other, and not stacked in a dialog over the page.
-    const controls = [...document.querySelectorAll('main input:not([type=hidden]), main select, main textarea, main button, main a[href], main [role=tab], main [role=combobox]')]
+    const controls = [...document.querySelectorAll(['input:not([type=hidden])', 'select', 'textarea', 'button', 'a[href]', '[role=tab]', '[role=combobox]'].map((tag) => `${root} ${tag}`).join(', '))]
       .filter(visible).filter((el) => !(el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio') && getComputedStyle(el).opacity === '0'));
     const overlap: string[] = [];
     for (let i = 0; i < controls.length; i += 1) {
@@ -73,6 +81,8 @@ async function measure(page: Page): Promise<Found> {
 
     // Gutter: the content column is the first child of `main`. Report capped boxes and empty space on its right.
     const gutter: string[] = [];
+    // A phone-width shell on a tablet: `main` itself much narrower than the window (the Admin sidebar is 240 px).
+    if (main && window.innerWidth - main.getBoundingClientRect().width > 260) gutter.push(`main is ${Math.round(main.getBoundingClientRect().width)} of ${window.innerWidth} px wide`);
     const column = main?.firstElementChild as HTMLElement | null;
     if (column) {
       const style = getComputedStyle(column);
@@ -102,7 +112,7 @@ async function measure(page: Page): Promise<Found> {
       else if (banned.test(text)) copy.push(`word "${text.match(banned)?.[0]}": ${text.slice(0, 90)}`);
     }
     return { overflow, overlap: [...new Set(overlap)], gutter: [...new Set(gutter)], copy: [...new Set(copy)] };
-  });
+  }, scope);
 }
 
 test('tablet walk', async ({ page }, info) => {
@@ -110,13 +120,31 @@ test('tablet walk', async ({ page }, info) => {
   test.setTimeout(900_000);
   const dir = `${OUT}/${info.project.name}`;
   mkdirSync(dir, { recursive: true });
-  await devLogin(page, 'manager@lightning.local');
   const only = process.env.TABLET_WALK_ONLY?.split(',');
   const report: Record<string, unknown> = {};
-  for (const [name, path] of PAGES) {
+  let signedIn = '';
+  for (const [name, path, options] of PAGES) {
     if (only && !only.includes(name)) continue;
+    const user = options?.user ?? MANAGER;
+    if (user !== signedIn) {
+      // The session also lives in the browser storage: clear it, or /login sends the old user back in.
+      await page.context().clearCookies();
+      await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ } });
+      await devLogin(page, user);
+      signedIn = user;
+    }
     await page.goto(path);
     await page.waitForTimeout(1500);
+    if (options?.open) {
+      await page.getByRole('button', { name: options.open }).first().click();
+      await page.waitForTimeout(900);
+      await page.screenshot({ path: `${dir}/${name}-1.png` });
+      const inDialog = await measure(page, '[role=dialog]');
+      report[name] = { path, ...inDialog, error: (await page.getByText('Something went wrong').count()) > 0 };
+      writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
+      await page.keyboard.press('Escape');
+      continue;
+    }
     const found: Found = { overflow: [], overlap: [], gutter: [], copy: [] };
     const view = await page.evaluate(() => { const m = document.querySelector('main'); return { scroll: m?.scrollHeight ?? 0, view: m?.clientHeight ?? 1 }; });
     const shots = Math.min(5, Math.max(1, Math.ceil(view.scroll / Math.max(1, view.view))));
@@ -124,7 +152,7 @@ test('tablet walk', async ({ page }, info) => {
       await page.evaluate(([i, h]) => { const m = document.querySelector('main'); if (m) m.scrollTop = Number(i) * (Number(h) - 80); }, [index, view.view] as const);
       await page.waitForTimeout(250);
       await page.screenshot({ path: `${dir}/${name}-${index + 1}.png` });
-      const pass = await measure(page);
+      const pass = await measure(page, 'main');
       (Object.keys(found) as Array<keyof Found>).forEach((key) => { found[key] = [...new Set([...found[key], ...pass[key]])]; });
     }
     // The Filters sheet (below the inline breakpoint) is where most controls live on a tablet: capture it too.
@@ -138,6 +166,7 @@ test('tablet walk', async ({ page }, info) => {
     }
     const errors = await page.getByText('Something went wrong').count();
     report[name] = { path, ...found, error: errors > 0 };
+    writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
   }
   writeFileSync(`${dir}/report.json`, JSON.stringify(report, null, 2));
   expect(Object.keys(report).length).toBeGreaterThan(0);

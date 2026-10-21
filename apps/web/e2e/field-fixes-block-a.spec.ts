@@ -66,10 +66,10 @@ test.describe('Block A · General mechanic', () => {
   test('MG3, MG4, MG2: a stopped clock says so, the card offers Continue, and Start says which Truck the clock left', async ({ page }) => {
     await mockMechanicApi(page, summary({ myClockStopped: { reason: 'switched_truck', elsewhereWorkOrder: null } }));
     await loginMechanic(page);
-    await expect(page.getByTestId('clock-stopped-tap-continue')).toHaveText('Your clock is stopped · tap Continue');
+    await expect(page.getByTestId('clock-stopped-tap-continue')).toHaveText('Not active here · tap Continue');
     await expect(page.getByRole('link', { name: /View work/i })).toHaveCount(0);
     await page.getByRole('button', { name: 'Continue truck 922, Work Order WO-900' }).click();
-    await expect(page.getByRole('status').filter({ hasText: 'Work started. Your clock moved from Truck 944 to Truck 922.' }).first()).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Work started. You moved from Truck 944 to Truck 922.' }).first()).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/work-orders/${woId}$`));
   });
 

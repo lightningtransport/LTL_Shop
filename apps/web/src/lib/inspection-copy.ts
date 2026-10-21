@@ -133,6 +133,8 @@ export type InspectionCopy = {
   newJob: string;
   assignLater: string;
   managerAssigns: string;
+  alignmentQueue: string;
+  goesToAlignment: (name: string | null) => string;
   unassigned: string;
   notesOnSteps: string;
   noNewJob: string;
@@ -319,6 +321,8 @@ const en: InspectionCopy = {
   newJob: 'New Job',
   assignLater: 'Assign later',
   managerAssigns: 'Manager assigns',
+  alignmentQueue: 'Alignment queue',
+  goesToAlignment: (name) => (name ? `Goes to ${name} · Alignment` : 'Goes to the Alignment queue'),
   unassigned: 'Unassigned',
   notesOnSteps: 'Notes on steps already on the Work Order',
   noNewJob: 'no new Job',
@@ -505,6 +509,8 @@ const es: InspectionCopy = {
   newJob: 'Job nuevo',
   assignLater: 'Asignar después',
   managerAssigns: 'Lo asigna el Manager',
+  alignmentQueue: 'Cola de Alignment',
+  goesToAlignment: (name) => (name ? `Va a ${name} · Alignment` : 'Va a la cola de Alignment'),
   unassigned: 'Sin asignar',
   notesOnSteps: 'Notas a pasos que ya están en la Work Order',
   noNewJob: 'sin Job nuevo',
