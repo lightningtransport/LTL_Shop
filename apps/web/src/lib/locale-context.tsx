@@ -407,6 +407,9 @@ type Copy = {
   forbiddenTitle: string;
   forbiddenBody: string;
   forbiddenBack: string;
+  /** LTR-293 §11: an address that does not exist. */
+  notFoundTitle: string;
+  notFoundBody: string;
   /** LTR-181: login and password recovery. */
   signInFailed: string;
   accountNotConfigured: string;
@@ -926,6 +929,8 @@ const copy: Record<ShopLocale, Copy> = {
     forbiddenBody: 'Your account does not have permission to open the administrative workspace.',
     // "/" sends each person to their own home (mechanic, PM or Safety's /qc), so the link does not name one.
     forbiddenBack: 'Return to your Home',
+    notFoundTitle: 'This page does not exist',
+    notFoundBody: 'The link may be old or mistyped. Your work is where you left it.',
     signInFailed: 'Sign in failed.',
     accountNotConfigured: 'Your account is not configured for the Shop application.',
     resetEmailFailed: 'Unable to send a reset email.',
@@ -1435,6 +1440,8 @@ const copy: Record<ShopLocale, Copy> = {
     forbiddenTitle: 'Acceso a Shop Admin denegado',
     forbiddenBody: 'Tu cuenta no tiene permiso para abrir el espacio administrativo.',
     forbiddenBack: 'Volver a tu inicio',
+    notFoundTitle: 'Esta página no existe',
+    notFoundBody: 'El enlace puede ser viejo o tener un error. Tu trabajo sigue donde lo dejaste.',
     signInFailed: 'No se pudo iniciar sesión.',
     accountNotConfigured: 'Tu cuenta no está configurada para la aplicación del Shop.',
     resetEmailFailed: 'No se pudo enviar el correo de restablecimiento.',

@@ -17,12 +17,15 @@ import { useAuth } from '@/lib/auth-context';
 import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 import { cn } from '@/lib/utils';
 import { formatShortDateTime } from '@/lib/work-order-view';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /**
  * LTR-157 / D15, D16: Admin → Setup → Shop workflow. LTR-197 / D28: each mandatory step has a team — one person
  * gets the new Jobs, two or more share a queue. D-SET5: Shop hours is its own tab (`/admin/setup/workflow/hours`).
  */
 export function AdminShopWorkflow({ messages, locale, tab = 'steps' }: { locale: AdminLocale; messages: AdminMessages; tab?: 'steps' | 'hours' }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.shopWorkflow);
   const { user } = useAuth();
   const canWrite = Boolean(user && (user.capabilities.includes(AppCapability.WORK_ORDERS_MANAGE) || user.role === UserRole.ADMIN));
   return (

@@ -335,7 +335,7 @@ function CorrectTimeDialog({
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <DialogActions>
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>{messages.dialogBack}</Button>
-          <Button type="submit" disabled={pending}>{pending ? messages.saving : messages.timeCorrectionConfirm}</Button>
+          <Button loading={pending} type="submit">{messages.timeCorrectionConfirm}</Button>
         </DialogActions>
       </form>
     </Modal>

@@ -11,6 +11,9 @@ import { Badge, Button, Card, EmptyState, LoadFailure, PageSkeleton, PageHeader 
 import { useShopLocale } from '@/lib/locale-context';
 import { intlLocale } from '@/lib/shop-locale';
 import { apiErrorMessage } from '@/lib/api-error-message';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+
+const HISTORY_FILTERS = { category: '' };
 
 export default function RepairHistoryPage() {
   const { token, sessionLoading } = useAuth();
@@ -18,7 +21,10 @@ export default function RepairHistoryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ id: string }>();
-  const [categoryId, setCategoryId] = useState<string>('all');
+  // LTR-293 §9: the category is in the URL (?category=), so Back from a Work Order keeps it.
+  const { filters, set } = useUrlFilters(HISTORY_FILTERS);
+  const categoryId = filters.category || 'all';
+  const setCategoryId = (next: string) => set('category', next === 'all' ? '' : next);
   const { data: categoryData } = useCategories(!!token);
   const { data, error, mutate } = useRepairHistory(
     params.id,

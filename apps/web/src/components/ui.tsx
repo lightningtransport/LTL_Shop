@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Dialog as DialogPrimitive, Slot } from 'radix-ui';
-import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, Moon, SlidersHorizontal, Sun, Wrench, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronLeft, Gauge, LoaderCircle, Moon, SlidersHorizontal, Sun, Wrench, X } from 'lucide-react';
 import { AppCapability, MechanicMode } from '@ltl-shop/shared';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/lib/auth-context';
@@ -54,19 +54,30 @@ export const buttonVariants = cva(
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    /**
+     * LTR-293 §8: while the action runs the button keeps its label, shows a spinner where its icon goes, is disabled
+     * and says it is busy. Use this instead of swapping the label for "Saving…". Not for `asChild` links.
+     */
+    loading?: boolean;
   };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, type = 'button', asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot.Root : 'button';
-
+  ({ className, variant, size, type = 'button', asChild = false, loading = false, disabled, children, ...props }, ref) => {
+    if (asChild) {
+      return <Slot.Root ref={ref} className={cn(buttonVariants({ variant, size }), className)} {...(disabled === undefined ? {} : { disabled })} {...props}>{children}</Slot.Root>;
+    }
     return (
-      <Comp
+      <button
         ref={ref}
-        {...(!asChild ? { type } : {})}
-        className={cn(buttonVariants({ variant, size }), className)}
+        type={type}
+        className={cn(buttonVariants({ variant, size }), loading && '[&>svg:not([data-spinner])]:hidden', className)}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         {...props}
-      />
+      >
+        {loading ? <LoaderCircle data-spinner aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}
+        {children}
+      </button>
     );
   },
 );
@@ -545,12 +556,12 @@ function ProfileDialog() {
 
           {/* Signing out is rare; it sits last and does not compete with the settings above. */}
           <Button
+            loading={isLoggingOut}
             className="mt-6 w-full text-destructive-text"
             variant="outline"
             onClick={() => void handleLogout()}
-            disabled={isLoggingOut}
           >
-            {isLoggingOut ? messages.signingOut : messages.signOut}
+            {messages.signOut}
           </Button>
         </DialogContent>
       </Dialog>
@@ -652,8 +663,8 @@ function UpdatePasswordSheet({
           <p className="text-sm text-muted-foreground">{copy.hint}</p>
           {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
 
-          <Button className="w-full" type="submit" disabled={isUpdatingPassword}>
-            {isUpdatingPassword ? copy.submitting : copy.submit}
+          <Button className="w-full" type="submit" loading={isUpdatingPassword}>
+            {copy.submit}
           </Button>
           <Button
             className="w-full"
@@ -983,6 +994,7 @@ export function DataTable<T>({
   caption,
   getRowLabel,
   className,
+  wholeCardOpens = false,
 }: {
   items: T[];
   columns: DataTableColumn<T>[];
@@ -992,6 +1004,11 @@ export function DataTable<T>({
   /** Accessible name of each row (defaults to the primary column's text). */
   getRowLabel?: (item: T) => string;
   className?: string;
+  /**
+   * LTR-293 §7: on a phone each row is a card; with this, a tap anywhere on the card follows the link (or button) in
+   * the primary cell, the way the card looks. Other links and buttons in the card stay on top and keep their own tap.
+   */
+  wholeCardOpens?: boolean;
 }) {
   return (
     <div className={cn('md:overflow-x-auto md:rounded-xl md:border', className)}>
@@ -1010,7 +1027,7 @@ export function DataTable<T>({
               key={getKey(item)}
               role="row"
               aria-label={getRowLabel?.(item)}
-              className="md:border-t max-md:block max-md:rounded-xl max-md:border max-md:bg-card max-md:p-4 max-md:shadow-soft"
+              className={cn('md:border-t max-md:block max-md:rounded-xl max-md:border max-md:bg-card max-md:p-4 max-md:shadow-soft', wholeCardOpens && 'max-md:relative')}
             >
               {columns.map((column) => (
                 <td
@@ -1025,6 +1042,9 @@ export function DataTable<T>({
                       ? 'max-md:pb-2 max-md:pt-0 max-md:text-base'
                       : 'max-md:border-t max-md:text-right max-md:before:shrink-0 max-md:before:text-left max-md:before:text-muted-foreground max-md:before:content-[attr(data-label)] max-md:[&>*]:min-w-0',
                     column.hideOnMobile && 'max-md:hidden',
+                    wholeCardOpens && (column.primary
+                      ? "max-md:[&_:is(a,button)]:after:absolute max-md:[&_:is(a,button)]:after:inset-0 max-md:[&_:is(a,button)]:after:rounded-xl max-md:[&_:is(a,button)]:after:content-['']"
+                      : 'max-md:[&_:is(a,button,input,select,label)]:relative max-md:[&_:is(a,button,input,select,label)]:z-10'),
                     column.emptyOnMobile?.(item) && 'max-md:hidden',
                     column.className,
                   )}
@@ -1126,7 +1146,8 @@ export function CompactEmpty({ children, className }: { children: React.ReactNod
  * Full-page wait. `header={false}` when the real PageHeader is already on screen above it, so the title
  * does not appear twice and nothing shifts when the data arrives (LTR-167).
  */
-export function PageSkeleton({ label = 'Loading page', header = true }: { label?: string; header?: boolean }) {
+/** `table` (LTR-293 §11): a list that is a table from `md` waits as a table, so the page does not jump when it loads. */
+export function PageSkeleton({ label = 'Loading page', header = true, table = false }: { label?: string; header?: boolean; table?: boolean }) {
   return (
     <div
       className="animate-pulse space-y-6"
@@ -1140,7 +1161,12 @@ export function PageSkeleton({ label = 'Loading page', header = true }: { label?
           <div className="h-4 w-full rounded bg-shop-panel" />
         </div>
       ) : null}
-      <CardListSkeleton />
+      {table ? (
+        <>
+          <div className="md:hidden"><CardListSkeleton /></div>
+          <TableSkeleton />
+        </>
+      ) : <CardListSkeleton />}
       <span className="sr-only">{label}</span>
     </div>
   );
@@ -1165,6 +1191,22 @@ export function LoadFailure({
       <Button type="button" variant="secondary" className="mt-3 w-full sm:w-auto" onClick={onRetry}>
         {retryLabel}
       </Button>
+    </div>
+  );
+}
+
+/** The shape of a DataTable from `md`: a header row and a few rows, in the same bordered box. */
+function TableSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div className="hidden overflow-hidden rounded-xl border md:block" aria-hidden="true">
+      <div className="flex gap-6 bg-muted/50 p-3">
+        {[24, 16, 20, 12].map((width, index) => <div key={index} className="h-4 rounded bg-shop-border/70" style={{ width: `${width}%` }} />)}
+      </div>
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex gap-6 border-t p-3">
+          {[24, 16, 20, 12].map((width, cell) => <div key={cell} className="h-5 rounded bg-shop-border/60" style={{ width: `${width}%` }} />)}
+        </div>
+      ))}
     </div>
   );
 }

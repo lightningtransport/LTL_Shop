@@ -333,12 +333,13 @@ export function AdminWorkOrderDetail({
           {canOfficialPause ? (
             isPaused ? (
               <Button
+                loading={pendingAction === 'resume-wo'}
                 type="button"
                 className="flex-1 sm:flex-none"
                 disabled={Boolean(pendingAction)}
                 onClick={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
               >
-                <Play aria-hidden="true" />{pendingAction === 'resume-wo' ? messages.saving : messages.resumeShort}
+                <Play aria-hidden="true" />{messages.resumeShort}
               </Button>
             ) : (
               <Button type="button" variant="outline" className="flex-1 sm:flex-none" disabled={!pauseEnabled || Boolean(pendingAction)} onClick={() => setDialog('pause')}>
@@ -550,8 +551,8 @@ export function AdminWorkOrderDetail({
                     }}
                     className="max-h-40 min-h-9 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground"
                   />
-                  <Button type="submit" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
-                    {pendingAction === 'add-note' ? messages.saving : messages.postNote}
+                  <Button loading={pendingAction === 'add-note'} type="submit" disabled={Boolean(pendingAction) || !draftNotes.trim()}>
+                    {messages.postNote}
                   </Button>
                 </form>
                 <p className="text-xs text-muted-foreground">{messages.notesHelp}</p>
@@ -626,12 +627,13 @@ export function AdminWorkOrderDetail({
               {draftPriority !== data.priority ? (
                 <div className="flex gap-2">
                   <Button
+                    loading={pendingAction === 'fields'}
                     type="button"
                     className="flex-1"
                     disabled={Boolean(pendingAction)}
                     onClick={() => void runMutation('fields', messages.fieldUpdatesSuccess, () => patchAdminWorkOrder(data.id, { expectedVersion: data.version, priority: draftPriority }), (failure) => fieldUpdateError(failure, messages))}
                   >
-                    {pendingAction === 'fields' ? messages.saving : messages.updatePriority}
+                    {messages.updatePriority}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setDraftPriority(data.priority)}>{messages.priorityReset}</Button>
                 </div>
@@ -740,9 +742,9 @@ export function AdminWorkOrderDetail({
             <DialogActions>
               <Button type="button" variant="outline" disabled={Boolean(pendingAction)} onClick={closeJobDialog}>{messages.dialogBack}</Button>
               <Button
+                loading={Boolean(pendingAction)}
                 type="button"
                 variant={isCancel ? 'destructive' : 'default'}
-                disabled={Boolean(pendingAction)}
                 onClick={() => {
                   const reason = jobReason.trim();
                   if (!reason) {
@@ -760,7 +762,7 @@ export function AdminWorkOrderDetail({
                   }, (failure) => jobChangeError(failure, messages));
                 }}
               >
-                {pendingAction ? messages.saving : isCancel ? messages.cancelJobConfirm : messages.reopenJobConfirm}
+                {isCancel ? messages.cancelJobConfirm : messages.reopenJobConfirm}
               </Button>
             </DialogActions>
           </div>
