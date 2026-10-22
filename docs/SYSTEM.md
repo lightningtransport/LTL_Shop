@@ -389,10 +389,10 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   filtra por **Type** (PM · Repair · Tires; `?kind=`). **El PM solo ve
   categorías `pm`** y rechaza una parte de otra. En New purchase, **la parte se
   escribe** (LTR-298): el campo filtra Parts por nombre o número mientras se
-  escribe; lo que no está se usa tal cual solo en esa factura ("Other") o se
-  agrega a Parts ahí mismo (**Add to catalog**: abre Agregar parte con ese
-  texto y una categoría de repuestos, y al guardar la línea usa la parte
-  nueva). Salir del campo con un texto que no es una parte lo deja como
+  escribe. **Arriba de la lista, siempre a la vista**, van las salidas:
+  **Add a new part to Parts…** (con el texto escrito, si lo hay: abre Agregar
+  parte con ese texto y una categoría de repuestos, y al guardar la línea usa
+  la parte nueva) y usar el texto tal cual solo en esa factura ("Other"). Salir del campo con un texto que no es una parte lo deja como
   "Other"; no se pierde nada escrito.
 - **Las partes del PM son las de tipo PM del mismo catálogo** (no hay un
   catálogo aparte). Admin → Parts & costs → **Parts**

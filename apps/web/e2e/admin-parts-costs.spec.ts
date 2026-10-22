@@ -118,7 +118,8 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   const firstPart = form.getByRole('combobox', { name: 'Part' }).first();
   await firstPart.fill('lff88');
   const parts = form.getByRole('listbox');
-  await expect(parts.getByRole('option')).toHaveCount(3); // the part, "Use …", "Add … to Parts…"
+  await expect(parts.getByRole('option')).toHaveCount(3); // "Add … to Parts…", "Use …", the part
+  await expect(parts.getByRole('option').first()).toHaveText('Add “lff88” to Parts…');
   await parts.getByRole('option', { name: 'Fuel Filter 4 Micron · LFF8897' }).click();
   await expect(firstPart).toHaveValue('Fuel Filter 4 Micron · LFF8897');
   await expect(form.getByLabel('Unit cost').first()).toHaveValue('24.10');
