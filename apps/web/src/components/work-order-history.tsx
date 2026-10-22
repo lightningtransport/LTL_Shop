@@ -229,7 +229,11 @@ function ActivityItem({ entry, locale, messages }: { entry: Activity; locale: Ad
   // LTR-218 (UX-1-005): Safety taking the Quality Check is logged as "mechanic added"; it reads as what Safety did.
   const qcTaken = valueString(entry.relevantValue, 'action') === 'quality_check_taken';
   const template = qcTaken ? messages.activityQcTaken : useKind ? String(messages[kind.key]) : messages.activityGeneric;
-  const detail = valueString(entry.newValue, 'notes') ?? valueString(entry.previousValue, 'notes') ?? (!useKind ? job : null);
+  const notes = valueString(entry.newValue, 'notes');
+  // D55 R2: a Work Order closed without its inspection says so, with the Manager's reason.
+  const skipped = (entry.newValue as { inspectionSkipped?: unknown } | null)?.inspectionSkipped === true;
+  const detail = (skipped && notes ? fillPlaceholders(messages.activityClosedWithoutInspection, { reason: notes }) : notes)
+    ?? valueString(entry.previousValue, 'notes') ?? (!useKind ? job : null);
   return (
     <li className="relative">
       <span

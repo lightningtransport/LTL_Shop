@@ -221,8 +221,8 @@ export async function adminCompleteJob(workOrderId: string, jobId: string, actor
   return actor.post(`/admin/jobs/${jobId}/complete`, { ...(await meta(workOrderId)), notes: 'Hecho.' });
 }
 
-export async function closeWo(workOrderId: string) {
-  return manager.post(`/admin/work-orders/${workOrderId}/complete`, await meta(workOrderId));
+export async function closeWo(workOrderId: string, extra: { inspectionSkipReason?: string } = {}) {
+  return manager.post(`/admin/work-orders/${workOrderId}/complete`, { ...(await meta(workOrderId)), ...extra });
 }
 
 export async function cancelWo(workOrderId: string, reason = 'Se canceló la visita.') {

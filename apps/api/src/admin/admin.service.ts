@@ -71,6 +71,7 @@ import { toSharedCapability } from '../auth/capabilities';
 import { toTruckDto } from '../trucks/trucks.service';
 import { truckAttention } from '../integrations/samsara/samsara-faults';
 import { computeTotals, canFinishWorkOrder, sessionDurationMs } from '../work-orders/work-order.timing';
+import { anyWorkDone, inspectionRecorded, isQualityCheckJob, workPendingBesides } from '../work-orders/work-order-close-rules';
 import { resolveActiveBlockers } from '../work-orders/blockers';
 import { closeActiveAssessments, reopenAssessmentOfWorkOrder } from './readiness-visit';
 import { returnedToServiceAfter, yardReadyToGoSince } from './yard-ready-window';
@@ -1075,6 +1076,7 @@ export class AdminService {
     const payloadHash = idempotencyFingerprint({
       workOrderId,
       expectedVersion: input.expectedVersion,
+      inspectionSkipReason: input.inspectionSkipReason ?? null,
     });
     const existing = await this.findWorkOrderMutation(input.idempotencyKey, workOrderId, operation, payloadHash, user.id);
     if (existing) return existing;
@@ -1103,11 +1105,27 @@ export class AdminService {
           ? await tx.pmService.findUnique({ where: { workOrderId }, include: { parts: true } })
           : null;
         let observedMileage: number | null = null;
+        let inspectionSkipped = false;
         if (isPm) {
           observedMileage = assertPmServiceReadyToFinish(pmService, wo.truck.mileage);
         } else {
           const gate = canFinishWorkOrder(wo.jobs);
           if (!gate.ok) throw new BadRequestException(gate.message);
+          // D55 R15: a visit where nothing but the Quality Check was done is cancelled, not closed.
+          if (!anyWorkDone(wo.jobs)) {
+            throw new BadRequestException({
+              code: 'NOTHING_DONE',
+              message: 'No work was done on this Work Order. Cancel it instead of closing it.',
+            });
+          }
+          // D55 R2: the visit's inspection comes first, unless the Manager says why it was skipped.
+          inspectionSkipped = !inspectionRecorded(wo.jobs, activeInspectionOutcome(wo.truck));
+          if (inspectionSkipped && !input.inspectionSkipReason) {
+            throw new BadRequestException({
+              code: 'INSPECTION_NOT_DONE',
+              message: 'This truck was not inspected on this visit. Inspect it, or say why it closes without the inspection.',
+            });
+          }
         }
         const now = new Date();
         // LTR-154 / D18: closing the Work Order stops every mechanic's labor.
@@ -1147,6 +1165,7 @@ export class AdminService {
             status: 'completed',
             totalActiveLaborMs: totals.totalActiveLaborMs,
             totalWaitingMs: totals.totalWaitingMs,
+            ...(inspectionSkipped ? { inspectionSkipped: true, notes: input.inspectionSkipReason } : {}),
           },
         });
         const persisted = await this.persistWorkOrderMutation(tx, {
@@ -1673,6 +1692,10 @@ export class AdminService {
         if (job.status !== JobStatus.to_do) {
           throw new BadRequestException('Job is not in To Do status');
         }
+        // D55 R9: the Quality Check is never cancelled; the Manager completes it with a note instead.
+        if (isQualityCheckJob(job)) {
+          throw new BadRequestException({ code: 'QC_NOT_CANCELLABLE', message: 'The Quality Check cannot be cancelled. Complete it once the work is done.' });
+        }
         const incremented = await tx.workOrder.updateMany({
           where: { id: workOrderId, version: input.expectedVersion },
           data: { version: { increment: 1 } },
@@ -1772,6 +1795,10 @@ export class AdminService {
         }
         if (overSafetyReturn && !notes) {
           throw new BadRequestException({ code: 'QC_OVERRIDE_NOTE_REQUIRED', message: 'Say why Quality Check is completed over the Safety return.' });
+        }
+        // D55 R11: the Manager's Quality Check waits for the work, like Safety's (QC_NOT_READY).
+        if (isQualityCheckJob(job) && workPendingBesides(wo.jobs, job.id)) {
+          throw new BadRequestException({ code: 'QC_NOT_READY', message: 'This truck still has work pending before Quality Check.' });
         }
         await this.completeJobInTx(tx, user, wo, job, { notes, expectedVersion: input.expectedVersion, overSafetyReturn });
         return this.persistWorkOrderMutation(tx, {

@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-22 (D55, LTR-294: reglas que una Work Order no se salta al cerrar, §5); antes 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -870,6 +870,25 @@ Inspection → Shop Work → PM → Alignment → Detailing → Quality Check �
 - **Ready to Go** = todos los pasos resueltos **y** el WO `completed` (D1).
   Si el WO sigue abierto, la fase es **Ready to close**.
 - Código: `apps/api/src/admin/yard-work-plan-derivation.ts`.
+
+**Lo que una Work Order no se salta (D55, LTR-294).** Valen en la API, venga
+de donde venga la acción (`apps/api/src/work-orders/work-order-close-rules.ts`):
+
+- **Inspección (R2):** una Work Order que no es de PM no se cierra si la
+  visita no tiene la inspección guardada (la hoja de D41, los botones de antes
+  o un Job de inspección completado). Responde `INSPECTION_NOT_DONE`; el
+  diálogo de cierre pide **por qué** y cierra con `inspectionSkipReason`. El
+  evento de cierre guarda `inspectionSkipped` y el motivo, y el historial dice
+  "Without inspection: …". En el Dashboard, el cierre de un toque abre ese
+  diálogo.
+- **Quality Check (R9, R11):** el Job de Quality Check no se cancela
+  (`QC_NOT_CANCELLABLE`; no tiene "Cancel" en su menú). "Mark QC complete" del
+  Manager pide lo mismo que Safety: los demás Jobs hechos o cancelados
+  (`QC_NOT_READY`).
+- **Trabajo hecho (R15):** cerrar pide al menos un Job completado fuera del
+  Quality Check. Si todo se canceló responde `NOTHING_DONE` y lo que toca es
+  **Cancel Work Order**.
+- La Work Order de PM no cambia: la cierra el PM con millaje y partes (D10).
 
 **Siguiente paso** (una sola regla para Dashboard, Truck, Yard, lista y
 detalle de WO; `packages/shared/src/truck-next-step.ts`). Gana la primera que

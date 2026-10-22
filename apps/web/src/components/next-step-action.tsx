@@ -10,7 +10,7 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import type { AdminMessages } from '@/lib/admin-messages';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { truckNextStepActionLabel } from '@/lib/truck-next-step';
-import { workOrderActionErrorMessage } from '@/lib/work-order-action-error';
+import { apiErrorCode, workOrderActionErrorMessage } from '@/lib/work-order-action-error';
 import { useActionToast } from './action-toast';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { MechanicPicker, type PickerMechanic } from './mechanic-picker';
@@ -65,7 +65,7 @@ export function NextStepAction({
 }) {
   const { showToast } = useActionToast();
   const [pending, setPending] = useState(false);
-  const [dialog, setDialog] = useState<'close' | 'return' | null>(null);
+  const [dialog, setDialog] = useState<'close' | 'close-reason' | 'return' | null>(null);
   const label = truckNextStepActionLabel(step, messages);
   if (!step || !canManage) return null;
   const workOrderId = step.workOrderId;
@@ -84,6 +84,11 @@ export function NextStepAction({
       showToast('success', success);
       await onChanged();
     } catch (failure) {
+      // D55 R2: the one-tap close of a visit that was not inspected asks why, in the close dialog.
+      if (apiErrorCode(failure) === 'INSPECTION_NOT_DONE') {
+        setDialog('close-reason');
+        return;
+      }
       showToast('error', workOrderActionErrorMessage(failure, messages, fallback));
     } finally {
       setPending(false);
@@ -123,7 +128,24 @@ export function NextStepAction({
       // P5 (owner, 2026-10-06): on the Dashboard, closing is one tap, like the mockup (it can be reopened from the
       // Work Order). The Work Order and the Truck still confirm (D27).
       if (place === 'dashboard' && workOrderId) {
-        return button(label ?? '', () => void run(messages.completeWorkOrderSuccess, messages.completeWorkOrderGenericError, async () => completeAdminWorkOrder(workOrderId, await version())));
+        return (
+          <>
+            {button(label ?? '', () => void run(messages.completeWorkOrderSuccess, messages.completeWorkOrderGenericError, async () => completeAdminWorkOrder(workOrderId, await version())))}
+            {dialog === 'close-reason' ? (
+              <CloseWorkOrderDialog
+                open
+                needsInspectionReason
+                workOrderId={workOrderId}
+                workOrderDisplayId={workOrderDisplayId}
+                truckNumber={truck.truckNumber}
+                expectedVersion={expectedVersion}
+                messages={messages}
+                onClose={() => setDialog(null)}
+                onDone={onChanged}
+              />
+            ) : null}
+          </>
+        );
       }
       return workOrderId ? (
         <>

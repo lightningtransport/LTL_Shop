@@ -32,6 +32,10 @@ están en [`SYSTEM.md`](../../SYSTEM.md) y las pruebas en `USER_FLOWS.md`.
   nada bajo 12px y "en este dispositivo" (LTR-274, LTR-275); el rediseño de
   las apps de mecánico está cerrado (LTR-194).
 - Etapa 7: Safety a lo ancho en el iPad (LTR-272).
+- Etapas 4, 7 y 8 (D55, LTR-294): sin inspección no se cierra salvo con
+  motivo; el Quality Check no se cancela ni se marca con trabajo pendiente; si
+  no se hizo ningún Job, se cancela la Work Order en vez de cerrarla. Las
+  reglas completas están en [`reglas-del-recorrido`](../reglas-del-recorrido/README.md).
 
 ## Huecos que siguen abiertos
 
