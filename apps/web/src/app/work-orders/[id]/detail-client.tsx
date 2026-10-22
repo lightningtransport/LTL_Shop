@@ -55,6 +55,7 @@ import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { optimisticCompleteJob } from '@/lib/optimistic-complete-job';
+import { useDocumentTitle } from '@/components/admin-breadcrumb';
 
 
 export default function WorkOrderDetailPage() {
@@ -71,6 +72,8 @@ export default function WorkOrderDetailPage() {
     error: loadError,
     mutate: mutateWorkOrder,
   } = useWorkOrder(id, !!token);
+  // LTR-293 §10: the tab says which truck ("Truck 609 · WO-017"), so several open ones differ.
+  useDocumentTitle(wo ? `${messages.truckTitle(wo.truckNumber)} · ${wo.displayId}` : null);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -303,9 +306,9 @@ export default function WorkOrderDetailPage() {
               </p>
             ) : null}
             {needsStart ? (
-              <Button className="mt-3 w-full" disabled={busy} onClick={() => void startOrContinue()}>
+              <Button loading={busy} className="mt-3 w-full" onClick={() => void startOrContinue()}>
                 <Play aria-hidden="true" />
-                {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
+                {startedHereBefore ? messages.continueWork : messages.startWork}
               </Button>
             ) : null}
             {wo.status === 'waiting_paused' ? (
@@ -582,7 +585,7 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
-            disabled={busy}
+            loading={busy}
             onClick={() => {
               if (!finishJob || busy) return;
               const jobId = finishJob.id;
@@ -615,7 +618,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            {busy ? messages.completingJob : messages.jobFinishConfirm}
+            {messages.jobFinishConfirm}
           </Button>
         </DialogActions>
       </Modal>
@@ -692,6 +695,7 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
+            loading={busy}
             disabled={!pauseReason || !blockerJob || busy}
             onClick={() => {
               if (busy || !blockerJob) return;
@@ -720,7 +724,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            {busy ? messages.reportingBlocker : messages.reportBlocker}
+            {messages.reportBlocker}
           </Button>
         </DialogActions>
       </Modal>

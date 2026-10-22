@@ -219,7 +219,7 @@ export function TruckFormDialog({
         ) : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={discard} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy}>{truck ? messages.truckSave : messages.truckAdd}</Button>
+          <Button type="submit" loading={busy}>{truck ? messages.truckSave : messages.truckAdd}</Button>
         </DialogActions>
       </form>
     </Modal>

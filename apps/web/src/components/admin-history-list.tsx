@@ -9,8 +9,11 @@ import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
 import { adminListFromPath, adminWorkOrderHref } from '@/lib/admin-truck-origin';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.historyTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -59,10 +62,11 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
         }}
       />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.historyTitle} header={false} /> : null}
-      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p></EmptyState> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.historyTitle} header={false} table /> : null}
+      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/history')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.historyTitle}
           getKey={(item) => item.id}

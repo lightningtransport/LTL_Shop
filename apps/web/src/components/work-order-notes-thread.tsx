@@ -119,6 +119,7 @@ export function WorkOrderNotesThread({
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">{messages.notesKeptHint}</p>
             <Button
+              loading={pending === WorkOrderNoteKind.NOTE}
               type="button"
               variant="outline"
               className="shrink-0"
@@ -126,7 +127,7 @@ export function WorkOrderNotesThread({
               onClick={() => void submit(WorkOrderNoteKind.NOTE)}
             >
               <Send aria-hidden="true" />
-              {pending === WorkOrderNoteKind.NOTE ? messages.saving : messages.addNote}
+              {messages.addNote}
             </Button>
           </div>
         </div>
@@ -150,9 +151,9 @@ export function WorkOrderNotesThread({
         {requestError ? <p className="mt-2 text-sm text-destructive-text" role="alert">{requestError}</p> : null}
         <DialogActions className="mt-4">
           <Button variant="outline" disabled={pending !== null} onClick={() => setRequestOpen(false)}>{messages.cancelAction}</Button>
-          <Button disabled={pending !== null} onClick={() => void submit(WorkOrderNoteKind.WORK_REQUEST)}>
+          <Button loading={pending === WorkOrderNoteKind.WORK_REQUEST} disabled={pending !== null} onClick={() => void submit(WorkOrderNoteKind.WORK_REQUEST)}>
             <Send aria-hidden="true" />
-            {pending === WorkOrderNoteKind.WORK_REQUEST ? messages.saving : messages.requestWorkSend}
+            {messages.requestWorkSend}
           </Button>
         </DialogActions>
       </Modal>
