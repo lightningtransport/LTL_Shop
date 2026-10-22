@@ -12,6 +12,7 @@ import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 import { cn } from '@/lib/utils';
 import { useActionToast } from './action-toast';
 import { useAdminBreadcrumb } from './admin-breadcrumb';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { ResponsiveMenu, type MenuItem } from './responsive-menu';
 import { Badge, Button, CountChip, DialogActions, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, SectionCard, Select } from './ui';
 
@@ -254,6 +255,10 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
   );
 }
 
+/**
+ * LTR-293 §3: this page gets the inspection copy, not the Admin catalog (server only, PF12), so the two words the
+ * "say what is missing" pattern needs are kept here, the same as `pcFieldRequired` / `pcMissingTitle`.
+ */
 function CheckDialog({
   copy,
   dialog,
@@ -276,24 +281,59 @@ function CheckDialog({
   const categories = useMemo(() => [...new Set(jobs.map((job) => job.categoryName))], [jobs]);
   const showLabel = dialog.kind !== 'job';
   const showTarget = dialog.kind !== 'rename';
-  const valid = (!showLabel || label.trim().length > 0) && (!showTarget || target !== '');
+  const labelMissing = showLabel && label.trim().length === 0;
+  const targetMissing = showTarget && target === '';
+  const valid = !labelMissing && !targetMissing;
+  // LTR-293 §3: the button stays on; a Save with something missing says what, under the field, and goes there.
+  const [showErrors, setShowErrors] = useState(false);
+  // The missing-field helpers read their two texts from the inspection copy.
+  const messages = copy;
+  const missing: MissingField[] = [
+    ...(labelMissing ? [{ label: copy.checkName, fieldId: 'check-label' }] : []),
+    ...(targetMissing ? [{ label: copy.defectCreates, fieldId: 'check-target' }] : []),
+  ];
   const title = dialog.kind === 'add' ? copy.addCheckTitle(sectionLabel) : dialog.kind === 'rename' ? copy.renameTitle : copy.changeJobTitle(row?.label ?? '');
   return (
     <Modal open title={title} description={dialog.kind === 'add' ? copy.addCheckSub(sectionLabel) : undefined} onClose={onClose} closeLabel={copy.close}>
       <form
         className="space-y-4"
-        onSubmit={(event) => { event.preventDefault(); if (valid) onDone({ label: label.trim(), target }); }}
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!valid) {
+            setShowErrors(true);
+            if (missing[0]) focusField(missing[0].fieldId);
+            return;
+          }
+          onDone({ label: label.trim(), target });
+        }}
       >
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         {showLabel ? (
           <div className="space-y-1.5">
             <Label htmlFor="check-label">{copy.checkName}</Label>
-            <Input id="check-label" value={label} maxLength={120} placeholder={copy.checkNamePlaceholder} onChange={(event) => setLabel(event.target.value)} />
+            <Input
+              id="check-label"
+              value={label}
+              maxLength={120}
+              placeholder={copy.checkNamePlaceholder}
+              aria-invalid={(showErrors && labelMissing) || undefined}
+              aria-describedby={showErrors && labelMissing ? 'check-label-error' : undefined}
+              onChange={(event) => setLabel(event.target.value)}
+            />
+            <RequiredNote show={showErrors && labelMissing} id="check-label-error" messages={messages} />
           </div>
         ) : null}
         {showTarget ? (
           <div className="space-y-1.5">
             <Label htmlFor="check-target">{copy.defectCreates}</Label>
-            <Select id="check-target" value={target} onChange={(event) => setTarget(event.target.value)}>
+            <Select
+              id="check-target"
+              value={target}
+              aria-invalid={(showErrors && targetMissing) || undefined}
+              aria-describedby={showErrors && targetMissing ? 'check-target-error' : undefined}
+              onChange={(event) => setTarget(event.target.value)}
+            >
               <option value="" disabled>—</option>
               <option value={DETAILING}>{copy.detailingOption}</option>
               {categories.map((category) => (
@@ -302,11 +342,12 @@ function CheckDialog({
                 </optgroup>
               ))}
             </Select>
+            <RequiredNote show={showErrors && targetMissing} id="check-target-error" messages={messages} />
           </div>
         ) : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose}>{copy.cancel}</Button>
-          <Button type="submit" disabled={!valid}>{dialog.kind === 'add' ? copy.addCheck : copy.done}</Button>
+          <Button type="submit">{dialog.kind === 'add' ? copy.addCheck : copy.done}</Button>
         </DialogActions>
       </form>
     </Modal>

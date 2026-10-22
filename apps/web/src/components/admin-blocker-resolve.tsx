@@ -7,6 +7,7 @@ import { formatAdminDate } from '@/lib/admin-format';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { useActionToast } from './action-toast';
+import { RequiredNote, focusField } from './parts-costs-form-ui';
 import { Button, Textarea } from './ui';
 
 /**
@@ -41,10 +42,20 @@ export function AdminBlockerResolve({
   // LTR-217: resolving a Safety return without new work tells Safety why (the API asks for it too).
   const safetyReturn = blocker.blockerReason === BlockerReason.QUALITY_CHECK_FAILED;
   const noteLabel = safetyReturn ? messages.resolveSafetyReturnNoteLabel : messages.resolveBlockerNoteLabel;
-  const canSubmit = !pending && (!safetyReturn || Boolean(note.trim()));
+  const noteMissing = safetyReturn && !note.trim();
+  // LTR-293 §3: the button is on while the Safety note is empty; pressing it says the note is required right under
+  // the box and goes there, instead of a grey button that never says why.
+  const [showErrors, setShowErrors] = useState(false);
+  const noteId = `blocker-note-${blocker.id}`;
+  const noteBad = showErrors && noteMissing;
 
   async function resolve() {
     if (pending) return;
+    if (noteMissing) {
+      setShowErrors(true);
+      focusField(noteId);
+      return;
+    }
     setPending(true);
     try {
       await resolveAdminBlocker(workOrderId, blocker.id, note.trim() || undefined);
@@ -98,7 +109,10 @@ export function AdminBlockerResolve({
       ) : canResolve && noteOnDemand ? (
         <form className="space-y-2 pt-1" onSubmit={(event) => { event.preventDefault(); void resolve(); }}>
           <Textarea
+            id={noteId}
             aria-label={noteLabel}
+            aria-invalid={noteBad || undefined}
+            aria-describedby={noteBad ? `${noteId}-error` : undefined}
             placeholder={noteLabel}
             value={note}
             rows={2}
@@ -107,23 +121,30 @@ export function AdminBlockerResolve({
             autoFocus
             onChange={(event) => setNote(event.target.value)}
           />
+          <RequiredNote show={noteBad} id={`${noteId}-error`} messages={messages} />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" disabled={!canSubmit}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
-            <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { setNoteOpen(false); setNote(''); }}>{messages.cancel}</Button>
+            <Button type="submit" size="sm" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { setNoteOpen(false); setNote(''); setShowErrors(false); }}>{messages.cancel}</Button>
           </div>
         </form>
       ) : canResolve ? (
         <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-end">
-          <Textarea
-            aria-label={noteLabel}
-            placeholder={noteLabel}
-            value={note}
-            rows={1}
-            maxLength={1000}
-            disabled={pending}
-            onChange={(event) => setNote(event.target.value)}
-          />
-          <Button type="button" size="sm" disabled={!canSubmit} onClick={() => void resolve()}>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Textarea
+              id={noteId}
+              aria-label={noteLabel}
+              aria-invalid={noteBad || undefined}
+              aria-describedby={noteBad ? `${noteId}-error` : undefined}
+              placeholder={noteLabel}
+              value={note}
+              rows={1}
+              maxLength={1000}
+              disabled={pending}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            <RequiredNote show={noteBad} id={`${noteId}-error`} messages={messages} />
+          </div>
+          <Button type="button" size="sm" disabled={pending} onClick={() => void resolve()}>
             {safetyReturn ? messages.resolveSafetyReturnWithoutWork : messages.resolveBlocker}
           </Button>
         </div>

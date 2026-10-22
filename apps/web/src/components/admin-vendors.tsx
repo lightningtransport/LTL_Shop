@@ -7,6 +7,7 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { useDocumentTitle } from './admin-breadcrumb';
 import { partsCostsFailure } from './admin-parts-catalog';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { Badge, Button, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal, PageHeader, PageSkeleton, Textarea } from './ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminVendor, updateAdminVendor, useAdminVendors } from '@/lib/admin-data';
@@ -133,14 +134,27 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((current) => ({ ...current, [key]: value }));
   const needsKind = !form.doesParts && !form.doesRepairs;
   const emailInvalid = Boolean(form.email.trim()) && !adminCreateVendorSchema.innerType().shape.email.safeParse(form.email).success;
+  const [showErrors, setShowErrors] = useState(false);
   const canSave = !busy && form.name.trim() && !needsKind && !emailInvalid;
+  // LTR-293 §3: what stops the save, in form order (same rules as canSave).
+  const missing: MissingField[] = [
+    ...(!form.name.trim() ? [{ label: messages.pcVendorName, fieldId: 'vendor-name' }] : []),
+    ...(needsKind ? [{ label: messages.pcVendorDoes, fieldId: 'vendor-does-parts' }] : []),
+    ...(emailInvalid ? [{ label: messages.pcVendorEmail, fieldId: 'vendor-email' }] : []),
+  ];
+  const nameMissing = showErrors && !form.name.trim();
   const dirty = vendor
     ? Object.entries(form).some(([key, value]) => value !== ((vendor as unknown as Record<string, unknown>)[key] ?? ''))
     : Boolean(form.name.trim() || form.phone.trim() || form.email.trim());
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setBusy(true);
     setError(null);
     const { active, ...fields } = form;
@@ -158,24 +172,26 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
 
   return (
     <Modal open title={vendor ? messages.pcEditVendor : messages.pcAddVendor} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!dirty}>
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="vendor-dialog">
+      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="vendor-dialog" noValidate>
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="space-y-1.5">
           <Label htmlFor="vendor-name">{messages.pcVendorName}</Label>
-          <Input id="vendor-name" value={form.name} onChange={(event) => set('name', event.target.value)} disabled={busy} autoComplete="off" required />
+          <Input id="vendor-name" value={form.name} onChange={(event) => set('name', event.target.value)} disabled={busy} autoComplete="off" required aria-invalid={nameMissing || undefined} aria-describedby={nameMissing ? 'vendor-name-error' : undefined} />
+          <RequiredNote show={nameMissing} id="vendor-name-error" messages={messages} />
         </div>
-        <fieldset className="space-y-1.5">
+        <fieldset className="space-y-1.5" aria-describedby={needsKind ? 'vendor-does-error' : undefined}>
           <legend className="text-sm font-medium">{messages.pcVendorDoes}</legend>
           <div className="flex flex-wrap gap-4">
             <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.doesParts} disabled={busy} onChange={(event) => set('doesParts', event.target.checked)} />
+              <input id="vendor-does-parts" type="checkbox" checked={form.doesParts} disabled={busy} onChange={(event) => set('doesParts', event.target.checked)} aria-invalid={needsKind || undefined} aria-describedby={needsKind ? 'vendor-does-error' : undefined} />
               {messages.pcVendorParts}
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.doesRepairs} disabled={busy} onChange={(event) => set('doesRepairs', event.target.checked)} />
+              <input type="checkbox" checked={form.doesRepairs} disabled={busy} onChange={(event) => set('doesRepairs', event.target.checked)} aria-invalid={needsKind || undefined} aria-describedby={needsKind ? 'vendor-does-error' : undefined} />
               {messages.pcVendorRepairs}
             </label>
           </div>
-          {needsKind ? <p className="text-xs text-destructive-text">{messages.pcVendorNeedsKind}</p> : null}
+          {needsKind ? <p id="vendor-does-error" className="text-xs text-destructive-text">{messages.pcVendorNeedsKind}</p> : null}
         </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -184,8 +200,8 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="vendor-email">{messages.pcVendorEmail}</Label>
-            <Input id="vendor-email" type="email" value={form.email} onChange={(event) => set('email', event.target.value)} disabled={busy} autoComplete="off" aria-invalid={emailInvalid || undefined} />
-            {emailInvalid ? <p className="text-xs text-destructive-text">{messages.pcEmailInvalid}</p> : null}
+            <Input id="vendor-email" type="email" value={form.email} onChange={(event) => set('email', event.target.value)} disabled={busy} autoComplete="off" aria-invalid={emailInvalid || undefined} aria-describedby={emailInvalid ? 'vendor-email-error' : undefined} />
+            {emailInvalid ? <p id="vendor-email-error" className="text-xs text-destructive-text">{messages.pcEmailInvalid}</p> : null}
           </div>
         </div>
         <div className="space-y-1.5">
@@ -205,7 +221,8 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={!canSave}>{vendor ? messages.pcSaveChanges : messages.pcAddVendor}</Button>
+          {/* LTR-293 §3: Save stays on (only off while saving); a Save with something missing says what, under each field. */}
+          <Button type="submit" disabled={busy}>{vendor ? messages.pcSaveChanges : messages.pcAddVendor}</Button>
         </DialogActions>
       </form>
     </Modal>

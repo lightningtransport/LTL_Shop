@@ -14,6 +14,9 @@ export type InspectionCopy = {
   checkName: string;
   checkNamePlaceholder: string;
   defectCreates: string;
+  /** LTR-293 §3: the check dialog says what is missing on Save. */
+  pcFieldRequired: string;
+  pcMissingTitle: string;
   detailingOption: string;
   noteOnDetailing: string;
   rename: string;
@@ -202,6 +205,8 @@ const en: InspectionCopy = {
   checkName: 'Check',
   checkNamePlaceholder: 'e.g. Mud flaps',
   defectCreates: 'A defect creates',
+  pcFieldRequired: 'Required',
+  pcMissingTitle: 'Complete these to save:',
   detailingOption: 'A note on the Detailing step',
   noteOnDetailing: 'Note on the Detailing step',
   rename: 'Rename',
@@ -390,6 +395,8 @@ const es: InspectionCopy = {
   checkName: 'Punto',
   checkNamePlaceholder: 'p. ej. Loderas',
   defectCreates: 'Un defecto crea',
+  pcFieldRequired: 'Obligatorio',
+  pcMissingTitle: 'Completa esto para guardar:',
   detailingOption: 'Una nota en el paso Detailing',
   noteOnDetailing: 'Nota en el paso Detailing',
   rename: 'Renombrar',
