@@ -190,6 +190,8 @@ test('manager adds a part that is not in Parts from the purchase line, with a ne
 
   const dialog = page.getByRole('dialog', { name: 'Add part' });
   await expect(dialog.getByLabel('Name')).toHaveValue('Brake drum 16.5');
+  // LTR-298: nothing preselected; the category is picked or added here.
+  await expect(dialog.getByLabel('Category').locator('option:checked')).toHaveText('Pick a category');
   await expect(dialog.getByLabel('Usual vendor').locator('option:checked')).toHaveText('FleetPride');
   await dialog.getByLabel('Category').selectOption({ label: '+ Add category…' });
   await dialog.getByLabel('Category name').fill('Brakes');
