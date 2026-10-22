@@ -92,6 +92,12 @@ test.describe('Yard Operations Phase 1', () => {
 
   test('quick filters apply on tap, show their counts and keep "Showing N of M" (stage 6, D6)', async ({ page }) => {
     await expect(page.getByRole('tab', { name: 'Shop', exact: true })).toHaveAttribute('aria-selected', 'true');
+    // LTR-277 §10: on a touch phone each tab is at least 44×44 (Shop was 34 px wide).
+    for (const name of ['Shop', 'Dispatch']) {
+      const box = await page.getByRole('tab', { name, exact: true }).boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+    }
     const quick = page.getByTestId('yard-quick-filters');
     await expect(page.getByTestId('yard-quick-all')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('yard-quick-all')).toContainText('9');

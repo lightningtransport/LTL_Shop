@@ -186,7 +186,8 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
       ) : null}
     </header>
 
-    <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-5 border-b">
+    {/* LTR-277 §10: each tab is at least 44×44 on touch (Shop was only as wide as the word, 34 px); padding replaces the gap. */}
+    <div role="tablist" aria-label={messages.yardTabsLabel} className="flex gap-1 border-b">
       {(['shop', 'movement'] as const).map((value) => (
         <button
           key={value}
@@ -195,7 +196,7 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
           id={`yard-tab-${value}`}
           aria-selected={tab === value}
           aria-controls={`yard-panel-${value}`}
-          className={cn('-mb-px h-11 border-b-2 font-medium', tab === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          className={cn('-mb-px h-11 min-w-11 border-b-2 px-2.5 font-medium', tab === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
           onClick={() => updateTab(value)}
         >
           {value === 'shop' ? messages.yardTabShop : messages.yardTabMovement}
