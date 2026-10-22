@@ -179,7 +179,8 @@ export function AdminWorkOrderDetail({
   const pauseEnabled = canOfficiallyPauseWorkOrder(data.status);
   const isPaused = data.status === 'waiting_paused';
   const canCorrectTime = canManageWorkOrders && timeSegments(data).some((segment) => segment.endedAt);
-  const readyToClose = isAdminWorkOrderReadyToClose({
+  // D55 R15 (LTR-295): with everything cancelled the Next step is Cancel Work Order, not Close.
+  const readyToClose = data.nextStep?.kind !== 'cancel_work_order' && isAdminWorkOrderReadyToClose({
     canManageWorkOrders,
     status: data.status,
     categoryName: data.category.name,
@@ -382,6 +383,7 @@ export function AdminWorkOrderDetail({
       onResume={() => void runMutation('resume-wo', messages.resumeWorkOrderSuccess, () => resumeAdminWorkOrder(data.id), (failure) => pauseResumeError(failure, messages))}
       onReturnToService={() => setDialog('return')}
       onConfirmCompletion={() => setCloseOpen(true)}
+      onCancelWorkOrder={() => setDialog('cancel')}
       onReturned={(jobId) => setReturnRequest(jobId)}
       onChanged={refreshAfterAction}
     />

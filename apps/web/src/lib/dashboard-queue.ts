@@ -6,7 +6,7 @@ import type { AdminWorkOrderSummaryDto, YardSamsaraPlacesDto, YardSamsaraTruckDt
  * Manager takes, in this order. Plain work in progress (`work`) waits on mechanics, not on the
  * Manager, so it is not in the queue.
  */
-export const DASHBOARD_GROUPS = ['blocked', 'close', 'return_to_service', 'assign', 'inspect', 'missing_steps', 'qc', 'external'] as const;
+export const DASHBOARD_GROUPS = ['blocked', 'close', 'cancel', 'return_to_service', 'assign', 'inspect', 'missing_steps', 'qc', 'external'] as const;
 export type DashboardGroup = (typeof DASHBOARD_GROUPS)[number];
 
 /** The four counters on top: they filter the queue to their group. */
@@ -19,6 +19,8 @@ export function dashboardGroupOf(item: Pick<AdminWorkOrderSummaryDto, 'nextStep'
     case 'resume':
       return 'blocked';
     case 'close': return 'close';
+    // D55 R15: nothing was done; the Manager cancels the visit (no counter counts it).
+    case 'cancel_work_order': return 'cancel';
     case 'return_to_service': return 'return_to_service';
     case 'assign': return 'assign';
     case 'inspect': return 'inspect';

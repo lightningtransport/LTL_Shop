@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { CheckCheck, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
+import { CheckCheck, CircleX, ClipboardCheck, FilePlus, ListPlus, Play, SquareArrowOutUpRight, Truck as TruckIcon, UserPlus, type LucideIcon } from 'lucide-react';
 import { AppCapability, isPmCategory, type AdminWorkOrderDetailDto, type TruckNextStepDto } from '@ltl-shop/shared';
 import { apiFetch } from '@/lib/api';
 import { assignAdminWorkOrderJob, completeAdminJob, completeAdminWorkOrder, resumeAdminWorkOrder, unassignAdminWorkOrderJob, useAdminAssignableMechanics } from '@/lib/admin-data';
@@ -21,6 +21,7 @@ const STEP_ICON: Partial<Record<TruckNextStepDto['kind'], LucideIcon>> = {
   resume: Play,
   add_missing_steps: ListPlus,
   close: CheckCheck,
+  cancel_work_order: CircleX,
   return_to_service: TruckIcon,
   inspect: ClipboardCheck,
   create_work_order: FilePlus,
@@ -181,6 +182,10 @@ export function NextStepAction({
       return workOrderId && step.jobId ? (
         <AssignAction step={step} workOrderId={workOrderId} expectedVersion={expectedVersion} messages={messages} onChanged={onChanged} />
       ) : null;
+    case 'cancel_work_order':
+      // D55 R15 (LTR-295): nothing was done — cancelling asks for a reason on the Work Order, where the dialog is.
+      if (place === 'work-order' || !workOrderId) return null;
+      return link(label ?? '', `/admin/work-orders/${workOrderId}#next-step`);
     case 'inspect':
       // D41 (replaces P3): the inspection is always the sheet — "Start inspection", from the Dashboard too.
       return (

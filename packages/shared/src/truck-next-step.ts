@@ -14,6 +14,7 @@ export type TruckNextStepKind =
   | 'external'
   | 'qc'
   | 'close'
+  | 'cancel_work_order'
   | 'return_to_service'
   | 'work'
   | 'create_work_order';
@@ -103,6 +104,12 @@ export function deriveTruckNextStep(input: TruckNextStepInput): TruckNextStepDto
   }
   if (wo.status === 'waiting_paused') {
     return { kind: 'resume', workOrderId: wo.id, reason: input.currentPause?.reason };
+  }
+  // D55 R15 (LTR-295): every Job outside the Quality Check was cancelled — there is nothing to inspect, check or
+  // close; the visit is cancelled. (A PM Work Order comes without Jobs and never lands here.)
+  const besidesQc = input.jobs.filter((job) => job.lane !== WorkPlanJobLane.QUALITY_CHECK);
+  if (besidesQc.length && besidesQc.every((job) => job.status === 'cancelled')) {
+    return { kind: 'cancel_work_order', workOrderId: wo.id };
   }
   if (input.inspectionOutcome === WorkPlanInspectionOutcome.NOT_STARTED) {
     return { kind: 'inspect', workOrderId: wo.id };
