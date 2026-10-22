@@ -123,6 +123,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
       ) : null}
       {data?.items.length ? (
         <DataTable
+              wholeCardOpens
           items={data.items}
           caption={messages.pcOutsideTitle}
           getKey={(item) => item.id}

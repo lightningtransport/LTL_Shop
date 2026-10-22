@@ -39,6 +39,7 @@ export function AdminVendors({ locale, messages }: { locale: AdminLocale; messag
       ) : null}
       {data?.length ? (
         <DataTable
+              wholeCardOpens
           items={data}
           caption={messages.pcVendorsTitle}
           getKey={(vendor) => vendor.id}

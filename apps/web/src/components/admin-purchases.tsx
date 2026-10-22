@@ -138,6 +138,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
       ) : null}
       {data?.items.length ? (
         <DataTable
+              wholeCardOpens
           items={data.items}
           caption={messages.pcPurchasesTitle}
           getKey={(item) => item.id}

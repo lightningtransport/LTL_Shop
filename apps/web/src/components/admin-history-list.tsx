@@ -63,6 +63,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p></EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.historyTitle}
           getKey={(item) => item.id}
