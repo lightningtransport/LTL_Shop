@@ -41,7 +41,8 @@ export const buttonVariants = cva(
       },
       size: {
         default: '',
-        sm: 'px-2.5 [@media(pointer:fine)]:min-h-8',
+        // LTR-277 §8: sm is narrower, not shorter (it was 32px with a mouse, under the 36px floor).
+        sm: 'px-2.5',
         lg: 'min-h-12 px-5 text-base',
         icon: 'size-11 min-h-0 p-0 [@media(pointer:fine)]:size-9 [&_svg]:size-5',
       },

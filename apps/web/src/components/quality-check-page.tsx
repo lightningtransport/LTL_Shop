@@ -524,7 +524,7 @@ function ReviewSheet({
             <span className="ml-auto">
               <ResponsiveMenu
                 label={messages.truckTitle(item.truck.truckNumber)}
-                trigger={<Button variant="ghost" size="sm" className="h-8 px-2" aria-label={t.more}><Ellipsis aria-hidden="true" /></Button>}
+                trigger={<Button variant="ghost" size="sm" className="px-2" aria-label={t.more}><Ellipsis aria-hidden="true" /></Button>}
                 items={[{ key: 'release', label: t.letGo, icon: HandHelping, onSelect: onRelease, testId: 'qc-let-go' }]}
                 contentTestId="qc-review-menu"
               />

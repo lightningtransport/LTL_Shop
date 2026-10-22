@@ -414,7 +414,7 @@ function TruckDetailBody({
             <dd className="flex min-w-0 items-center justify-end gap-1.5 font-mono text-[13px]">
               <span className="break-all">{data.truck.vin ?? messages.noValue}</span>
               {data.truck.vin ? (
-                <button type="button" className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground lg:size-8" aria-label={messages.copyVin} onClick={() => void copyText(data.truck.vin!, messages.vinCopied)}>
+                <button type="button" className="grid size-11 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground [@media(pointer:fine)]:size-9" aria-label={messages.copyVin} onClick={() => void copyText(data.truck.vin!, messages.vinCopied)}>
                   <Copy aria-hidden="true" className="size-3.5" />
                 </button>
               ) : null}

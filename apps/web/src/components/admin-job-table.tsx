@@ -277,7 +277,7 @@ export function AdminJobTable({
     if (canEdit) {
       if (isExternal) {
         action = onReturnExternal ? (
-          <Button type="button" size="sm" variant="outline" className="h-10 [@container(min-width:44rem)]:h-8" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
+          <Button type="button" size="sm" variant="outline" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
             <PackageCheck aria-hidden="true" />
             {pendingAction === `return-external-${job.id}` ? messages.saving : messages.externalReturnedAction}
           </Button>
@@ -293,7 +293,6 @@ export function AdminJobTable({
             type="button"
             size="sm"
             variant={isQualityCheck ? 'default' : 'outline'}
-            className="h-10 [@container(min-width:44rem)]:h-8"
             disabled={pending}
             aria-label={`${messages.completeJobAction}: ${name}`}
             onClick={() => onComplete(job.id)}
@@ -700,7 +699,7 @@ function PmServiceMenu({ job, messages, disabled, onChange }: {
         onSelect: () => { if (item.id !== job.catalogJobId) onChange(item.id); },
       }))}
       trigger={(
-        <Button type="button" size="sm" variant="outline" className="h-10 [@container(min-width:44rem)]:h-8" aria-label={messages.pmServiceVariant} title={messages.pmJobCompletedFromPmService} disabled={disabled}>
+        <Button type="button" size="sm" variant="outline" aria-label={messages.pmServiceVariant} title={messages.pmJobCompletedFromPmService} disabled={disabled}>
           {short(job.displayName)}
           <ChevronDown aria-hidden="true" className="text-muted-foreground" />
         </Button>

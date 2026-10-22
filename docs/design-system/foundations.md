@@ -136,6 +136,7 @@ Interactive controls use Tailwind `min-h-11` (2.75rem / 44px):
 
 - `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`
 - `Button` default / icon sizes (`size-11`), and `sm` on touch screens: `sm` is 44px under `pointer: coarse` and 36px only with a mouse (LTR-167)
+- Hand-made icon buttons (the "…" menu of a part or a catalog row, Copy VIN) and the PM part switch: `size-11` / `h-11`, and `[@media(pointer:fine)]:size-9` / `:h-9` — by pointer, never by width (`lg:`), so a touch iPad in landscape keeps 44px. Nothing goes under 36px with a mouse; do not force `h-8` on an `sm` button (LTR-277 §8)
 - Inline identifier links in lists (T-102, WO-0102): `.tap-inline` grows them to 44px tall without moving the text
 - `PageSkeleton header={false}` when the real `PageHeader` is already shown, so loading does not show the title twice
 - `.field`, `Input`, `Select`, `Textarea` (`min-h-11` / `min-h-28`)
