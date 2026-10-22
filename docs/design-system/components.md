@@ -11,7 +11,7 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 
 | Export | CURRENT use |
 |---|---|
-| `Button`, `buttonVariants` | CVA variants (`buttonVariants` styles a link as a button) `default`, `secondary`, `outline`, `ghost`, `destructive`, with one disabled look for all of them (muted fill and text, AA in both themes; LTR-169); sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. Do not use deprecated `.btn-*` classes |
+| `Button`, `buttonVariants` | CVA variants (`buttonVariants` styles a link as a button) `default`, `secondary`, `outline`, `ghost`, `destructive`, with one disabled look for all of them (muted fill and text, AA in both themes; LTR-169); sizes `default`, `sm`, `lg`, `icon`; `asChild` Slot. Touch / mobile controls stay `min-h-11` (44px). Desktop chrome may use `sm`. `loading` (LTR-293 §8): while an action runs the button keeps its label, shows a spinner where its icon goes, is disabled and `aria-busy`; never swap the label for "Saving…". Do not use deprecated `.btn-*` classes |
 | `Input` | Text fields (`.field`) |
 | `Textarea` | Notes and reasons |
 | `Label` | Programmatically associated labels |

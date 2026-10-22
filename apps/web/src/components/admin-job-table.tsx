@@ -278,9 +278,9 @@ export function AdminJobTable({
     if (canEdit) {
       if (isExternal) {
         action = onReturnExternal ? (
-          <Button type="button" size="sm" variant="outline" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
+          <Button loading={pendingAction === `return-external-${job.id}`} type="button" size="sm" variant="outline" disabled={pending} data-testid="admin-wo-job-returned" onClick={() => setDialog({ kind: 'return', jobId: job.id })}>
             <PackageCheck aria-hidden="true" />
-            {pendingAction === `return-external-${job.id}` ? messages.saving : messages.externalReturnedAction}
+            {messages.externalReturnedAction}
           </Button>
         ) : null;
       } else if (isPmJob) {
@@ -295,6 +295,7 @@ export function AdminJobTable({
         const qcPrimary = isQualityCheck && !qcWaiting && data.nextStep?.kind !== 'cancel_work_order';
         action = (
           <Button
+            loading={pendingAction === `complete-job-${job.id}`}
             type="button"
             size="sm"
             variant={qcPrimary ? 'default' : 'outline'}
@@ -303,7 +304,7 @@ export function AdminJobTable({
             aria-label={`${messages.completeJobAction}: ${name}`}
             onClick={() => onComplete(job.id)}
           >
-            {pendingAction === `complete-job-${job.id}` ? messages.saving : messages.completeJobAction}
+            {messages.completeJobAction}
           </Button>
         );
       }

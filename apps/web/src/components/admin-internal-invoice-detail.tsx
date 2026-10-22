@@ -180,10 +180,10 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
           {actionError ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
           <DialogActions>
             <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>{messages.cancel}</Button>
-            <Button type="button" disabled={busy} onClick={() => void run(async () => {
+            <Button loading={busy} type="button" onClick={() => void run(async () => {
               const sent = await sendAdminInternalInvoice(id);
               showToast('success', fillPlaceholders(messages.pcInvoiceSentToast, { number: sent.number }));
-            }, '')}>{busy ? messages.pcSaving : messages.pcInvoiceSend}</Button>
+            }, '')}>{messages.pcInvoiceSend}</Button>
           </DialogActions>
         </Modal>
       ) : null}

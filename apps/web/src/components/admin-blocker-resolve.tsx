@@ -123,7 +123,7 @@ export function AdminBlockerResolve({
           />
           <RequiredNote show={noteBad} id={`${noteId}-error`} messages={messages} />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" disabled={pending}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+            <Button loading={pending} type="submit" size="sm">{messages.blockerConfirmResolve}</Button>
             <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { setNoteOpen(false); setNote(''); setShowErrors(false); }}>{messages.cancel}</Button>
           </div>
         </form>

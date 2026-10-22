@@ -88,7 +88,7 @@ export function ReturnToServiceDialog({
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={close}>{messages.cancel}</Button>
-          <Button type="submit" className="flex-1" disabled={pending}>{pending ? messages.saving : messages.returnToServiceConfirm}</Button>
+          <Button loading={pending} type="submit" className="flex-1">{messages.returnToServiceConfirm}</Button>
         </div>
       </form>
     </Modal>

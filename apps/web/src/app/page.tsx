@@ -355,13 +355,13 @@ function StartWorkAction({
     <div className={className}>
       {error ? <InlineAlert className="mb-2">{error}</InlineAlert> : null}
       <Button
+        loading={busy}
         className="w-full"
         variant={variant}
-        disabled={busy}
         aria-label={messages.workOrderAction(label ?? messages.startWork, wo.displayId, wo.truckNumber)}
         onClick={() => void startLabor()}
       >
-        {busy ? messages.startingWork : label ?? messages.startWork}
+        {label ?? messages.startWork}
       </Button>
     </div>
   );
