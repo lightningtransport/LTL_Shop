@@ -12,7 +12,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
 
   await page.goto('/admin/mechanics');
   await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
-  await expect(page.getByText('Mechanics, PM and Safety people who use the app.')).toBeVisible();
+  await expect(page.getByText('Everyone who uses the app: Shop Managers, System Admins, mechanics, PM and Safety.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add person' })).toBeVisible();
   await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   // LTR-185: Safety shows on the roster with a people-facing label.

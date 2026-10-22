@@ -626,6 +626,10 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 ### Factura interna a Finanzas (`internal_invoices`, `internal_invoice_lines`; LTR-201 / D34, LB-2)
 - **Parts & costs → Internal invoices** (`/admin/parts/internal-invoices`): una por
   **camión y mes**. Finanzas no entra a la app.
+  Filtros por estado y por mes (en la URL): el de mes es una lista de los últimos 24
+  meses con **Any month** cuando está vacío (LTR-277 §7; antes un campo de mes que se
+  veía con rayas). Cada mes dice "1 sent · 2 accepted · 1 draft · $X invoiced", con
+  singular y plural en EN y ES; Shop rates igual ("1 completed Work Order").
 - **Cierre del mes** (PCA16, D37): arriba de la lista, "Month close" muestra, para un mes,
   cada camión con costos sin cobrar hasta fin de mes y su factura del mes
   (`GET /internal-invoices/month?month=`), y "Create drafts for all" arma los borradores que
