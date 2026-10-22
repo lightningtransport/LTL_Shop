@@ -16,6 +16,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 type Row = { part: AdminPartDto; categoryId: string; categoryName: string; kind: AdminStockItemDto['kind']; item: AdminStockItemDto | undefined };
 
@@ -40,6 +41,8 @@ function useWide() {
   return useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE_QUERY).matches, () => false);
 }
 
+const COUNT_FILTERS = { search: '', kind: '', category: '' };
+
 /**
  * D47 / HU-M20 (LTR-246): Count stock in bulk — the first day and each count. The Manager types what is on the shelf
  * (on the phone, standing at it); each row shows what changes and at what cost. A cost is asked only for a part that
@@ -52,9 +55,10 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
   useAdminBreadcrumb([{ label: messages.pcParts, href: '/admin/parts/catalog' }, { label: messages.pcCountStock }]);
   const { data: catalog, error, isLoading, mutate } = useAdminPartsCatalog('');
   const { data: stockData, mutate: mutateStock } = useAdminStock('all=true');
-  const [search, setSearch] = useState('');
-  const [kind, setKind] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  // LTR-293 §9: search, type and category are in the URL; what was counted stays in this screen (and its guard).
+  const { filters, set, setMany } = useUrlFilters(COUNT_FILTERS);
+  const [search, setSearch] = useDebouncedFilterText(filters.search, (next) => set('search', next));
+  const { kind, category: categoryId } = filters;
   const [counted, setCounted] = useState<Record<string, string>>({});
   const [costs, setCosts] = useState<Record<string, string>>({});
   const [missing, setMissing] = useState<string[]>([]);
@@ -193,7 +197,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
           </div>
           <div className="space-y-1">
             <Label htmlFor="count-kind">{messages.pcKindFilter}</Label>
-            <Select id="count-kind" value={kind} onChange={(event) => { setKind(event.target.value); setCategoryId(''); }}>
+            <Select id="count-kind" value={kind} onChange={(event) => setMany({ kind: event.target.value, category: '' })}>
               <option value="">{messages.pcKindAll}</option>
               <option value="pm">{messages.pcKindPm}</option>
               <option value="repair">{messages.pcKindRepair}</option>
@@ -202,7 +206,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
           </div>
           <div className="space-y-1">
             <Label htmlFor="count-category">{messages.pcCountCategory}</Label>
-            <Select id="count-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+            <Select id="count-category" value={categoryId} onChange={(event) => set('category', event.target.value)}>
               <option value="">{messages.pcKindAll}</option>
               {catalog.categories.filter((category) => !kind || category.kind === kind).map((category) => (
                 <option key={category.id} value={category.id}>{category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`}</option>

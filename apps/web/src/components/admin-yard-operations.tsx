@@ -39,6 +39,8 @@ import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { YardSamsaraCounters } from './admin-yard-samsara-counters';
 import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, KanbanOpenBoardLink, useBrowserFullscreen } from './kanban';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 const phaseMessageKey = {
   inspection: 'inspection',
@@ -51,7 +53,11 @@ const phaseMessageKey = {
   shop_work: 'shopWork',
 } as const satisfies Record<YardBoardColumnPhase, keyof AdminMessages>;
 
+const DISPATCH_FILTERS = { dispatchSearch: '' };
+
 export function AdminYardOperations({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.yardOperationsTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));
@@ -59,7 +65,9 @@ export function AdminYardOperations({ locale, messages }: { locale: AdminLocale;
   // LTR-207: the URL says what the tab says ("dispatch"); old links with tab=movement still open it.
   const tabParam = searchParams.get('tab');
   const tab: 'shop' | 'movement' = tabParam === 'dispatch' || tabParam === 'movement' ? 'movement' : 'shop';
-  const [movementSearch, setMovementSearch] = useState('');
+  // LTR-293 §9: the Dispatch search is in the URL too (?dispatchSearch=), like the Shop board's filters.
+  const { filters: dispatchFilters, set: setDispatchFilter } = useUrlFilters(DISPATCH_FILTERS);
+  const [movementSearch, setMovementSearch] = useDebouncedFilterText(dispatchFilters.dispatchSearch, (next) => setDispatchFilter('dispatchSearch', next));
   const [closedLanes, setClosedLanes] = useState<Record<string, boolean>>({});
   // LTR-228: "Full screen" opens the board alone in a new tab (display=board), so a manager leaves it on another
   // monitor and keeps using the app here. That tab shows only the board and can go browser full screen (a TV).

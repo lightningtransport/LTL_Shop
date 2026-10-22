@@ -43,6 +43,7 @@ import { AdminTruckCosts } from './admin-truck-costs';
 import { AdminTruckFaults, TruckFaultsBanner } from './admin-truck-faults';
 import { TruckTiresCard } from './truck-tires-card';
 import { Badge, Button, CardListSkeleton, EmptyState, LoadFailure, PageHeader, PageSkeleton, SectionCard, Select, type BadgeProps } from './ui';
+import { useUrlFilters } from '@/lib/use-url-filters';
 
 export function AdminTruckDetail({ id, from = null, tab = null, connectVehicle = null, locale, messages }: { id: string; from?: string | null; tab?: string | null; connectVehicle?: string | null; locale: AdminLocale; messages: AdminMessages }) {
   const origin = adminTruckOrigin(from, messages);
@@ -496,6 +497,8 @@ function uniqueOwners(jobs: TruckWorkPlanDto['jobs']) {
   return [...seen.values()];
 }
 
+const REPAIR_FILTERS = { repairCategory: '' };
+
 /** T10 / Stage 8 (mockup): the repair history card — filter by category in its header, "Load more". */
 function RepairHistory({
   truckId,
@@ -510,8 +513,12 @@ function RepairHistory({
   locale: AdminLocale;
   messages: AdminMessages;
 }) {
+  // LTR-293 §9: the category is in the URL (?repairCategory=), so Back from a WO keeps it. "Load more" stays here: it
+  // asks for two pages in the same tap, and a URL change would arrive a render later.
+  const { filters: repairFilters, set: setRepairFilter } = useUrlFilters(REPAIR_FILTERS);
   const [more, setMore] = useState(false);
-  const [category, setCategory] = useState('');
+  const category = repairFilters.repairCategory;
+  const setCategory = (next: string) => setRepairFilter('repairCategory', next);
   const { data: categoryData } = useCategories(true);
   const live = more || Boolean(category);
   const pages = useAdminRepairHistory(live ? truckId : '', excludeWorkOrderId, category || undefined);

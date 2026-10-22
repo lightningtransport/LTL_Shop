@@ -867,5 +867,34 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.getByRole('button', { name: 'Clear filters' }).click();
     await expect(page).toHaveURL(/\/admin\/trucks$/);
   });
+
+  test('LTR-293 §10: each screen names the browser tab, a Work Order by its number', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await expect(page).toHaveTitle('Dashboard — Lightning Shop');
+    await page.goto('/admin/work-orders');
+    await expect(page).toHaveTitle('Work Orders — Lightning Shop');
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page).toHaveTitle(/^WO-0101 — Lightning Shop$/);
+    await page.goto('/admin/trucks');
+    await expect(page).toHaveTitle('Trucks — Lightning Shop');
+  });
+
+  test('LTR-293 §9: the catalog search and the Custom Jobs tab survive a reload', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/catalog');
+    const search = page.getByRole('textbox', { name: 'Search categories, Jobs or aliases' }).first();
+    await search.fill('brake');
+    await expect(page).toHaveURL(/search=brake/);
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Search categories, Jobs or aliases' }).first()).toHaveValue('brake');
+
+    await page.goto('/admin/catalog/review');
+    await page.getByRole('tab', { name: /Reviewed/ }).click();
+    await expect(page).toHaveURL(/tab=reviewed/);
+    await page.reload();
+    await expect(page.getByRole('tab', { name: /Reviewed/ })).toHaveAttribute('aria-selected', 'true');
+  });
 });
 

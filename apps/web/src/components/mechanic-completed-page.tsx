@@ -15,11 +15,14 @@ import { Check, ChevronRight } from 'lucide-react';
 import { formatMileage } from '@/lib/format';
 import { Card, CardListSkeleton, CountChip, EmptyState, HomeTopBar, LoadFailure, PageHeader } from './ui';
 import { intlLocale } from '@/lib/shop-locale';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /** LTR-133: completed work has its own screen in both mechanic workspaces. */
 export function MechanicCompletedPage({ mode }: { mode: MechanicMode }) {
   const { token, sessionLoading, user } = useAuth();
   const { messages } = useShopLocale();
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.mechanicCompletedTitle);
   const router = useRouter();
   const isPm = mode === MechanicMode.PM;
   const { data, error, mutate } = useWorkOrders(!!token, isPm ? 'pm' : 'standard');

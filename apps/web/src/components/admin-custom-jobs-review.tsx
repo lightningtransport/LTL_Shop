@@ -14,6 +14,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { formatShortDateTime } from '@/lib/work-order-view';
 import { cn } from '@/lib/utils';
+import { useUrlFilters } from '@/lib/use-url-filters';
 
 type Dialog = { kind: 'tie' | 'add'; group: AdminCustomJobGroupDto } | null;
 
@@ -23,10 +24,15 @@ type Dialog = { kind: 'tie' | 'add'; group: AdminCustomJobGroupDto } | null;
  * whole group: tie it to a catalog Job (its name stays as an alias), add it to the catalog, or keep it as a one-off.
  * Reviewed groups can be undone. Work Orders keep their names.
  */
+const CUSTOM_JOBS_FILTERS = { tab: '' };
+
 export function AdminCustomJobsReview({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
-  const [tab, setTab] = useState<'pending' | 'reviewed'>('pending');
+  // LTR-293 §9: the tab is in the URL (?tab=reviewed), so a reload, Back or a shared link keeps it.
+  const { filters, set } = useUrlFilters(CUSTOM_JOBS_FILTERS);
+  const tab: 'pending' | 'reviewed' = filters.tab === 'reviewed' ? 'reviewed' : 'pending';
+  const setTab = (next: 'pending' | 'reviewed') => set('tab', next === 'reviewed' ? 'reviewed' : '');
   const { data, error, isLoading, mutate } = useAdminCustomJobs(tab);
   // LTR-245 (UX-5-007): "Job Catalog › Custom Jobs to review" in the top bar.
   useAdminBreadcrumb([{ label: messages.jobCatalog, href: '/admin/catalog' }, { label: messages.cjInbox }]);
