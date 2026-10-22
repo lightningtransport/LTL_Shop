@@ -5,8 +5,8 @@
  */
 import { beforeEach, describe, it } from 'vitest';
 import {
-  USERS, adminCompleteJob, adminWo, closeWo, createWo, doLane, doPm, laneJob, manager, meta, ok, plannedWo, prisma,
-  refused, resetDb, same,
+  USERS, adminCompleteJob, adminWo, as, closeWo, completeJob, createWo, doLane, doPm, laneJob, manager, meta, ok, plannedWo,
+  prisma, refused, resetDb, same, sameNextStepEverywhere, savePm,
 } from '../harness';
 
 async function cancelJob(workOrderId: string, jobId: string, reason = 'No aplica en esta visita.') {
@@ -70,5 +70,32 @@ describe('D55: reglas que una Work Order no se salta', () => {
     refused('tampoco con motivo de inspección', await closeWo(workOrderId, { inspectionSkipReason: 'x' }), 400, 'NOTHING_DONE');
     ok('Cancel Work Order', await manager.post(`/admin/work-orders/${workOrderId}/cancel`, { ...(await meta(workOrderId)), reason: 'No se hizo nada.' }));
     same('estado', (await adminWo(workOrderId)).status, 'cancelled');
+  });
+
+  it('A159 | R8: el PM no se termina sin millaje, sin partes ni con un millaje por debajo del camión (D10)', async () => {
+    const { truck, workOrderId } = await plannedWo('968');
+    const pmJob = laneJob(await adminWo(workOrderId), 'pm');
+    const pm = as(USERS.pm);
+    ok('PM start', await pm.post(`/work-orders/${workOrderId}/jobs/${pmJob.id}/pm/start`));
+    refused('terminar sin millaje ni partes', await completeJob(USERS.pm, workOrderId, pmJob.id), 400);
+
+    const { mileage } = await prisma.truck.findUniqueOrThrow({ where: { id: truck.id } });
+    await pm.post(`/work-orders/${workOrderId}/pm`, { observedMileage: (mileage ?? 0) + 50, selections: [] });
+    refused('terminar con millaje pero sin partes', await completeJob(USERS.pm, workOrderId, pmJob.id), 400);
+
+    refused('guardar un millaje menor al del camión', await savePm(workOrderId, (mileage ?? 0) - 10), 400);
+    same('el camión no baja su millaje', (await prisma.truck.findUniqueOrThrow({ where: { id: truck.id } })).mileage, mileage);
+
+    ok('con millaje y una parte, sí', await savePm(workOrderId, (mileage ?? 0) + 100));
+    ok('PM finish', await completeJob(USERS.pm, workOrderId, pmJob.id));
+    same('PM hecho', laneJob(await adminWo(workOrderId), 'pm').status, 'completed');
+  });
+
+  it('A160 | R15 en pantalla: con todo cancelado fuera del QC, el siguiente paso es Cancel Work Order en todas partes', async () => {
+    const { truck, workOrderId } = await plannedWo('973');
+    for (const lane of ['pm', 'alignment', 'detailing'] as const) {
+      ok(`cancelar ${lane}`, await manager.post(`/admin/jobs/${laneJob(await adminWo(workOrderId), lane).id}/cancel`, { ...(await meta(workOrderId)), reason: 'No aplica.' }));
+    }
+    same('Truck, Work Order, listas y Yard dicen lo mismo', await sameNextStepEverywhere('todo cancelado', workOrderId, truck.id), 'cancel_work_order');
   });
 });

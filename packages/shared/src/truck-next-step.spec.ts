@@ -82,6 +82,19 @@ describe('deriveTruckNextStep (LTR-158 / D14)', () => {
     expect(deriveTruckNextStep(base({ jobs }))).toEqual({ kind: 'close', workOrderId: 'wo-1' });
   });
 
+  it('D55 R15: cancel_work_order when everything but the Quality Check was cancelled, before or after it', () => {
+    const cancelled = fullPlan().map((item) => (item.lane === WorkPlanJobLane.QUALITY_CHECK ? item : { ...item, status: 'cancelled' }));
+    expect(deriveTruckNextStep(base({ jobs: cancelled }))).toEqual({ kind: 'cancel_work_order', workOrderId: 'wo-1' });
+    const qcDone = cancelled.map((item) => (item.lane === WorkPlanJobLane.QUALITY_CHECK ? { ...item, status: 'completed' } : item));
+    expect(deriveTruckNextStep(base({ jobs: qcDone, inspectionOutcome: WorkPlanInspectionOutcome.NOT_STARTED }))).toEqual({ kind: 'cancel_work_order', workOrderId: 'wo-1' });
+    const oneDone = cancelled.map((item) => (item.lane === WorkPlanJobLane.ALIGNMENT ? { ...item, status: 'completed' } : item));
+    expect(deriveTruckNextStep(base({ jobs: oneDone }))?.kind).toBe('qc');
+  });
+
+  it('a PM Work Order (no Jobs on its plan) is never offered cancel_work_order', () => {
+    expect(deriveTruckNextStep(base({ jobs: [] }))?.kind).not.toBe('cancel_work_order');
+  });
+
   it('return_to_service while the completed Work Order keeps the Truck Ready to Go', () => {
     expect(deriveTruckNextStep(base({ workOrder: { id: 'wo-1', status: 'completed' } })))
       .toEqual({ kind: 'return_to_service', workOrderId: 'wo-1' });

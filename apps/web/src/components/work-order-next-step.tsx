@@ -54,6 +54,7 @@ export function WorkOrderNextStep({
   onResume,
   onReturnToService,
   onConfirmCompletion,
+  onCancelWorkOrder,
   onReturned,
   onChanged,
 }: {
@@ -67,6 +68,8 @@ export function WorkOrderNextStep({
   onResume: () => void;
   onReturnToService: () => void;
   onConfirmCompletion: () => void;
+  /** D55 R15: everything but the Quality Check was cancelled — the visit is cancelled, not closed. */
+  onCancelWorkOrder: () => void;
   onReturned: (jobId: string) => void;
   onChanged: () => Promise<unknown> | void;
 }) {
@@ -199,6 +202,9 @@ export function WorkOrderNextStep({
         kind: 'external',
       });
     }
+  }
+  if (step?.kind === 'cancel_work_order') {
+    return box({ tone: 'warning', icon: CircleX, eyebrow: messages.calloutNextStep, title: messages.calloutCancelWorkOrderTitle, sub: messages.calloutCancelWorkOrderSub, actions: canManage ? primary(messages.cancelWorkOrderTitle, CircleX, onCancelWorkOrder) : null, kind: step.kind });
   }
   if (step?.kind === 'qc') {
     // D-SET6: the Manager reaches Quality Check as backup from here (D29).
