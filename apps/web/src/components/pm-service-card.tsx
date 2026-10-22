@@ -452,7 +452,8 @@ export function PmServiceCard({
                     disabled={disabled}
                     onClick={() => toggleCategory(category, !on)}
                     // UX-F-001: the button is 44 px tall on touch (gloves); the track inside keeps its 28 px look.
-                    className="flex h-11 shrink-0 items-center disabled:opacity-40 lg:h-7"
+                    // LTR-277 §8: by pointer, not width: 36 px with a mouse, and a touch iPad (1194 px) keeps 44.
+                    className="flex h-11 shrink-0 items-center disabled:opacity-40 [@media(pointer:fine)]:h-9"
                   >
                     {/* UX-2-005: the off track reaches 3:1 against the card (it was 1.5:1, the switch looked missing). */}
                     <span aria-hidden="true" className={`relative block h-7 w-12 rounded-full transition ${on ? 'bg-success' : 'bg-muted-foreground/75'}`}>
