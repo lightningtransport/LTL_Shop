@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 197 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 202 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -171,6 +171,11 @@ PASA 197 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A151 | D50: un camión que Dispatch tiene y la app no se agrega desde Samsara: crea el camión con VIN, marca, modelo, año y placa y lo deja conectado; sin vehículo en Samsara no ofrece nada; un mecánico no puede | PASA |
 | A152 | Flat Repair y Tires nacen con el mecánico de Alignment, que ve la posición, los PSI o el tread y el motivo; "Assign later" a propósito los deja sin dueño | PASA |
 | A153 | Con dos en el equipo de Alignment la llanta espera en su cola; la inspección de un mecánico también manda las llantas a Alignment | PASA |
+| A154 | R2: sin inspección no se cierra; con motivo sí, y el motivo queda en el historial | PASA |
+| A155 | R2: con la inspección guardada se cierra sin pedir motivo | PASA |
+| A156 | R9: el Quality Check no se cancela | PASA |
+| A157 | R11: el Manager no marca el QC completo con trabajo pendiente, igual que Safety | PASA |
+| A158 | R15: si todo se canceló, no se cierra: se cancela la Work Order (caso 917 / 823) | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |
@@ -188,7 +193,7 @@ PASA 197 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | E14 | Truck Ready to Go sin Return to Service: se puede abrir otro WO y deja de estar Ready to Go | PASA |
 | E14b | Un WO nuevo sobre un Truck Ready to Go empieza con la inspección pendiente | PASA |
 | E15 | Cerrar, cancelar y devolver a servicio en el estado equivocado | PASA |
-| E16 | Cancelar todos los Jobs pendientes: el WO se puede cerrar | PASA |
+| E16 | Salida urgente: se cancela lo que no se hará y se cierra con lo hecho (el QC no se cancela, D55) | PASA |
 | E17 | Prioridad crítica sube en "Needs attention"; el PM no cambia de prioridad | PASA |
 | QC1 | Safety ve solo los camiones con todo lo demás hecho | PASA |
 | QC2 | Tomar y aprobar: el primero gana; aprobar deja el camión listo para cerrar | PASA |

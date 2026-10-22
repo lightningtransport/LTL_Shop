@@ -133,8 +133,8 @@ describe('Ayudante y taller externo (HU-M10, HU-M11 — D23, D24)', () => {
       await sameNextStepEverywhere('pieza afuera', workOrderId, truck.id), 'external');
     wo = await adminWo(workOrderId);
     same('el siguiente paso nombra el Job y qué salió', [wo.nextStep.jobName, wo.nextStep.externalKind], ['Air Dryer', 'part']);
-    ok('Mark QC complete', await adminCompleteJob(workOrderId, laneJob(wo, 'quality_check').id));
-    same('con QC hecho sigue esperando lo de afuera', await sameNextStepEverywhere('QC hecho, pieza afuera', workOrderId, truck.id), 'external');
+    // D55 R11: the Quality Check waits for what is outside, like Safety's (QC_NOT_READY).
+    refused('el QC no se marca con una pieza afuera', await adminCompleteJob(workOrderId, laneJob(wo, 'quality_check').id), 400, 'QC_NOT_READY');
     refused('no se puede cerrar el WO con un Job afuera', await closeWo(workOrderId), 400);
     truthy('el camión no está Ready to Go', (await yardCard(truck.id)).phase !== 'ready_to_go');
 
@@ -146,7 +146,9 @@ describe('Ayudante y taller externo (HU-M10, HU-M11 — D23, D24)', () => {
     ok('Alejandro 1: Continue', await start(USERS.alignment, workOrderId));
     same('su reloj corre en este WO', await openSessionUsers(workOrderId), [await userId(USERS.alignment)]);
     ok('Alejandro 1 lo instala', await completeJob(USERS.alignment, workOrderId, airDryer.id));
-    same('todo listo: siguiente paso "close"', await sameNextStepEverywhere('instalado', workOrderId, truck.id), 'close');
+    same('instalado: ahora sí el Quality Check', await sameNextStepEverywhere('instalado', workOrderId, truck.id), 'qc');
+    ok('Mark QC complete', await adminCompleteJob(workOrderId, laneJob(await adminWo(workOrderId), 'quality_check').id));
+    same('todo listo: siguiente paso "close"', await sameNextStepEverywhere('QC hecho', workOrderId, truck.id), 'close');
     ok('Close WO', await closeWo(workOrderId));
 
     // The whole truck goes out: the Yard card says "Out of the shop"; back → complete.

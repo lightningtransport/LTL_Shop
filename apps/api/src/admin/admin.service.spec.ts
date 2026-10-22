@@ -673,6 +673,8 @@ describe('AdminService', () => {
       category: { name: 'Engine' },
     }];
     const wo = detailRow({ status: 'in_progress', jobs });
+    // D55 R2: this visit's inspection was recorded.
+    Object.assign(wo.truck as object, { readinessAssessments: [{ requirements: [{ outcome: 'completed' }] }] });
     const activity = { log: vi.fn() };
     const tx = assignmentTx(wo);
     tx.workOrder.findUnique
@@ -754,6 +756,7 @@ describe('AdminService', () => {
       payloadHash: idempotencyFingerprint({
         workOrderId: baseRow.id,
         expectedVersion: 1,
+        inspectionSkipReason: null,
       }),
       actorId: manager.id,
       result: stored,

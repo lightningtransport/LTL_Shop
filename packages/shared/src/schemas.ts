@@ -329,7 +329,10 @@ export const adminCancelWorkOrderSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),
 });
 
-export const adminCompleteWorkOrderSchema = adminMutationMetaSchema;
+// D55 (R2, LTR-294): closing without this visit's inspection takes the Manager's reason.
+export const adminCompleteWorkOrderSchema = adminMutationMetaSchema.extend({
+  inspectionSkipReason: z.string().trim().min(1).max(1000).optional(),
+});
 
 export const adminReopenWorkOrderSchema = adminMutationMetaSchema.extend({
   reason: z.string().trim().min(1).max(1000),

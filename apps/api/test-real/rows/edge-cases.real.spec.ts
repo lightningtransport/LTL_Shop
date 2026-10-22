@@ -231,14 +231,16 @@ describe('Casos límite', () => {
     same('el mecánico ya no lo ve en su lista', (ok('lista', await as(USERS.alignment).get('/work-orders?mode=standard')).created as Json[]).length, 0);
   });
 
-  it('E16 | Cancelar todos los Jobs pendientes: el WO se puede cerrar', async () => {
+  it('E16 | Salida urgente: se cancela lo que no se hará y se cierra con lo hecho (el QC no se cancela, D55)', async () => {
     const { truck: row, workOrderId } = await plannedWo('905');
     ok('Start', await start(USERS.alignment, workOrderId));
-    for (const lane of ['pm', 'alignment', 'detailing', 'quality_check'] as const) {
+    for (const lane of ['pm', 'detailing'] as const) {
       const job = laneJob(await adminWo(workOrderId), lane);
       ok(`cancelar ${lane}`, await manager.post(`/admin/jobs/${job.id}/cancel`, { ...(await meta(workOrderId)), reason: 'No aplica en esta visita.' }));
     }
+    ok('Alignment terminado', await completeJob(USERS.alignment, workOrderId, laneJob(await adminWo(workOrderId), 'alignment').id));
     same('sin sesiones abiertas', await openSessionUsers(workOrderId), []);
+    ok('Mark QC complete', await adminCompleteJob(workOrderId, laneJob(await adminWo(workOrderId), 'quality_check').id));
     const detail = await truckDetail(row.id);
     same('siguiente paso', detail.nextStep.kind, 'close');
     ok('Close', await closeWo(workOrderId));

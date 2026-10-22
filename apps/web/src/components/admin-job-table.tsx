@@ -203,7 +203,8 @@ export function AdminJobTable({
       if (onStockChanged) items.push({ key: 'parts', label: messages.pcJobPartsAction, icon: Package, testId: 'admin-wo-job-parts', onSelect: () => setStockJobId(job.id) });
       else items.push({ key: 'parts-invoice', label: messages.pcAddPartsForJob, icon: Package, testId: 'admin-wo-job-parts-invoice', href: partsInvoiceHref(job.id) });
     }
-    if (canEdit) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
+    // D55 R9: the Quality Check is never cancelled.
+    if (canEdit && !isQualityCheck) items.push({ key: 'cancel', label: messages.cancelJobAction, icon: XCircle, destructive: true, separatorBefore: items.length > 0, onSelect: () => onJobDialog('cancel', job.id) });
 
     let mechanic;
     if (isExternal && job.external) {

@@ -553,10 +553,11 @@ export function completeAdminWorkOrder(
   workOrderId: string,
   expectedVersion: number,
   idempotencyKey = adminMutationIdempotencyKey(),
+  inspectionSkipReason?: string,
 ) {
   return apiFetch<AdminWorkOrderDetailDto>(`/api/admin/work-orders/${workOrderId}/complete`, {
     method: 'POST',
-    body: JSON.stringify({ expectedVersion, idempotencyKey }),
+    body: JSON.stringify({ expectedVersion, idempotencyKey, ...(inspectionSkipReason ? { inspectionSkipReason } : {}) }),
   });
 }
 
