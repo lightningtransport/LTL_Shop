@@ -340,6 +340,7 @@ function PartsTable({ category, stock, canWrite, locale, messages, onEdit, onCha
 }) {
   return (
     <DataTable
+              wholeCardOpens
       className="md:rounded-none md:border-0"
       items={category.parts}
       caption={category.name}

@@ -983,6 +983,7 @@ export function DataTable<T>({
   caption,
   getRowLabel,
   className,
+  wholeCardOpens = false,
 }: {
   items: T[];
   columns: DataTableColumn<T>[];
@@ -992,6 +993,11 @@ export function DataTable<T>({
   /** Accessible name of each row (defaults to the primary column's text). */
   getRowLabel?: (item: T) => string;
   className?: string;
+  /**
+   * LTR-293 §7: on a phone each row is a card; with this, a tap anywhere on the card follows the link (or button) in
+   * the primary cell, the way the card looks. Other links and buttons in the card stay on top and keep their own tap.
+   */
+  wholeCardOpens?: boolean;
 }) {
   return (
     <div className={cn('md:overflow-x-auto md:rounded-xl md:border', className)}>
@@ -1010,7 +1016,7 @@ export function DataTable<T>({
               key={getKey(item)}
               role="row"
               aria-label={getRowLabel?.(item)}
-              className="md:border-t max-md:block max-md:rounded-xl max-md:border max-md:bg-card max-md:p-4 max-md:shadow-soft"
+              className={cn('md:border-t max-md:block max-md:rounded-xl max-md:border max-md:bg-card max-md:p-4 max-md:shadow-soft', wholeCardOpens && 'max-md:relative')}
             >
               {columns.map((column) => (
                 <td
@@ -1025,6 +1031,9 @@ export function DataTable<T>({
                       ? 'max-md:pb-2 max-md:pt-0 max-md:text-base'
                       : 'max-md:border-t max-md:text-right max-md:before:shrink-0 max-md:before:text-left max-md:before:text-muted-foreground max-md:before:content-[attr(data-label)] max-md:[&>*]:min-w-0',
                     column.hideOnMobile && 'max-md:hidden',
+                    wholeCardOpens && (column.primary
+                      ? "max-md:[&_:is(a,button)]:after:absolute max-md:[&_:is(a,button)]:after:inset-0 max-md:[&_:is(a,button)]:after:rounded-xl max-md:[&_:is(a,button)]:after:content-['']"
+                      : 'max-md:[&_:is(a,button,input,select,label)]:relative max-md:[&_:is(a,button,input,select,label)]:z-10'),
                     column.emptyOnMobile?.(item) && 'max-md:hidden',
                     column.className,
                   )}

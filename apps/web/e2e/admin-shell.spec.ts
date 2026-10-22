@@ -841,5 +841,18 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
+
+  test('LTR-293 §7: on a phone, tapping anywhere on a Trucks card opens the truck', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/trucks');
+    const card = page.locator('tbody tr').first();
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    // Bottom-right corner of the card: far from the truck number link.
+    await card.click({ position: { x: box!.width - 12, y: box!.height - 12 } });
+    await expect(page).toHaveURL(/\/admin\/trucks\/[^/?]+/);
+  });
 });
 
