@@ -486,8 +486,8 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
   preset?: { displayName: string; partNumber?: string | null; defaultVendorId?: string };
 }) {
   const { showToast } = useActionToast();
-  const firstCategory = preset ? categories.find((category) => category.kind === 'repair') ?? categories[0] : categories[0];
-  const [categoryId, setCategoryId] = useState(part?.categoryId ?? firstCategory?.id ?? '');
+  // LTR-298: a new part starts with no category picked (nothing preselected); "+ Add category…" is in the list.
+  const [categoryId, setCategoryId] = useState(part?.categoryId ?? '');
   const [partNumber, setPartNumber] = useState(part?.partNumber ?? preset?.partNumber ?? '');
   const [displayName, setDisplayName] = useState(part?.displayName ?? preset?.displayName ?? '');
   const [tireSize, setTireSize] = useState(part?.tireSize ?? '');
@@ -637,6 +637,7 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
                 setCategoryId(event.target.value);
               }}
             >
+              <option value="">{messages.pcPickCategory}</option>
               {categoryChoices.map((category) => <option key={category.id} value={category.id}>{category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`}</option>)}
               <option value={ADD_NEW}>{messages.pcAddCategoryOption}</option>
             </Select>
