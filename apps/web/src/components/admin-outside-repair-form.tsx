@@ -231,7 +231,7 @@ export function OutsideRepairForm({
           </div>
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-invoice">{messages.pcInvoiceNumber}</Label>
-            <Input id="outside-invoice" className="font-mono" value={form.invoiceNumber} onChange={(event) => { set('invoiceNumber', event.target.value); setDuplicate(null); }} onBlur={() => void checkDuplicate()} disabled={busy} autoComplete="off" aria-invalid={(showErrors && !form.invoiceNumber.trim()) || Boolean(duplicate) || undefined} />
+            <Input id="outside-invoice" className="font-mono" spellCheck={false} autoCapitalize="characters" autoCorrect="off" value={form.invoiceNumber} onChange={(event) => { set('invoiceNumber', event.target.value); setDuplicate(null); }} onBlur={() => void checkDuplicate()} disabled={busy} autoComplete="off" aria-invalid={(showErrors && !form.invoiceNumber.trim()) || Boolean(duplicate) || undefined} />
             <RequiredNote show={showErrors && !form.invoiceNumber.trim()} messages={messages} />
           </div>
         </div>

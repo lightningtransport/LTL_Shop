@@ -89,6 +89,8 @@ export function NewWorkOrderDialog({
             maxLength={2000}
             disabled={pending}
             onChange={(event) => setNotes(event.target.value)}
+            // LTR-293 §12: ⌘/Ctrl+Enter in the note creates the Work Order; Enter alone is a new line.
+            onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void create(); } }}
           />
         </label>
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
