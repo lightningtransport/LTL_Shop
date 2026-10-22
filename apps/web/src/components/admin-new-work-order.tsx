@@ -40,6 +40,7 @@ import {
   Select,
   Textarea,
 } from './ui';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 
 type SelectedTruck = {
   truck: TruckDto;
@@ -75,7 +76,8 @@ export function AdminNewWorkOrder({
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
-  const [notes, setNotes] = useState('');
+  // LTR-293 §2: the note stays on this device if the page is left or reloaded before Create.
+  const [notes, setNotes, clearNotes] = useLocalDraft(draftKeys.newWorkOrderNote('page'));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preselectApplied, setPreselectApplied] = useState(false);
@@ -178,6 +180,7 @@ export function AdminNewWorkOrder({
         { revalidate: true },
       );
       void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
+      clearNotes();
       showToast('success', messages.createWorkOrderSuccess.replace('{id}', created.displayId));
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {

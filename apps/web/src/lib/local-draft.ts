@@ -45,10 +45,33 @@ export function useLocalDraft(key: string | null): [string, (value: string) => v
   return [value, update, clear];
 }
 
+/**
+ * LTR-293 §2: the same for a form with several fields (the truck form, Safety's findings). The draft is read once
+ * per key, written on every change and cleared on send or discard. Only plain JSON (no files).
+ */
+export function readDraftJson<T>(key: string): T | null {
+  const raw = readDraft(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function writeDraftJson(key: string, value: unknown | null) {
+  writeDraft(key, value == null ? '' : JSON.stringify(value));
+}
+
 export const draftKeys = {
   jobFinish: (jobId: string) => `ltl-draft:job-finish:${jobId}`,
   blockerNote: (jobId: string) => `ltl-draft:blocker-note:${jobId}`,
   workOrderNote: (workOrderId: string) => `ltl-draft:work-order-note:${workOrderId}`,
   workRequest: (workOrderId: string) => `ltl-draft:work-request:${workOrderId}`,
   qcReturn: (workOrderId: string) => `ltl-draft:qc-return:${workOrderId}`,
+  // LTR-293 §2
+  newWorkOrderNote: (truckId: string) => `ltl-draft:new-work-order-note:${truckId}`,
+  truckForm: (truckId: string | null) => `ltl-draft:truck-form:${truckId ?? 'new'}`,
+  managerNote: (workOrderId: string) => `ltl-draft:manager-note:${workOrderId}`,
+  qcFindings: (workOrderId: string) => `ltl-draft:qc-findings:${workOrderId}`,
 };
