@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Lock, MoreHorizontal, Pencil, Plus, Power, Trash2, X } from 'lucide-react';
 import {
   CatalogStatus,
@@ -385,7 +385,6 @@ export function CatalogJobRow({
 /** LTR-198 / JC2: Jobs and aliases matching the search, across every Category (accents and capitals ignored). */
 export function CatalogSearchResults({ query, messages }: { query: string; messages: AdminMessages }) {
   const { data } = useAdminCatalogSearch(query);
-  const router = useRouter();
   if (query.trim().length < 2 || !data) return null;
   return (
     <section className="overflow-hidden rounded-xl border bg-card" aria-labelledby="catalog-search-results" data-testid="catalog-search-results">
@@ -394,16 +393,16 @@ export function CatalogSearchResults({ query, messages }: { query: string; messa
         <ul className="divide-y">
           {data.map((hit) => (
             <li key={hit.jobId}>
-              <button
-                type="button"
+              {/* LTR-293 §12: a link, so Cmd/Ctrl-click and the middle button open it in a new tab. */}
+              <Link
                 className="flex min-h-11 w-full flex-wrap items-center gap-x-2 gap-y-0.5 px-4 py-2 text-left text-sm hover:bg-accent/40"
-                onClick={() => router.push(`/admin/catalog/categories/${hit.categoryId}`)}
+                href={`/admin/catalog/categories/${hit.categoryId}`}
               >
                 <span className="font-medium">{hit.displayName}</span>
                 {hit.matchedAlias ? <span className="text-xs text-muted-foreground">{fillPlaceholders(messages.catalogMatchedAlias, { alias: hit.matchedAlias })}</span> : null}
                 <span className="text-xs text-muted-foreground">· {hit.categoryName}</span>
                 {hit.status === CatalogStatus.INACTIVE || hit.categoryStatus === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
-              </button>
+              </Link>
             </li>
           ))}
         </ul>

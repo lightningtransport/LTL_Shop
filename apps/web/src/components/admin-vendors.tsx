@@ -207,7 +207,7 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vendor-account">{messages.pcVendorAccount}</Label>
-          <Input id="vendor-account" className="font-mono" value={form.accountNumber} onChange={(event) => set('accountNumber', event.target.value)} disabled={busy} autoComplete="off" />
+          <Input id="vendor-account" className="font-mono" spellCheck={false} autoCapitalize="characters" autoCorrect="off" value={form.accountNumber} onChange={(event) => set('accountNumber', event.target.value)} disabled={busy} autoComplete="off" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vendor-notes">{messages.pcVendorNotes}</Label>
