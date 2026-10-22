@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { X } from 'lucide-react';
 import { Button } from './ui';
@@ -19,6 +19,7 @@ export function SideSheet({
   footer,
   children,
   testId,
+  dismissible = true,
 }: {
   open: boolean;
   title: string;
@@ -28,7 +29,20 @@ export function SideSheet({
   footer?: ReactNode;
   children: ReactNode;
   testId?: string;
+  /** LTR-293 §14: false while something is typed, so Escape or a tap outside does not throw it away (Close still does). */
+  dismissible?: boolean | (() => boolean);
 }) {
+  // A function is read at the moment of Escape or the tap outside, so a change made just before counts.
+  const canDismiss = () => (typeof dismissible === 'function' ? dismissible() : dismissible);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  // LTR-293 §14: remember what opened the sheet, so closing gives the focus back to it (not to <body>).
+  useLayoutEffect(() => {
+    if (!open) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && !contentRef.current?.contains(active)) returnFocus.current = active;
+  }, [open]);
+
   // Stage QC-3: a toast rises above the sheet's fixed footer instead of covering its buttons (UX-1-008).
   const hasFooter = Boolean(footer);
   useEffect(() => {
@@ -49,7 +63,20 @@ export function SideSheet({
         <DialogPrimitive.Content
           data-testid={testId}
           aria-describedby={undefined}
-          onOpenAutoFocus={(event) => event.preventDefault()}
+          ref={contentRef}
+          tabIndex={-1}
+          // LTR-293 §14: focus goes into the sheet (keyboard and screen readers land in it), on the sheet itself, so a
+          // phone does not open its keyboard on a field.
+          onOpenAutoFocus={(event) => { event.preventDefault(); contentRef.current?.focus({ preventScroll: true }); }}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocus.current?.isConnected) return;
+            event.preventDefault();
+            returnFocus.current.focus();
+          }}
+          onEscapeKeyDown={(event) => { if (!canDismiss()) event.preventDefault(); }}
+          onInteractOutside={(event) => { if (!canDismiss()) event.preventDefault(); }}
+          // A button that disappears after a tap (a Job just added) sends focus to <body>; that is not leaving the sheet.
+          onFocusOutside={(event) => event.preventDefault()}
           // LTR-234: on phones it stands on top of the keyboard (globals.css).
           data-sheet=""
           data-sheet-side=""

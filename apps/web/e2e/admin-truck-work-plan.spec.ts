@@ -260,6 +260,26 @@ async function loginManager(page: Page) {
 }
 
 test.describe('LTR-33 Truck Detail Work Plan', () => {
+  test('LTR-293 §14: Add work with a Job picked survives Escape, and closing gives the focus back to Add work', async ({ page }) => {
+    await mockWorkPlanApi(page, emptyPlan());
+    await loginManager(page);
+    await page.goto(`/admin/trucks/${truckId}`);
+    // From the keyboard (Safari does not focus a button on a mouse click, so there is nothing to give back then).
+    const open = page.getByRole('button', { name: 'Add work' }).first();
+    await open.focus();
+    await page.keyboard.press('Enter');
+    const sheet = page.getByTestId('work-plan-add-work-panel');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toBeFocused();
+    await page.getByRole('radio', { name: 'Air & Brake System' }).click();
+    await page.getByRole('button', { name: 'Add Brake Inspection' }).click();
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('button', { name: 'Close' }).first().click();
+    await expect(sheet).toHaveCount(0);
+    await expect(open).toBeFocused();
+  });
+
   test('Add work adds a catalog job without editing six gates', async ({ page }) => {
     await mockWorkPlanApi(page, emptyPlan());
     await loginManager(page);

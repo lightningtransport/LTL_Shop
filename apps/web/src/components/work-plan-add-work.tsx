@@ -40,6 +40,7 @@ export function WorkPlanAddWork({
   standardMechanics = [],
   onSubmit,
   onCancel,
+  onDirtyChange,
 }: {
   /** D42 / S-6: the truck whose Samsara faults are recommended at the top. */
   truckId?: string;
@@ -52,11 +53,16 @@ export function WorkPlanAddWork({
   standardMechanics?: ReadonlyArray<{ id: string; name: string }>;
   onSubmit: (jobs: WorkPlanJobDraft[]) => Promise<boolean | void> | boolean | void;
   onCancel?: () => void;
+  /** LTR-293 §14: tells the sheet when something is typed or picked, so Escape or a tap outside does not drop it. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [categoryId, setCategoryId] = useState('');
   const [jobQuery, setJobQuery] = useState('');
   const [customName, setCustomName] = useState('');
   const [drafts, setDrafts] = useState<WorkPlanJobDraft[]>([]);
+  const dirty = drafts.length > 0 || customName.trim() !== '';
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   // D25: the Manager (or System Admin) can save the custom Job into the catalog as it is added.
   const canAddToCatalog = useCanShowManagerWrites();
   const [alsoAddToCatalog, setAlsoAddToCatalog] = useState(false);
@@ -183,12 +189,15 @@ export function WorkPlanAddWork({
   async function dismissFault(item: TruckFaultRecommendationDto, reason: string) {
     if (!truckId) return;
     setFaultError(null);
+    // LTR-293 §14: the fault leaves the Jobs being added before the server answers; if it fails, it comes back.
+    const before = drafts;
     try {
       removeFault(item.fault.id);
       await refreshRecommendations(await dismissAdminTruckFault(truckId, item.fault.id, reason), { revalidate: false });
       setCatalogNotice(messages.faultRecDismissed);
       void mutate(`/api/admin/trucks/${truckId}/faults`);
     } catch {
+      setDrafts(before);
       setFaultError(messages.faultRecFailed);
     }
   }
