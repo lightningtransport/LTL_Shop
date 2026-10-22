@@ -25,6 +25,7 @@ import { AdminNavLink } from './admin-nav-link';
 import { duplicateText, invoiceHref } from './admin-outside-repair-form';
 import { MissingSummary, OptionalTag, RequiredNote, StickyFormFooter, focusField, type MissingField } from './parts-costs-form-ui';
 import { PartDialog, partsCostsFailure } from './admin-parts-catalog';
+import { OTHER_PART, PartPicker } from './part-picker';
 import { Button, Input, Label, Modal, Select, Textarea, InlineAlert } from './ui';
 import {
   checkAdminInvoice,
@@ -44,7 +45,7 @@ import { pdfTextLines } from '@/lib/pdf-text';
 import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 
 const DRAFT_KEY = 'ltl.admin.purchase-draft';
-const OTHER = '__other__';
+const OTHER = OTHER_PART;
 const ADD_VENDOR = '__add_vendor__';
 
 /** `costFrom`: where the unit cost was filled from when the part was picked (shown until the cost is changed). */
@@ -241,7 +242,7 @@ export function PurchaseForm({
     ...computed.flatMap((line, index) => {
       const n = String(index + 1);
       return [
-        ...(line.needsPart ? [{ label: fillPlaceholders(messages.pcMissingLinePart, { n }), fieldId: state.lines[index].partId === OTHER ? `line-description-${index}` : `line-part-${index}` }] : []),
+        ...(line.needsPart ? [{ label: fillPlaceholders(messages.pcMissingLinePart, { n }), fieldId: `line-part-${index}` }] : []),
         ...(line.hundredths === undefined ? [{ label: fillPlaceholders(messages.pcMissingLineQty, { n }), fieldId: `line-qty-${index}` }] : []),
         ...(typeof line.unit !== 'number' ? [{ label: fillPlaceholders(messages.pcMissingLineCost, { n }), fieldId: `line-cost-${index}` }] : []),
         ...(stockNeedsPart(index) ? [{ label: messages.pcLineStockNeedsPart, fieldId: `line-goes-${index}` }] : []),
@@ -525,30 +526,24 @@ export function PurchaseForm({
               <div key={index} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,2fr)_5rem_7rem_6rem_auto]" data-testid="purchase-line">
                 <div className="space-y-1">
                   <Label htmlFor={`line-part-${index}`} className="text-xs">{messages.pcLinePart}</Label>
-                  <Select
+                  {/* LTR-298: typed, not picked from a long list; what is not in Parts is used as typed or added from here. */}
+                  <PartPicker
                     id={`line-part-${index}`}
+                    categories={categories}
                     value={line.partId}
+                    description={line.description}
                     disabled={busy}
-                    aria-invalid={(showErrors && row.needsPart) || undefined}
-                    onChange={(event) => {
-                      const partId = event.target.value;
+                    invalid={showErrors && row.needsPart}
+                    messages={messages}
+                    onChange={(partId, description) => {
+                      if (partId === line.partId && description === line.description) return;
                       const start = partId && partId !== OTHER ? startingCost(partId, state.vendorId) : { cost: '', from: null };
-                      setLine(index, start.cost ? { partId, unitCost: start.cost, costFrom: start.from } : { partId, costFrom: null });
+                      setLine(index, start.cost ? { partId, description, unitCost: start.cost, costFrom: start.from } : { partId, description, costFrom: null });
                     }}
-                  >
-                    <option value="">{messages.pcLinePart}…</option>
-                    {categories.map((category) => (
-                      <optgroup key={category.id} label={category.name}>
-                        {category.parts.filter((part) => part.active || part.id === line.partId).map((part) => (
-                          <option key={part.id} value={part.id}>{part.displayName}{part.partNumber ? ` · ${part.partNumber}` : ''}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                    <option value={OTHER}>{messages.pcLineOther}</option>
-                  </Select>
+                    onAddToCatalog={onCatalogChanged ? () => setCataloging(index) : undefined}
+                  />
                   {line.partId === OTHER ? (
                     <>
-                      <Input id={`line-description-${index}`} aria-label={messages.pcLineDescription} placeholder={messages.pcLineDescription} value={line.description} onChange={(event) => setLine(index, { description: event.target.value })} disabled={busy} autoComplete="off" aria-invalid={(showErrors && row.needsPart) || undefined} />
                       {/* UX-7-028 / PC3: an "Other" line stays on this invoice; parts are added to the catalog in Parts. */}
                       <p className="text-xs text-muted-foreground" data-testid="other-hint">
                         {messages.pcOtherHint}{' '}

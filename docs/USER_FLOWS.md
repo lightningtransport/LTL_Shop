@@ -644,6 +644,9 @@ Ver la fila E7 en HU-ME2.
 | Manda un Job afuera, carga la factura y después marca Regresó (o al revés) | "Enviar a taller externo" y "Regresó" funcionan igual que antes, con o sin factura cargada; la factura sigue ligada al Job | ✅ | A64 |
 | Carga como reparación una factura que ya cargó como compra (mismo proveedor y número) | La app avisa y no deja guardar: dice cuál es (D-PC8) | ✅ | A65 |
 | Corrige o anula una reparación externa | Igual que una compra: reversas en el costo del camión, nada se borra; anular pide motivo | ✅ | A65 |
+| Carga la factura del taller externo con varios trabajos (LTR-298) | Una línea por trabajo con su monto, como viene la factura; el total es la suma y la app no deja guardar uno que no cuadre. En el detalle se ven los trabajos; una reparación de antes se ve como una sola línea | ✅ | A161 |
+| El proveedor del taller externo no está en Vendors (LTR-298) | Lo agrega desde el mismo formulario ("+ Add vendor…", queda con "Does repairs") y sigue cargando | 👁 | e2e |
+| En New purchase la parte comprada no está en Parts (LTR-298) | Escribe el nombre o número: el campo filtra Parts; si no está, la usa tal cual solo en esa factura o la agrega a Parts ahí mismo y la línea queda con la parte nueva | 👁 | e2e |
 | Abre Truck → Costs y elige un período (este mes, 3 meses, este año, todo) (PC-4) | Ve el total de partes, de reparaciones externas y el total; las barras por mes; y cada movimiento (compra o reparación) con su WO, que abre su compra o reparación. Lo anulado o corregido sale como reversa en negativo y baja el total | ✅ | A66 |
 | Quiere ver la mano de obra del camión | Las horas registradas en el período (sesiones cerradas, D18, D21) y, con la tarifa del taller (D34), su monto | ✅ | A67, A69 |
 | Un mecánico o Safety intenta ver los costos de un camión; un PM se termina | No puede (403); terminar el Job de PM no escribe nada en el costo del camión: se escribe al completar la WO (D45 / ST-5) | ✅ | A68 |

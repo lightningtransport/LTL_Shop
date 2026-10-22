@@ -114,15 +114,24 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   await form.getByLabel('Invoice #').fill('88412200');
   await expect(form.getByTestId('duplicate-invoice')).toHaveCount(0);
 
-  // D-PC6: picking the part fills the last price paid to this vendor.
-  await form.getByLabel('Part', { exact: true }).first().selectOption({ label: 'Fuel Filter 4 Micron · LFF8897' });
+  // D-PC6: picking the part fills the last price paid to this vendor. LTR-298: the part is typed and filtered.
+  const firstPart = form.getByRole('combobox', { name: 'Part' }).first();
+  await firstPart.fill('lff88');
+  const parts = form.getByRole('listbox');
+  await expect(parts.getByRole('option')).toHaveCount(3); // the part, "Use …", "Add … to Parts…"
+  await parts.getByRole('option', { name: 'Fuel Filter 4 Micron · LFF8897' }).click();
+  await expect(firstPart).toHaveValue('Fuel Filter 4 Micron · LFF8897');
   await expect(form.getByLabel('Unit cost').first()).toHaveValue('24.10');
   await expect(form.getByTestId('cost-source').first()).toHaveText('Last price paid to FleetPride (Oct 6, 2026).');
   await form.getByLabel('Qty').first().fill('2');
   await form.getByRole('button', { name: 'Add line' }).click();
-  await form.getByLabel('Part', { exact: true }).nth(1).selectOption({ label: 'Other — only on this invoice' });
+  // LTR-298: a part that is not in Parts is used as typed, only on this invoice.
+  const secondPart = form.getByRole('combobox', { name: 'Part' }).nth(1);
+  await secondPart.fill('Shop rags');
+  await expect(form.getByText('No part in Parts matches “Shop rags”.')).toBeVisible();
+  await form.getByRole('listbox').getByRole('option', { name: 'Use “Shop rags” only on this invoice' }).click();
   await expect(form.getByTestId('other-hint')).toContainText('Saved only on this purchase; it is not added to Parts.');
-  await form.getByPlaceholder('Description').fill('Shop rags');
+  await expect(secondPart).toHaveValue('Shop rags');
   await form.getByLabel('Unit cost').nth(1).fill('10');
   await form.getByLabel('Tax').fill('1.50');
   await expect(form.getByTestId('purchase-total')).toHaveText('$59.70');
@@ -177,17 +186,30 @@ test('manager loads an outside shop invoice from the Job: truck and Job come pic
   await expect(form.getByLabel('Job sent to an external shop').locator('option:checked')).toHaveText('Radiator Repair · WO-001 · part out since Oct 6, 2026');
   await expect(page).toHaveURL(/\/admin\/parts\/outside-repairs$/);
 
+  // LTR-298: a vendor that is not in Vendors yet is added from here, with "Does repairs".
+  await form.getByLabel('Vendor').selectOption({ label: '+ Add vendor…' });
+  await form.getByLabel('New vendor name').fill('Radiator Masters');
+  await form.getByRole('button', { name: 'Add vendor' }).click();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await expect(form.getByLabel('Vendor').locator('option:checked')).toHaveText('Radiator Masters');
   await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
   await form.getByLabel('Invoice #').fill('88412093');
   await form.getByLabel('Invoice #').blur();
   await expect(form.getByTestId('duplicate-invoice')).toContainText('It was loaded as a purchase.');
   await form.getByLabel('Invoice #').fill('DP-4410');
-  await form.getByLabel('What was done').fill('Radiator recore');
-  await form.getByLabel('Amount (USD)').fill('1,840');
+  // LTR-298: the invoice as the shop wrote it: one job per line, the total is their sum.
+  await form.getByLabel('Job done').first().fill('Radiator recore');
+  await form.getByLabel('Amount', { exact: true }).first().fill('1,600');
+  await form.getByRole('button', { name: 'Add job' }).click();
+  await form.getByLabel('Job done').nth(1).fill('Coolant flush');
+  await form.getByLabel('Amount', { exact: true }).nth(1).fill('240');
+  await expect(form.getByTestId('outside-total')).toHaveText('$1,840.00');
   await form.getByRole('button', { name: 'New outside repair' }).click();
 
   await expect(page.getByText('Outside repair saved · $1,840.00')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'FleetPride · DP-4410' })).toBeVisible();
+  await expect(page.getByTestId('outside-lines')).toContainText('Radiator recore');
+  await expect(page.getByTestId('outside-lines')).toContainText('Coolant flush');
   await expect(page.getByTestId('outside-job')).toHaveText('Radiator Repair · WO-001 · part');
 });
 

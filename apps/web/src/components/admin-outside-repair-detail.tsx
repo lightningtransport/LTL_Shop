@@ -27,7 +27,7 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
   const { showToast } = useActionToast();
   const { data, error, isLoading, mutate } = useAdminOutsideRepair(id);
   const { data: formData } = useAdminPurchaseFormData(canWrite);
-  const { data: vendors } = useAdminVendors();
+  const { data: vendors, mutate: mutateVendors } = useAdminVendors();
   const [editing, setEditing] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [filing, setFiling] = useState(false);
@@ -79,7 +79,17 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
       <SectionCard title={messages.pcWhatWasDone}>
         <dl className="grid gap-x-6 gap-y-2 px-4 py-3 text-sm sm:grid-cols-[10rem_1fr]">
           <dt className="text-muted-foreground">{messages.pcWhatWasDone}</dt>
-          <dd className="whitespace-pre-line">{data.description}</dd>
+          <dd data-testid="outside-lines">
+            {/* LTR-298: the jobs on the invoice, each with its amount. */}
+            <ul className="space-y-1">
+              {data.lines.map((line) => (
+                <li key={line.id} className="flex justify-between gap-3">
+                  <span className="min-w-0 whitespace-pre-line">{line.description}</span>
+                  <span className={`shrink-0 tabular-nums ${live ? '' : 'line-through'}`}>{formatCents(line.amountCents, locale)}</span>
+                </li>
+              ))}
+            </ul>
+          </dd>
           <dt className="text-muted-foreground">{messages.pcTruckRequired}</dt>
           <dd><AdminNavLink className="tap-inline text-primary hover:underline" href={adminTruckCostsHref(data.truck.id, here)}>{fillPlaceholders(messages.pcTruckLabel, { truck: data.truck.truckNumber })}</AdminNavLink></dd>
           <dt className="text-muted-foreground">{messages.pcExternalJob}</dt>
@@ -124,6 +134,7 @@ export function AdminOutsideRepairDetail({ id, locale, messages }: { id: string;
           locale={locale}
           messages={messages}
           onClose={() => setEditing(false)}
+          onVendorAdded={() => void mutateVendors()}
           onSaved={() => { setEditing(false); void mutate(); }}
           notice={chargedWarning('edit', 'repair', data.chargedOn, messages)}
         />
