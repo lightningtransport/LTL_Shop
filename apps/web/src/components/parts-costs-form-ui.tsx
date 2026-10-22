@@ -91,7 +91,7 @@ export function StickyFormFooter({
       ) : (
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={submitDisabled}>{busy ? messages.pcSaving : submitLabel}</Button>
+          <Button loading={busy} type="submit" disabled={submitDisabled}>{submitLabel}</Button>
         </div>
       )}
     </div>

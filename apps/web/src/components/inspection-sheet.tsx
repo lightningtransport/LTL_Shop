@@ -372,8 +372,8 @@ function SheetFlow({
           {signed ? (state.canAssign ? copy.jobsGoTo(state.workOrder?.displayId ?? '') : copy.jobsGoToManager) : copy.signToSave}
         </span>
         <Button type="button" variant="outline" onClick={() => setView('sheet')} disabled={pending}><ArrowLeft aria-hidden="true" />{copy.back}</Button>
-        <Button type="button" className="flex-1 sm:flex-none" disabled={!signed || pending} onClick={() => void submit()} data-testid="inspection-save">
-          {pending ? copy.saving : created ? copy.saveCreate(created) : preview.issues ? copy.saveNotes : copy.saveNoIssues}
+        <Button loading={pending} type="button" className="flex-1 sm:flex-none" disabled={!signed || pending} onClick={() => void submit()} data-testid="inspection-save">
+          {created ? copy.saveCreate(created) : preview.issues ? copy.saveNotes : copy.saveNoIssues}
         </Button>
       </FixedBar>
     );

@@ -226,7 +226,7 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
           <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
             <span className="mr-auto text-sm font-medium" role="status">{copy.unsaved}</span>
             <Button type="button" variant="ghost" disabled={pending} onClick={() => { setRows(rowsOf(data)); setLimits(data.limits); setFailure(null); }}>{copy.discard}</Button>
-            <Button type="button" disabled={pending} onClick={() => void save()} data-testid="checklist-save">{pending ? copy.saving : copy.saveChanges}</Button>
+            <Button loading={pending} type="button" onClick={() => void save()} data-testid="checklist-save">{copy.saveChanges}</Button>
           </div>
         </div>
       ) : null}

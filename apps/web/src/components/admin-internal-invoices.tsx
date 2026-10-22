@@ -322,7 +322,7 @@ function NewInvoiceDialog({ trucks, messages, onClose, onCreated }: {
         ) : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcInvoiceCreate}</Button>
+          <Button loading={busy} type="submit">{messages.pcInvoiceCreate}</Button>
         </DialogActions>
       </form>
     </Modal>
