@@ -39,7 +39,15 @@ test('manager keeps the PM part catalog: cost, usual vendor, a part in an open P
   await expect(dialog.getByRole('checkbox', { name: /Active/ })).toBeDisabled();
   await dialog.getByLabel('Reference cost').fill('12.345');
   await expect(dialog.getByText('Enter an amount like 24.10')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  // LTR-293 §3: Save stays on; with a bad cost it sends nothing and takes you to the field that says why.
+  const writes: string[] = [];
+  const onWrite = (request: import('@playwright/test').Request) => { if (request.method() !== 'GET' && request.url().includes('/parts')) writes.push(request.url()); };
+  page.on('request', onWrite);
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog.getByLabel('Reference cost')).toBeFocused();
+  await expect(dialog.getByLabel('Reference cost')).toHaveAccessibleDescription('Enter an amount like 24.10');
+  page.off('request', onWrite);
+  expect(writes).toEqual([]);
   await dialog.getByLabel('Reference cost').fill('31.5');
   await dialog.getByLabel('Usual vendor').selectOption({ label: 'FleetPride' });
   await dialog.getByRole('button', { name: 'Save changes' }).click();
@@ -64,6 +72,23 @@ test('manager adds a vendor; the same name in other capitals is refused', async 
   await dialog.getByRole('button', { name: 'Add vendor' }).click();
   await expect(page.getByText('Vendor added')).toBeVisible();
   await expect(page.getByRole('row', { name: /Diesel Pro/ })).toContainText('Outside repairs');
+});
+
+test('LTR-293 §5: a double tap on "Add vendor" in a purchase creates one vendor', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel('Vendor').selectOption({ label: '+ Add vendor…' });
+  await form.getByRole('textbox', { name: 'New vendor name' }).fill('Rush Truck Centers');
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/admin/parts-costs/vendors')) posts.push(request.url());
+  });
+  await form.getByRole('button', { name: 'Add vendor' }).dblclick();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(posts).toHaveLength(1);
 });
 
 test('the System Admin sees Parts & costs too (D-PC7)', async ({ page }) => {

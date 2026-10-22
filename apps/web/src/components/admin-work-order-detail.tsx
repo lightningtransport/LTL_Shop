@@ -49,6 +49,7 @@ import {
   Textarea,
 } from './ui';
 import { AdminQcFindingsCard } from './admin-qc-findings-card';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 
 type WorkOrderDialog = 'pause' | 'cancel' | 'reopen' | 'return' | null;
 
@@ -96,7 +97,8 @@ export function AdminWorkOrderDetail({
   // LTR-168: no preselected reason, so pausing is a choice and never a single accidental tap.
   const [pauseReason, setPauseReason] = useState<PauseReason | ''>('');
   const [draftPriority, setDraftPriority] = useState<Priority>(Priority.NORMAL);
-  const [draftNotes, setDraftNotes] = useState('');
+  // LTR-293 §2: the Manager's note stays on this device until it is posted.
+  const [draftNotes, setDraftNotes] = useLocalDraft(draftKeys.managerNote(id));
   // Stage 5 (R4): History and audit as tabs; "Correct time…" in the "…" opens it on Times.
   const [historyTab, setHistoryTab] = useState<HistoryTab>('activity');
   const [pendingAction, setPendingAction] = useState<string | null>(null);

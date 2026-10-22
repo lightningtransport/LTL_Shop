@@ -20,7 +20,12 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     await expect(page.getByLabel('Category')).toHaveCount(0);
     await expect(page.getByLabel('Custom job name')).toHaveCount(0);
     await expect(page.getByText(/PM, Alignment, Detailing and QC come with it/)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Create Work Order' })).toBeDisabled();
+    // LTR-293 §3: no truck yet does not grey the button; Create says what is missing next to the search and goes there.
+    await page.getByRole('button', { name: 'Create Work Order' }).click();
+    await expect(page.getByText('Pick a truck', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Truck number')).toBeFocused();
+    await expect(page.getByLabel('Truck number')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page).toHaveURL(/\/admin\/work-orders\/new/);
 
     await chooseTruck(page, '105');
     await page.getByLabel('Notes (optional)').fill('Driver reports a pull to the right');
@@ -83,8 +88,12 @@ test.describe('LTR-157 / D13 New Work Order with only the Truck', () => {
     const saturday = !(await hours.getByLabel('Sat').isChecked());
 
     await cutoff.fill('09:00');
-    await expect(hours.getByRole('alert')).toHaveText('Choose a time between 12:00 p.m. and 11:59 p.m. and at least one day.');
-    await expect(hours.getByRole('button', { name: 'Save shop hours' })).toBeDisabled();
+    // LTR-293 §3: the reason is under the time, and Save explains instead of staying grey.
+    await expect(hours.getByText('Choose a time between 12:00 p.m. and 11:59 p.m. and at least one day.')).toBeVisible();
+    await expect(cutoff).toHaveAttribute('aria-invalid', 'true');
+    await hours.getByRole('button', { name: 'Save shop hours' }).click();
+    await expect(cutoff).toBeFocused();
+    await expect(page.getByRole('status').filter({ hasText: 'Shop hours saved.' })).toHaveCount(0);
     await cutoff.fill(target);
     await hours.getByLabel('Sat').setChecked(saturday);
     await hours.getByRole('button', { name: 'Save shop hours' }).click();

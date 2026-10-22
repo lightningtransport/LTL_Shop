@@ -3,6 +3,9 @@
 import { Button, InlineAlert } from './ui';
 import type { AdminMessages } from '@/lib/admin-messages';
 
+/** Only the two texts these helpers say, so a screen with its own copy (the inspection checklist) can use them. */
+type MissingCopy = { pcFieldRequired: string; pcMissingTitle: string };
+
 /** One thing missing before saving, and the field to send the person to. */
 export type MissingField = { label: string; fieldId: string };
 
@@ -10,7 +13,7 @@ export type MissingField = { label: string; fieldId: string };
  * UX-7-026 / PC1: after Save with something missing, say what — at the top of the form, in words — and go to the
  * first one. Each field also says "Required" next to it.
  */
-export function MissingSummary({ missing, messages }: { missing: MissingField[]; messages: AdminMessages }) {
+export function MissingSummary({ missing, messages }: { missing: MissingField[]; messages: MissingCopy }) {
   if (!missing.length) return null;
   return (
     <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm" data-testid="form-missing">
@@ -33,9 +36,12 @@ export function focusField(fieldId: string) {
   field.focus({ preventScroll: true });
 }
 
-/** "Required" under a field, only after a Save with it missing. */
-export function RequiredNote({ show, messages }: { show: boolean; messages: AdminMessages }) {
-  return show ? <p className="text-xs text-destructive-text">{messages.pcFieldRequired}</p> : null;
+/**
+ * "Required" under a field, only after a Save with it missing. LTR-293 §4: give it an `id` and point the field's
+ * `aria-describedby` at it (with `aria-invalid`), so a screen reader says why the field is wrong.
+ */
+export function RequiredNote({ show, messages, id, text }: { show: boolean; messages: MissingCopy; id?: string; text?: string }) {
+  return show ? <p id={id} className="text-xs text-destructive-text">{text ?? messages.pcFieldRequired}</p> : null;
 }
 
 /** A label for a field that may stay empty: "Tax (optional)". */

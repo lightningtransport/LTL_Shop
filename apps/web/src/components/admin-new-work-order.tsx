@@ -20,6 +20,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { adminPriorityLabel } from '@/lib/status-chips';
 import { useTrucks } from '@/lib/shop-data';
 import { OpenWorkOrderTag } from './open-work-order-tag';
+import { RequiredNote, focusField } from './parts-costs-form-ui';
 import { rankTruckResults } from '@/lib/truck-search';
 import { isAdminWorkOrdersListKey, isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { prependAdminWorkOrderPage, WORK_ORDER_LIST_REVALIDATE } from '@/lib/swr-work-order-cache';
@@ -40,6 +41,7 @@ import {
   Select,
   Textarea,
 } from './ui';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 
 type SelectedTruck = {
   truck: TruckDto;
@@ -75,7 +77,8 @@ export function AdminNewWorkOrder({
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeResult, setActiveResult] = useState(-1);
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
-  const [notes, setNotes] = useState('');
+  // LTR-293 §2: the note stays on this device if the page is left or reloaded before Create.
+  const [notes, setNotes, clearNotes] = useLocalDraft(draftKeys.newWorkOrderNote('page'));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preselectApplied, setPreselectApplied] = useState(false);
@@ -101,6 +104,12 @@ export function AdminNewWorkOrder({
     && openWorkOrderCheck === 'verified'
     && !selectedTruck?.openWorkOrder
     && !busy;
+  // LTR-293 §3: no truck yet is not a reason to grey the button — Create says "Pick a truck" under the search and
+  // goes there. It stays off only while saving or when the picked truck is still being checked, could not be
+  // checked, or already has an open Work Order (that block has its own message above).
+  const [showErrors, setShowErrors] = useState(false);
+  const truckMissing = showErrors && !selectedTruck;
+  const submitBlocked = busy || (Boolean(selectedTruck) && !canSubmit);
 
   useEffect(() => {
     setActiveResult(trucks.length ? 0 : -1);
@@ -159,7 +168,12 @@ export function AdminNewWorkOrder({
 
 
   async function submit() {
-    if (!canSubmit || !selectedTruck) return;
+    if (!selectedTruck) {
+      setShowErrors(true);
+      focusField('admin-truck-search');
+      return;
+    }
+    if (!canSubmit) return;
     setBusy(true);
     setError(null);
     try {
@@ -178,6 +192,7 @@ export function AdminNewWorkOrder({
         { revalidate: true },
       );
       void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
+      clearNotes();
       showToast('success', messages.createWorkOrderSuccess.replace('{id}', created.displayId));
       router.push(`/admin/work-orders/${created.id}`);
     } catch (failure) {
@@ -234,6 +249,8 @@ export function AdminNewWorkOrder({
                     aria-autocomplete="list"
                     aria-expanded={resultsOpen}
                     aria-controls="admin-truck-search-results"
+                    aria-invalid={truckMissing || undefined}
+                    aria-describedby={truckMissing ? 'admin-truck-search-error' : undefined}
                     aria-activedescendant={
                       resultsOpen && activeResult >= 0
                         ? `admin-truck-result-${trucks[activeResult]?.id}`
@@ -298,6 +315,7 @@ export function AdminNewWorkOrder({
                       )}
                     </ul>
                   ) : null}
+                  <RequiredNote show={truckMissing} id="admin-truck-search-error" messages={messages} text={messages.pcPickTruck} />
                 </div>
               )}
 
@@ -356,7 +374,7 @@ export function AdminNewWorkOrder({
           {error ? <InlineAlert className="sm:col-span-2">{error}</InlineAlert> : null}
         </CardContent>
         <CardFooter className="border-t pt-4">
-          <Button type="button" className="w-full sm:ml-auto sm:w-auto" disabled={!canSubmit} onClick={submit}>
+          <Button type="button" className="w-full sm:ml-auto sm:w-auto" disabled={submitBlocked} onClick={() => void submit()}>
             {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
           </Button>
         </CardFooter>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus } from 'lucide-react';
 import { formatCents, normalizeCatalogText, parseMoneyToCents, parseQuantityToHundredths, type AdminPartDto, type AdminStockItemDto } from '@ltl-shop/shared';
@@ -8,6 +8,7 @@ import { useActionToast } from './action-toast';
 import { useAdminBreadcrumb, useDocumentTitle } from './admin-breadcrumb';
 import { kindLabel, partsCostsFailure } from './admin-parts-catalog';
 import { stockQty } from './admin-stock-actions';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { Badge, Button, Card, CardContent, EmptyState, InlineAlert, Input, Label, LoadFailure, PageHeader, PageSkeleton, Select } from './ui';
 import { countAdminStockBatch, useAdminPartsCatalog, useAdminStock } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -23,6 +24,20 @@ function countedHundredths(value: string | undefined) {
   if (value === undefined || value.trim() === '') return null;
   if (Number(value) === 0 && /^\s*0+(\.0+)?\s*$/.test(value)) return 0;
   return parseQuantityToHundredths(value) ?? undefined;
+}
+
+/**
+ * LTR-293 §3: the phone cards and the computer table both have a "Counted" box per part, and only one is on screen.
+ * The field ids (for "Required" and for jumping to the first bad one) go on the one that is showing.
+ */
+const WIDE_QUERY = '(min-width: 768px)';
+function subscribeWide(onChange: () => void) {
+  const query = window.matchMedia(WIDE_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+function useWide() {
+  return useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE_QUERY).matches, () => false);
 }
 
 /**
@@ -45,6 +60,8 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
   const [missing, setMissing] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
+  const wide = useWide();
 
   const stock = useMemo(() => new Map((stockData?.items ?? []).map((item) => [item.partId, item])), [stockData]);
   const rows: Row[] = useMemo(() => (catalog?.categories ?? []).flatMap((category) => category.parts
@@ -75,9 +92,21 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
   const dirty = Object.values(counted).some((value) => value.trim() !== '');
   useUnsavedChangesGuard(dirty && !busy, messages.unsavedChangesConfirm);
   const canSave = !busy && changes.length > 0 && !needCost.length && !invalid;
+  // LTR-293 §3: what stops the save, in list order (same rules as canSave): a count that does not read as a number,
+  // or a part that goes up with no cost to use.
+  const missingFields: MissingField[] = rows.flatMap((row) => {
+    if (countedHundredths(counted[row.part.id]) === undefined) return [{ label: row.part.displayName, fieldId: `count-${row.part.id}` }];
+    if (change(row)?.needsCost) return [{ label: `${row.part.displayName} · ${messages.pcAddToStockCost}`, fieldId: `count-cost-${row.part.id}` }];
+    return [];
+  });
 
   async function save() {
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missingFields[0]) focusField(missingFields[0].fieldId);
+      return;
+    }
     setBusy(true);
     setFailure(null);
     try {
@@ -109,16 +138,40 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
     setCount(row.part.id, stockQty(Math.max(0, base + by * 100) / 100));
   };
 
-  function changeText(row: Row) {
+  /** LTR-293 §3: the ids for one row's fields, only on the layout that is showing (cards on a phone, table on a computer). */
+  function rowIds(row: Row, onTable: boolean) {
+    const here = onTable === wide;
+    const countBad = showErrors && countedHundredths(counted[row.part.id]) === undefined;
+    return {
+      count: here ? `count-${row.part.id}` : undefined,
+      countError: here && countBad ? `count-${row.part.id}-error` : undefined,
+      countBad,
+      cost: here ? `count-cost-${row.part.id}` : undefined,
+    };
+  }
+
+  function countField(row: Row, onTable: boolean, className: string) {
+    const ids = rowIds(row, onTable);
+    return (
+      <Input id={ids.count} className={className} inputMode="decimal" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} aria-invalid={countedHundredths(counted[row.part.id]) === undefined || undefined} aria-describedby={ids.countError} />
+    );
+  }
+
+  function changeText(row: Row, onTable: boolean) {
     const value = change(row);
+    const ids = rowIds(row, onTable);
+    if (ids.countBad) return <RequiredNote show id={ids.countError} messages={messages} text={messages.pcQtyInvalid} />;
     if (countedHundredths(counted[row.part.id]) === null) return <span className="text-muted-foreground">{messages.pcCountNotCounted}</span>;
     if (!value) return null;
     if (value.diff === 0) return <span className="text-muted-foreground">{messages.pcCountNoChange}</span>;
     if (value.needsCost || missing.includes(row.part.id)) {
+      const costMissing = showErrors && value.needsCost;
+      const costError = costMissing && ids.cost ? `${ids.cost}-error` : undefined;
       return (
-        <span className="flex items-center gap-2">
+        <span className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="border-warning/50 bg-warning/15 text-warning-foreground">{messages.pcCountNeedsCost}</Badge>
-          <Input className="w-24 tabular-nums" inputMode="decimal" placeholder={messages.pcCountCostEach} aria-label={`${messages.pcAddToStockCost} · ${row.part.displayName}`} value={costs[row.part.id] ?? ''} onChange={(event) => setCosts((current) => ({ ...current, [row.part.id]: event.target.value }))} />
+          <Input id={ids.cost} className="w-24 tabular-nums" inputMode="decimal" placeholder={messages.pcCountCostEach} aria-label={`${messages.pcAddToStockCost} · ${row.part.displayName}`} value={costs[row.part.id] ?? ''} onChange={(event) => setCosts((current) => ({ ...current, [row.part.id]: event.target.value }))} aria-invalid={costMissing || undefined} aria-describedby={costError} />
+          <RequiredNote show={costMissing} id={costError} messages={messages} />
         </span>
       );
     }
@@ -159,6 +212,7 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
         </CardContent>
       </Card>
 
+      {showErrors && missingFields.length > 1 ? <MissingSummary missing={missingFields} messages={messages} /> : null}
       {!visible.length ? <EmptyState><p>{messages.pcNoParts}</p></EmptyState> : null}
 
       {/* Phone: cards with − / + (44 px), the Manager counts standing at the shelf. */}
@@ -172,11 +226,11 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button type="button" variant="outline" className="size-11 p-0" aria-label={`${messages.pcCountMinus} · ${row.part.displayName}`} onClick={() => step(row, -1)}><Minus aria-hidden="true" /></Button>
-                <Input className="h-11 w-16 text-center tabular-nums" inputMode="decimal" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} />
+                {countField(row, false, 'h-11 w-16 text-center tabular-nums')}
                 <Button type="button" variant="outline" className="size-11 p-0" aria-label={`${messages.pcCountPlus} · ${row.part.displayName}`} onClick={() => step(row, 1)}><Plus aria-hidden="true" /></Button>
               </div>
             </div>
-            <div className="mt-1 text-xs">{changeText(row)}</div>
+            <div className="mt-1 text-xs">{changeText(row, false)}</div>
           </li>
         ))}
       </ul>
@@ -201,9 +255,9 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
                 </td>
                 <td className="p-2.5 text-right tabular-nums">{stockQty(row.item?.onHand ?? 0)}</td>
                 <td className="p-2.5">
-                  <Input className="tabular-nums" inputMode="decimal" aria-label={`${messages.pcCountCounted} · ${row.part.displayName}`} value={counted[row.part.id] ?? ''} onChange={(event) => setCount(row.part.id, event.target.value)} aria-invalid={countedHundredths(counted[row.part.id]) === undefined || undefined} />
+                  {countField(row, true, 'tabular-nums')}
                 </td>
-                <td className="p-2.5">{changeText(row)}</td>
+                <td className="p-2.5">{changeText(row, true)}</td>
               </tr>
             ))}
           </tbody>
@@ -218,7 +272,9 @@ export function AdminCountStock({ locale, messages }: { locale: AdminLocale; mes
         </p>
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => router.push('/admin/parts/catalog')} disabled={busy}>{messages.cancel}</Button>
-          <Button type="button" onClick={() => void save()} disabled={!canSave} data-testid="count-save">{messages.pcCountSave}</Button>
+          {/* LTR-293 §3: on as soon as something is counted (off while saving, or with nothing counted yet — there is
+              nothing to save, and the summary says 0 changed); a bad count or a missing cost says so on its row. */}
+          <Button type="button" onClick={() => void save()} disabled={busy || (!changes.length && !invalid)} data-testid="count-save">{messages.pcCountSave}</Button>
         </div>
       </div>
     </div>

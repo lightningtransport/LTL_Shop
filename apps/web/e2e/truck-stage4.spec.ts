@@ -67,3 +67,29 @@ test.describe('LTR-245 going back keeps the filters', () => {
     await expect(page.getByTestId('admin-breadcrumb').getByRole('link', { name: 'Work Orders' })).toHaveAttribute('href', list);
   });
 });
+
+// LTR-293 §4: Add truck says what is wrong under each field (not one alert at the bottom) and goes to the first one.
+test.describe('LTR-293 Add truck shows the problem next to the field', () => {
+  test('missing number and a bad year: each said under its field, summary on top, focus on the number', async ({ page }) => {
+    let posted = false;
+    await page.route('**/api/admin/trucks', async (route) => {
+      if (route.request().method() === 'POST') posted = true;
+      return route.continue();
+    });
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin/);
+    await page.goto('/admin/trucks');
+    await page.getByRole('button', { name: 'Add truck' }).click();
+    const form = page.getByTestId('truck-form');
+    await form.getByLabel('Year').fill('1800');
+    await form.getByRole('button', { name: 'Add truck' }).click();
+
+    await expect(form.getByTestId('form-missing')).toBeVisible();
+    await expect(form.getByText('Write the truck number.')).toBeVisible();
+    await expect(form.getByText(/^Year must be between \d{4} and \d{4}\.$/)).toBeVisible();
+    await expect(form.getByLabel('Truck number')).toBeFocused();
+    await expect(form.getByLabel('Truck number')).toHaveAttribute('aria-describedby', 'truck-form-truckNumber-error');
+    await expect(form.getByLabel('Year')).toHaveAttribute('aria-invalid', 'true');
+    expect(posted).toBe(false);
+  });
+});

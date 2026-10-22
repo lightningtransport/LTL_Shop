@@ -7,6 +7,7 @@ import { AppCapability, MIN_DAY_CLOSE_MINUTES, ShopWorkflowStepKey, UserRole, cu
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { MechanicAvatar } from './mechanic-avatar';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { PageHeader, Button, Card, CardContent, DialogActions, EmptyState, InlineAlert, Input, LoadFailure, Modal, PageSkeleton } from './ui';
 import { updateAdminShopHours, updateAdminWorkflowSteps, useAdminRoster, useAdminShopHours, useAdminWorkflowSteps } from '@/lib/admin-data';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -335,12 +336,29 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
   }, [data]);
 
   const minutes = cutoffToMinutes(cutoff);
-  const valid = minutes !== null && minutes >= MIN_DAY_CLOSE_MINUTES && workdays.length > 0;
+  const cutoffValid = minutes !== null && minutes >= MIN_DAY_CLOSE_MINUTES;
+  const workdaysValid = workdays.length > 0;
+  const valid = cutoffValid && workdaysValid;
   const dirty = Boolean(data && (cutoff !== data.cutoff || [...workdays].sort().join(',') !== [...data.workdays].sort().join(',')));
   useUnsavedChangesGuard(dirty, messages.unsavedChangesConfirm);
+  // LTR-293 §3: Save is off only when there is nothing to save (or while saving). A bad time or no workday is said
+  // under that field (as soon as it changes, as before) and Save goes to the first one instead of staying grey.
+  const [showErrors, setShowErrors] = useState(false);
+  const flagged = dirty || showErrors;
+  const cutoffBad = flagged && !cutoffValid;
+  const workdaysBad = flagged && !workdaysValid;
+  const missing: MissingField[] = [
+    ...(!cutoffValid ? [{ label: messages.shopHoursCutoff, fieldId: 'shop-hours-cutoff' }] : []),
+    ...(!workdaysValid ? [{ label: messages.shopHoursWorkdays, fieldId: `shop-hours-day-${WEEKDAYS[0]}` }] : []),
+  ];
 
   async function save() {
-    if (!valid || saving) return;
+    if (saving) return;
+    if (!valid) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -366,18 +384,22 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
       {data ? (
         <Card>
           <CardContent className="space-y-4 p-4">
+            {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
             <label className="block max-w-xs space-y-1">
               <span className="text-sm font-medium">{messages.shopHoursCutoff}</span>
               <Input
+                id="shop-hours-cutoff"
                 type="time"
                 step={60}
                 min="12:00"
                 max="23:59"
                 value={cutoff}
                 disabled={!canWrite || saving}
-                aria-invalid={cutoff !== '' && !valid}
+                aria-invalid={cutoffBad || undefined}
+                aria-describedby={cutoffBad ? 'shop-hours-cutoff-error' : undefined}
                 onChange={(event) => setCutoff(event.target.value)}
               />
+              <RequiredNote show={cutoffBad} id="shop-hours-cutoff-error" messages={messages} text={messages.shopHoursInvalid} />
             </label>
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium">{messages.shopHoursWorkdays}</legend>
@@ -385,8 +407,11 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
                 {WEEKDAYS.map((day) => (
                   <label key={day} className="flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm">
                     <input
+                      id={`shop-hours-day-${day}`}
                       type="checkbox"
                       checked={workdays.includes(day)}
+                      aria-invalid={workdaysBad || undefined}
+                      aria-describedby={workdaysBad ? 'shop-hours-workdays-error' : undefined}
                       disabled={!canWrite || saving}
                       onChange={(event) => setWorkdays((current) => (
                         event.target.checked ? [...current, day] : current.filter((item) => item !== day)
@@ -396,14 +421,14 @@ function ShopHoursCard({ messages, canWrite }: { messages: AdminMessages; canWri
                   </label>
                 ))}
               </div>
+              <RequiredNote show={workdaysBad} id="shop-hours-workdays-error" messages={messages} />
             </fieldset>
             <p className="text-xs text-muted-foreground">{messages.shopHoursOffDays}</p>
-            {dirty && !valid ? <p className="text-sm text-warning-foreground" role="alert">{messages.shopHoursInvalid}</p> : null}
           </CardContent>
         </Card>
       ) : null}
       {data && canWrite ? (
-        <Button type="button" className="w-full sm:w-auto" disabled={!dirty || !valid || saving} onClick={() => void save()}>{messages.shopHoursSave}</Button>
+        <Button type="button" className="w-full sm:w-auto" disabled={!dirty || saving} onClick={() => void save()}>{messages.shopHoursSave}</Button>
       ) : null}
     </section>
   );

@@ -7,6 +7,7 @@ import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { kindLabel, partsCostsFailure, tireLabel } from './admin-parts-catalog';
 import { stockQty } from './admin-stock-actions';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { Badge, Button, DialogActions, InlineAlert, Input, Label, Modal, Select } from './ui';
 import { issueAdminStock, returnAdminStock, useAdminPmPreview, useAdminStock, type AdminPmPreviewDto } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -46,7 +47,17 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
   const picked = available.find((item) => item.partId === partId);
   const hundredths = parseQuantityToHundredths(quantity);
   const tooMany = Boolean(picked && hundredths !== undefined && hundredths > Math.round(Number(picked.onHand) * 100));
+  const [showErrors, setShowErrors] = useState(false);
+  const [showReturnErrors, setShowReturnErrors] = useState(false);
   const canSave = !busy && Boolean(picked) && hundredths !== undefined && !tooMany;
+  // LTR-293 §3: what stops "Take from stock", in form order (same rules as canSave).
+  const missing: MissingField[] = [
+    ...(!picked ? [{ label: messages.pcStockIssuePart, fieldId: 'job-stock-part' }] : []),
+    ...(hundredths === undefined || tooMany ? [{ label: messages.pcStockIssueQty, fieldId: 'job-stock-qty' }] : []),
+  ];
+  const partMissing = showErrors && !picked;
+  const qtyBad = showErrors && hundredths === undefined;
+  const qtyError = tooMany || qtyBad;
   const bought = job.parts ?? [];
   const fromStock = (job.stockParts ?? []).filter((part) => !part.returned);
   const total = bought.reduce((sum, part) => sum + (part.lineTotalCents ?? 0), 0) + fromStock.reduce((sum, part) => sum + (part.valueCents ?? 0), 0);
@@ -55,12 +66,18 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
 
   async function take(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       await issueAdminStock({ partId, quantity: quantity.trim(), workOrderJobId: job.id });
       showToast('success', messages.pcStockIssued);
+      setShowErrors(false);
       setPartId('');
       setQuantity('1');
       refresh();
@@ -73,12 +90,20 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
 
   async function giveBack(movementId: string, issued: string) {
     const back = returnQty.trim() || stockQty(issued);
-    if (!reason.trim() || parseQuantityToHundredths(back) === undefined) return;
+    if (busy) return;
+    // LTR-293 §3: same rule as before (quantity that parses + a reason); now it says which one is missing.
+    if (parseQuantityToHundredths(returnQty) === undefined || !reason.trim()) {
+      setShowReturnErrors(true);
+      focusField(parseQuantityToHundredths(returnQty) === undefined ? `stock-return-qty-${movementId}` : `stock-return-${movementId}`);
+      return;
+    }
+    if (parseQuantityToHundredths(back) === undefined) return;
     setBusy(true);
     setError(null);
     try {
       await returnAdminStock(movementId, reason.trim(), back === stockQty(issued) ? undefined : back);
       showToast('success', messages.pcStockReturnedToast);
+      setShowReturnErrors(false);
       setReturning(null);
       setReason('');
       setReturnQty('');
@@ -133,7 +158,7 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
                     {part.returned ? (
                       <span className="text-xs text-muted-foreground">{messages.pcStockReturned}</span>
                     ) : (
-                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { setReturning(part.movementId); setReason(''); setReturnQty(stockQty(part.quantity)); }} data-testid="job-stock-return">
+                      <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => { setReturning(part.movementId); setShowReturnErrors(false); setReason(''); setReturnQty(stockQty(part.quantity)); }} data-testid="job-stock-return">
                         <Undo2 aria-hidden="true" />{messages.pcStockReturn}
                       </Button>
                     )}
@@ -142,13 +167,16 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
                     <div className="grid gap-2 sm:grid-cols-[6rem_1fr_auto] sm:items-end">
                       <div className="space-y-1">
                         <Label htmlFor={`stock-return-qty-${part.movementId}`} className="text-xs">{messages.pcJobReturnHowMany}</Label>
-                        <Input id={`stock-return-qty-${part.movementId}`} inputMode="decimal" className="tabular-nums" value={returnQty} onChange={(event) => setReturnQty(event.target.value)} disabled={busy} autoComplete="off" />
+                        <Input id={`stock-return-qty-${part.movementId}`} inputMode="decimal" className="tabular-nums" value={returnQty} onChange={(event) => setReturnQty(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={(showReturnErrors && parseQuantityToHundredths(returnQty) === undefined) || undefined} aria-describedby={showReturnErrors && parseQuantityToHundredths(returnQty) === undefined ? `stock-return-qty-${part.movementId}-error` : undefined} />
+                        <RequiredNote show={showReturnErrors && parseQuantityToHundredths(returnQty) === undefined} id={`stock-return-qty-${part.movementId}-error`} messages={messages} text={returnQty.trim() ? messages.pcQtyInvalid : undefined} />
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor={`stock-return-${part.movementId}`} className="text-xs">{messages.pcStockReturnReason}</Label>
-                        <Input id={`stock-return-${part.movementId}`} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} autoComplete="off" />
+                        <Input id={`stock-return-${part.movementId}`} value={reason} onChange={(event) => setReason(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={(showReturnErrors && !reason.trim()) || undefined} aria-describedby={showReturnErrors && !reason.trim() ? `stock-return-${part.movementId}-error` : undefined} />
+                        <RequiredNote show={showReturnErrors && !reason.trim()} id={`stock-return-${part.movementId}-error`} messages={messages} />
                       </div>
-                      <Button type="button" size="sm" disabled={busy || !reason.trim() || parseQuantityToHundredths(returnQty) === undefined} onClick={() => void giveBack(part.movementId, part.quantity)}>
+                      {/* LTR-293 §3: stays on (only off while saving); a missing reason or quantity says "Required" under it. */}
+                      <Button type="button" size="sm" disabled={busy} onClick={() => void giveBack(part.movementId, part.quantity)}>
                         {fillPlaceholders(messages.pcJobReturnSubmit, { qty: stockQty(returnQty || part.quantity) })}
                       </Button>
                     </div>
@@ -159,13 +187,14 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
           </section>
         ) : null}
 
-        <form className="space-y-3" onSubmit={(event) => void take(event)}>
+        <form className="space-y-3" onSubmit={(event) => void take(event)} noValidate>
           <h3 className="text-sm font-medium">{isPm ? messages.pcJobOtherFromStock : messages.pcJobFromStockSection}</h3>
           <p className="text-sm text-muted-foreground">{messages.pcStockIssueHelp}</p>
+          {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
           <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
             <div className="space-y-1.5">
               <Label htmlFor="job-stock-part">{messages.pcStockIssuePart}</Label>
-              <Select id="job-stock-part" value={partId} onChange={(event) => setPartId(event.target.value)} disabled={busy || !available.length}>
+              <Select id="job-stock-part" value={partId} onChange={(event) => setPartId(event.target.value)} disabled={busy || !available.length} aria-invalid={partMissing || undefined} aria-describedby={partMissing ? 'job-stock-part-error' : undefined}>
                 <option value="">{messages.pcStockIssuePick}</option>
                 {available.map((item) => (
                   <option key={item.partId} value={item.partId}>
@@ -173,6 +202,7 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
                   </option>
                 ))}
               </Select>
+              <RequiredNote show={partMissing} id="job-stock-part-error" messages={messages} />
               {picked ? (
                 <p className="text-xs text-muted-foreground" data-testid="job-stock-available">
                   {fillPlaceholders(messages.pcStockIssueAvailable, { qty: String(Number(picked.onHand)), cost: picked.avgCostCents === null ? '—' : formatCents(picked.avgCostCents, locale) })}
@@ -181,13 +211,16 @@ export function JobStockDialog({ job, isPm, buyHref, locale, messages, onClose, 
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="job-stock-qty">{messages.pcStockIssueQty}</Label>
-              <Input id="job-stock-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={hundredths === undefined || tooMany || undefined} />
-              {tooMany && picked ? <p className="text-xs text-destructive-text">{fillPlaceholders(messages.pcStockNotEnough, { qty: String(Number(picked.onHand)) })}</p> : null}
+              <Input id="job-stock-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={hundredths === undefined || tooMany || undefined} aria-describedby={qtyError ? 'job-stock-qty-error' : undefined} />
+              {tooMany && picked ? <p id="job-stock-qty-error" className="text-xs text-destructive-text">{fillPlaceholders(messages.pcStockNotEnough, { qty: String(Number(picked.onHand)) })}</p> : null}
+              <RequiredNote show={qtyBad} id="job-stock-qty-error" messages={messages} text={quantity.trim() ? messages.pcQtyInvalid : undefined} />
             </div>
           </div>
           {stock && !available.length ? <InlineAlert>{messages.pcStockNoParts}</InlineAlert> : null}
           <div className="flex justify-end">
-            <Button type="submit" disabled={!canSave}>{messages.pcStockIssueSave}</Button>
+            {/* LTR-293 §3: stays on while there is stock to take (off only while saving, or when the shelf is empty —
+                that already says so above); a Save with no part or a bad quantity says what, under the field. */}
+            <Button type="submit" disabled={busy || Boolean(stock && !available.length)}>{messages.pcStockIssueSave}</Button>
           </div>
         </form>
 

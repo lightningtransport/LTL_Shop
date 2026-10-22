@@ -17,7 +17,7 @@ import { defaultWorkspacePath } from '@/lib/admin-routing';
 import { canShowManagerWrites } from '@/lib/system-admin';
 import { formatMileage, formatShopDateTime, formatVehicleYmm } from '@/lib/format';
 import { formatAdminDateOnly } from '@/lib/admin-format';
-import { draftKeys, useLocalDraft } from '@/lib/local-draft';
+import { draftKeys, readDraftJson, useLocalDraft, writeDraftJson } from '@/lib/local-draft';
 import {
   cardMechanics, qualityCheckHistoryKey, qualityCheckReviewKey, relativeTime, useQualityCheckHistory, useQualityCheckQueue,
   useQualityCheckReview, type QualityCheckItem, type QualityCheckQueue, type QualityCheckReturnedItem, type QualityCheckReview,
@@ -110,6 +110,7 @@ export function QualityCheckPage() {
       if (action === 'return') {
         showToast('success', t.returnedToast(item.truck.truckNumber));
         clearNote();
+        writeDraftJson(draftKeys.qcFindings(item.workOrderId), null);
         setReturning(false);
         setOpenId(null);
       }
@@ -232,7 +233,8 @@ export function QualityCheckPage() {
         onTake={() => openItem && void run(openItem, 'take')}
         onRelease={() => openItem && void run(openItem, 'release')}
         onApprove={() => { setApproveFindings([]); setConfirmApprove(true); }}
-        onReturn={() => { setReturnJob(null); setNoteError(false); setReturnFindings([newFinding()]); setReturning(true); }}
+        // LTR-293 §2: findings typed earlier for this truck come back (kept on this device until it is returned).
+        onReturn={() => { setReturnJob(null); setNoteError(false); setReturnFindings((openId && readDraftJson<FindingDraft[]>(draftKeys.qcFindings(openId))) || [newFinding()]); setReturning(true); }}
       />
 
       <Modal
@@ -302,7 +304,7 @@ export function QualityCheckPage() {
             label={t.findingsLabel}
             hint={t.findingsHint}
             findings={returnFindings}
-            onChange={(next) => { setReturnFindings(next); setNoteError(false); }}
+            onChange={(next) => { setReturnFindings(next); setNoteError(false); if (openId) writeDraftJson(draftKeys.qcFindings(openId), sendable(next).length ? next : null); }}
             catalogJobs={openReview?.catalogJobs ?? []}
             disabled={busy !== null}
           />
