@@ -156,4 +156,30 @@ describe('Manager: reparaciones externas con su factura (D32, PC-3)', () => {
       refused(`${email}: Jobs afuera`, await as(email).get(`/admin/parts-costs/external-jobs?truckId=${t905.id}`), 403);
     }
   });
+
+  it('A161 | La factura del taller trae sus trabajos como líneas; el total es la suma; una de antes se lee como una sola línea (LTR-298)', async () => {
+    const vendorId = await vendor('Radiator Shop');
+    const t905 = await truck('905');
+    const base = { truckId: t905.id, vendorId, invoiceNumber: `RS-${RUN}`, invoiceDate: '2026-10-22' };
+    const lines = [{ description: 'Radiator recore', amountCents: 120000 }, { description: 'Coolant flush', amountCents: 18000 }];
+    refused('el total no cuadra con las líneas', await saveRepair({ ...base, description: 'x', amountCents: 100000, lines }), 400, 'TOTAL_MISMATCH');
+    refused('una línea sin texto', await saveRepair({ ...base, description: 'x', amountCents: 138000, lines: [{ description: '', amountCents: 138000 }] }), 400);
+
+    const saved = ok('con dos trabajos', await saveRepair({ ...base, description: 'x', amountCents: 138000, lines }));
+    let detail = ok('detalle', await manager.get(`${REPAIRS}/${saved.id}`));
+    same('las líneas, en orden', (detail.lines as Json[]).map((line) => [line.description, line.amountCents]), [['Radiator recore', 120000], ['Coolant flush', 18000]]);
+    same('qué se hizo es la suma de los textos y el monto la suma', [detail.description, detail.amountCents], ['Radiator recore · Coolant flush', 138000]);
+    let rows = await ledger(saved.id);
+    same('una fila en el libro del camión por el total', rows.map((row) => [row.truckId, row.amountCents]), [[t905.id, 138000]]);
+
+    ok('corregir: queda un solo trabajo', await manager.patch(`${REPAIRS}/${saved.id}`, { ...base, description: 'x', amountCents: 125000, lines: [{ description: 'Radiator recore', amountCents: 125000 }] }));
+    detail = ok('detalle corregido', await manager.get(`${REPAIRS}/${saved.id}`));
+    same('una línea y el nuevo total', [(detail.lines as Json[]).length, detail.description, detail.amountCents], [1, 'Radiator recore', 125000]);
+    rows = await ledger(saved.id);
+    same('reversa + fila nueva', [rows.length, rows.reduce((sum, row) => sum + row.amountCents, 0)], [3, 125000]);
+
+    const legacy = ok('sin líneas, como antes de LTR-298', await saveRepair({ ...base, invoiceNumber: `RS-OLD-${RUN}`, description: 'Welding', amountCents: 9000 }));
+    detail = ok('detalle de la vieja', await manager.get(`${REPAIRS}/${legacy.id}`));
+    same('se lee como una sola línea', (detail.lines as Json[]).map((line) => [line.description, line.amountCents]), [['Welding', 9000]]);
+  });
 });

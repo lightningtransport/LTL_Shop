@@ -779,6 +779,8 @@ createServer(async (request, response) => {
         truck: { id: body.truckId, truckNumber: body.truckId === 'truck-918' ? '918' : '606' },
         vendor: { id: vendor.id, name: vendor.name },
         invoiceNumber: body.invoiceNumber, invoiceDate: body.invoiceDate, description: body.description, amountCents: body.amountCents,
+        // LTR-298: the jobs on the invoice; an old repair reads as one line.
+        lines: (body.lines ?? [{ description: body.description, amountCents: body.amountCents }]).map((line, index) => ({ id: `line-${index}`, ...line })),
         job: job ? { id: job.jobId, displayName: job.displayName, workOrderId: job.workOrderId, workOrderDisplayId: job.workOrderDisplayId, kind: job.kind } : null,
         hasFile: false, voidedAt: null, notes: body.notes || null, attachment: null,
         createdBy: { id: 'manager', name: 'Shop Manager' }, createdAt: new Date().toISOString(), voidedBy: null, voidReason: null,

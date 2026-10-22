@@ -34,7 +34,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
   const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminOutsideRepairs(query);
   const { data: formData } = useAdminPurchaseFormData(true);
-  const { data: vendors } = useAdminVendors();
+  const { data: vendors, mutate: mutateVendors } = useAdminVendors();
   // PCA9 (UX-5-004): only vendors that do outside repairs; an inactive one stays only while it is the filter.
   const vendorOptions = (vendors ?? []).filter((vendor) => (vendor.doesRepairs && vendor.active) || vendor.id === filters.vendorId);
   // PCA13 (UX-5-008): the shared toolbar; on phones the fields live in a "Filters" sheet and apply together.
@@ -174,6 +174,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
           locale={locale}
           messages={messages}
           onClose={() => { setForm(null); if (returnTo) router.push(returnTo); setReturnTo(null); }}
+          onVendorAdded={() => void mutateVendors()}
           // PCA2: opened from a Job or a Truck, saving goes back there; otherwise to the repair.
           onSaved={(id) => { setForm(null); void mutate(); router.push(returnTo ?? `/admin/parts/outside-repairs/${id}?from=${encodeURIComponent(here)}`); setReturnTo(null); }}
         />

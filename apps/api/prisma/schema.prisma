@@ -987,11 +987,27 @@ model OutsideRepair {
   workOrderJob WorkOrderJob? @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
   createdBy    User?         @relation("OutsideRepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   voidedBy     User?         @relation("OutsideRepairVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  lines        OutsideRepairLine[]
 
   @@index([truckId, invoiceDate])
   @@index([vendorId, invoiceNorm])
   @@index([workOrderJobId])
   @@map("outside_repairs")
+}
+
+/// LTR-298: one job on an outside shop's invoice ("Radiator recore · $1,200"). `amount_cents` of the repair is their
+/// sum; `description` of the repair is the lines joined. Repairs saved before LTR-298 have no rows: one line is read from the repair.
+model OutsideRepairLine {
+  id          String @id @default(uuid()) @db.Uuid
+  repairId    String @map("repair_id") @db.Uuid
+  description String
+  amountCents Int    @map("amount_cents")
+  sortOrder   Int    @default(0) @map("sort_order")
+
+  repair OutsideRepair @relation(fields: [repairId], references: [id], onDelete: Cascade)
+
+  @@index([repairId])
+  @@map("outside_repair_lines")
 }
 
 /// One line of a parts invoice. The truck is per line (D-PC9); description and part number are copies.

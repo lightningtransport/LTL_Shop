@@ -26,6 +26,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Yard | LTR-270 | La prueba e2e de arrastrar el tablero del Yard con el mouse sigue en rojo en WebKit (sigue a LTR-227) | — |
 | Trucks & Inspección | LTR-203 | API de solo lectura para terceros (P14) | — |
 | Parts, Costs & Finance | — | Repuestos, stock y llantas (D45): hecho (LTR-220–226, cerrados); faltan P24, P26, P28 y P31 de Randy | — |
+| Parts, Costs & Finance | LTR-298 | New purchase y New outside repair obligan a salir a crear la parte o el proveedor; "What was done" es un solo texto (en curso: parte escrita con filtro, "+ Add vendor…" en la reparación, trabajos como líneas) | C |
 | Safety / QC | LTR-233 | Fotos y videos como evidencia de un hallazgo (SQ-4, Gated); SQ-1 a SQ-3 de D46 hechas (LTR-229–232, cerrados) | — |
 | Setup, People & Permisos | LTR-161 | Modelo de roles y permisos con pantalla propia (D48 ya resolvió quién maneja a Managers y Admins) | — |
 | Plataforma y Go-live | LTR-45 | Salida en vivo (en espera desde el 2026-10-09) | — |

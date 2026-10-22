@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Paperclip, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Paperclip, Plus, Trash2, X } from 'lucide-react';
 import {
   INVOICE_FILE_MAX_BYTES,
   INVOICE_FILE_TYPES,
@@ -22,6 +22,7 @@ import { Button, Input, Label, Modal, Select, Textarea, InlineAlert } from './ui
 import {
   checkAdminInvoice,
   createAdminOutsideRepair,
+  createAdminVendor,
   requestAdminAttachment,
   updateAdminOutsideRepair,
   uploadInvoiceFile,
@@ -35,6 +36,10 @@ import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 
 type FileState = { id: string | null; name: string; percent: number; error: string | null };
+/** LTR-298: one job on the shop's invoice, as typed. */
+type LineState = { description: string; amount: string };
+const ADD_VENDOR = '__add_vendor__';
+const emptyLine = (): LineState => ({ description: '', amount: '' });
 
 const today = () => {
   const now = new Date();
@@ -68,6 +73,8 @@ export function invoiceHref(match: AdminInvoiceMatchDto) {
  * LTR-200 / D32 (PC-3): New / Edit outside repair. Truck first, then the Job sent to an external shop (its Jobs out
  * now or back within 90 days); opened from a Job, both come picked ("From WO-001 · Radiator Repair"). Same guards
  * as a purchase: repeated invoice across purchases and repairs, one Idempotency-Key per open form.
+ * LTR-298: the invoice is loaded as jobs (what was done × amount), the total is their sum, and a vendor that is
+ * not in Vendors yet is added from here ("+ Add vendor…", born with "Does repairs").
  */
 export function OutsideRepairForm({
   repair,
@@ -78,9 +85,12 @@ export function OutsideRepairForm({
   messages,
   onClose,
   onSaved,
+  onVendorAdded,
   notice,
 }: {
   repair: AdminOutsideRepairDetailDto | null;
+  /** LTR-298: reloads Vendors after "+ Add vendor…" here. */
+  onVendorAdded?: () => void;
   /** PCA4 (UX-10-002): said above the fields when the repair is already on a sent invoice. */
   notice?: string | null;
   preset?: { truckId?: string; jobId?: string };
@@ -97,8 +107,7 @@ export function OutsideRepairForm({
     vendorId: repair?.vendor.id ?? '',
     invoiceNumber: repair?.invoiceNumber ?? '',
     invoiceDate: repair?.invoiceDate ?? today(),
-    description: repair?.description ?? '',
-    amount: repair ? centsToInput(repair.amountCents) : '',
+    lines: repair ? repair.lines.map((line) => ({ description: line.description, amount: centsToInput(line.amountCents) })) : [emptyLine()],
     jobId: repair?.job?.id ?? preset?.jobId ?? '',
     notes: repair?.notes ?? '',
   };
@@ -106,14 +115,24 @@ export function OutsideRepairForm({
   const [idempotencyKey] = useState(() => globalThis.crypto.randomUUID());
   const [file, setFile] = useState<FileState | null>(repair?.attachment ? { id: repair.attachment.id, name: repair.attachment.fileName, percent: 100, error: null } : null);
   const [duplicate, setDuplicate] = useState<AdminInvoiceMatchDto | null>(null);
+  const [newVendor, setNewVendor] = useState<string | null>(null);
+  // One vendor per tap; the ref stops a second tap before React re-renders the disabled button.
+  const [addingVendor, setAddingVendor] = useState(false);
+  const addingVendorRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const { data: externalJobs } = useAdminExternalJobs(form.truckId);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((current) => ({ ...current, [key]: value }));
+  const setLine = (index: number, patch: Partial<LineState>) =>
+    setForm((current) => ({ ...current, lines: current.lines.map((line, at) => (at === index ? { ...line, ...patch } : line)) }));
 
-  const amount = parseMoneyToCents(form.amount);
+  // LTR-298: each job's amount; the invoice total is their sum.
+  const lineAmounts = form.lines.map((line) => parseMoneyToCents(line.amount));
+  const linesValid = form.lines.every((line, index) => line.description.trim() && typeof lineAmounts[index] === 'number');
+  const amount = linesValid ? lineAmounts.reduce<number>((sum, cents) => sum + (cents as number), 0) : null;
+  const description = form.lines.map((line) => line.description.trim()).filter(Boolean).join(' · ');
   const jobs = [...(externalJobs ?? [])];
   if (repair?.job && !jobs.some((job) => job.jobId === repair.job!.id)) {
     jobs.push({ jobId: repair.job.id, displayName: repair.job.displayName, workOrderId: repair.job.workOrderId, workOrderDisplayId: repair.job.workOrderDisplayId, kind: repair.job.kind, sentAt: null, returnedAt: null, out: false });
@@ -122,15 +141,20 @@ export function OutsideRepairForm({
   const vendorChoices = [...vendors.filter((vendor) => vendor.active || vendor.id === form.vendorId)]
     .sort((left, right) => Number(right.doesRepairs) - Number(left.doesRepairs) || left.name.localeCompare(right.name));
   const uploading = Boolean(file && !file.id && !file.error);
-  const valid = Boolean(form.truckId && form.vendorId && form.invoiceNumber.trim() && form.invoiceDate && form.description.trim() && typeof amount === 'number');
+  const valid = Boolean(form.truckId && form.vendorId && form.invoiceNumber.trim() && form.invoiceDate && linesValid);
   // UX-7-026 / PC1: what stops the save, in form order.
   const missing: MissingField[] = [
     ...(!form.truckId ? [{ label: messages.pcMissingTruck, fieldId: 'outside-truck' }] : []),
     ...(!form.vendorId ? [{ label: messages.pcMissingVendor, fieldId: 'outside-vendor' }] : []),
     ...(!form.invoiceDate ? [{ label: messages.pcMissingDate, fieldId: 'outside-date' }] : []),
     ...(!form.invoiceNumber.trim() ? [{ label: messages.pcMissingInvoice, fieldId: 'outside-invoice' }] : []),
-    ...(!form.description.trim() ? [{ label: messages.pcMissingWhat, fieldId: 'outside-what' }] : []),
-    ...(typeof amount !== 'number' ? [{ label: messages.pcMissingAmount, fieldId: 'outside-amount' }] : []),
+    ...form.lines.flatMap((line, index) => {
+      const n = String(index + 1);
+      return [
+        ...(!line.description.trim() ? [{ label: fillPlaceholders(messages.pcMissingRepairLineWhat, { n }), fieldId: `repair-line-what-${index}` }] : []),
+        ...(typeof lineAmounts[index] !== 'number' ? [{ label: fillPlaceholders(messages.pcMissingRepairLineAmount, { n }), fieldId: `repair-line-amount-${index}` }] : []),
+      ];
+    }),
   ];
   const dirty = JSON.stringify(form) !== JSON.stringify(initial) || (file?.id ?? null) !== (repair?.attachment?.id ?? null);
 
@@ -144,6 +168,24 @@ export function OutsideRepairForm({
       setDuplicate(match.exists ? match : null);
     } catch {
       setDuplicate(null);
+    }
+  }
+
+  async function addVendor() {
+    if (!newVendor?.trim() || addingVendorRef.current) return;
+    addingVendorRef.current = true;
+    setAddingVendor(true);
+    try {
+      const created = await createAdminVendor({ name: newVendor.trim(), doesParts: false, doesRepairs: true });
+      onVendorAdded?.();
+      set('vendorId', created.id);
+      setNewVendor(null);
+      showToast('success', messages.pcVendorAdded);
+    } catch (failure) {
+      setError(partsCostsFailure(failure, messages));
+    } finally {
+      addingVendorRef.current = false;
+      setAddingVendor(false);
     }
   }
 
@@ -182,8 +224,9 @@ export function OutsideRepairForm({
       vendorId: form.vendorId,
       invoiceNumber: form.invoiceNumber.trim(),
       invoiceDate: form.invoiceDate,
-      description: form.description.trim(),
+      description,
       amountCents: amount as number,
+      lines: form.lines.map((line, index) => ({ description: line.description.trim(), amountCents: lineAmounts[index] as number })),
       workOrderJobId: form.jobId || null,
       notes: form.notes,
       attachmentId: file?.id ?? null,
@@ -219,11 +262,29 @@ export function OutsideRepairForm({
           </div>
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-vendor">{messages.pcVendorField}</Label>
-            <Select id="outside-vendor" value={form.vendorId} disabled={busy} aria-invalid={(showErrors && !form.vendorId) || undefined} onChange={(event) => { set('vendorId', event.target.value); setDuplicate(null); }}>
+            <Select
+              id="outside-vendor"
+              value={newVendor !== null ? ADD_VENDOR : form.vendorId}
+              disabled={busy}
+              aria-invalid={(showErrors && !form.vendorId) || undefined}
+              onChange={(event) => {
+                if (event.target.value === ADD_VENDOR) return setNewVendor('');
+                setNewVendor(null);
+                set('vendorId', event.target.value);
+                setDuplicate(null);
+              }}
+            >
               <option value="">{messages.pcPickVendor}</option>
               {vendorChoices.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+              <option value={ADD_VENDOR}>{messages.pcAddVendorOption}</option>
             </Select>
-            <RequiredNote show={showErrors && !form.vendorId} messages={messages} />
+            <RequiredNote show={showErrors && !form.vendorId && newVendor === null} messages={messages} />
+            {newVendor !== null ? (
+              <div className="flex gap-2">
+                <Input aria-label={messages.pcNewVendorName} placeholder={messages.pcNewVendorName} value={newVendor} onChange={(event) => setNewVendor(event.target.value)} autoComplete="off" />
+                <Button type="button" variant="outline" disabled={!newVendor.trim() || addingVendor} aria-busy={addingVendor || undefined} onClick={() => void addVendor()}>{messages.pcAddVendor}</Button>
+              </div>
+            ) : null}
           </div>
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="outside-date">{messages.pcInvoiceDate}</Label>
@@ -251,19 +312,45 @@ export function OutsideRepairForm({
           {form.truckId && externalJobs && !jobs.length ? <p className="text-xs text-muted-foreground">{messages.pcNoExternalJobs}</p> : null}
         </div>
 
-        <div className="min-w-0 space-y-1.5">
-          <Label htmlFor="outside-what">{messages.pcWhatWasDone}</Label>
-          <Textarea id="outside-what" rows={2} value={form.description} onChange={(event) => set('description', event.target.value)} disabled={busy} aria-invalid={(showErrors && !form.description.trim()) || undefined} />
-          <RequiredNote show={showErrors && !form.description.trim()} messages={messages} />
-        </div>
-        <div className="space-y-1.5 sm:max-w-xs">
-          <Label htmlFor="outside-amount">{messages.pcAmount}</Label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">$</span>
-            <Input id="outside-amount" className="pl-7 tabular-nums" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={(event) => set('amount', event.target.value)} disabled={busy} aria-invalid={amount === undefined || (showErrors && amount === null) || undefined} />
+        {/* LTR-298: the invoice as the shop wrote it: one job per line, each with its amount. */}
+        <fieldset className="space-y-3">
+          <legend className="text-sm font-medium">{messages.pcRepairLines}</legend>
+          <p className="text-xs text-muted-foreground">{messages.pcRepairLinesHelp}</p>
+          {form.lines.map((line, index) => {
+            const cents = lineAmounts[index];
+            return (
+              <div key={index} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto]" data-testid="repair-line">
+                <div className="space-y-1">
+                  <Label htmlFor={`repair-line-what-${index}`} className="text-xs">{messages.pcRepairLineWhat}</Label>
+                  <Input id={`repair-line-what-${index}`} value={line.description} onChange={(event) => setLine(index, { description: event.target.value })} disabled={busy} autoComplete="off" aria-invalid={(showErrors && !line.description.trim()) || undefined} />
+                  <RequiredNote show={showErrors && !line.description.trim()} messages={messages} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor={`repair-line-amount-${index}`} className="text-xs">{messages.pcRepairLineAmount}</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">$</span>
+                    <Input id={`repair-line-amount-${index}`} className="pl-7 tabular-nums" inputMode="decimal" placeholder="0.00" value={line.amount} onChange={(event) => setLine(index, { amount: event.target.value })} disabled={busy} aria-invalid={cents === undefined || (showErrors && cents === null) || undefined} />
+                  </div>
+                  {cents === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : <RequiredNote show={showErrors && cents === null} messages={messages} />}
+                </div>
+                <div className="flex items-end">
+                  <Button type="button" variant="ghost" size="sm" aria-label={fillPlaceholders(messages.pcRemoveRepairLine, { number: String(index + 1) })} disabled={busy || form.lines.length === 1} onClick={() => set('lines', form.lines.filter((_, at) => at !== index))}>
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => set('lines', [...form.lines, emptyLine()])}>
+              <Plus aria-hidden="true" />{messages.pcAddRepairLine}
+            </Button>
+            <p className="text-sm" aria-live="polite">
+              <span className="text-muted-foreground">{messages.pcRepairTotal}</span>{' '}
+              <span className="text-base font-semibold tabular-nums" data-testid="outside-total">{formatCents(lineAmounts.reduce<number>((sum, cents) => sum + (typeof cents === 'number' ? cents : 0), 0), locale)}</span>
+            </p>
           </div>
-          {amount === undefined ? <p className="text-xs text-destructive-text">{messages.pcCostInvalid}</p> : <RequiredNote show={showErrors && amount === null} messages={messages} />}
-        </div>
+        </fieldset>
 
         <div className="min-w-0 space-y-1.5">
           <span className="block text-sm font-medium">{messages.pcInvoiceFile}<OptionalTag messages={messages} /></span>
