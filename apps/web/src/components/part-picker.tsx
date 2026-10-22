@@ -57,7 +57,7 @@ export function PartPicker({
   const selectedLabel = value === OTHER_PART ? description : value ? parts.find((part) => part.id === value)?.label ?? '' : '';
   const [query, setQuery] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const pickingRef = useRef(false);
@@ -72,12 +72,19 @@ export function PartPicker({
   const needle = fold(typed);
   const matches = needle ? parts.filter((part) => part.key.includes(needle)) : parts;
   const exact = typed ? parts.find((part) => part.key === needle) : undefined;
-  const choices: Choice[] = [
-    ...matches.map((part): Choice => ({ kind: 'part', id: part.id, label: part.label, category: part.category })),
-    ...(typed && !exact ? [{ kind: 'use-typed', text: typed } as Choice, ...(onAddToCatalog ? [{ kind: 'add-typed', text: typed } as Choice] : [])] : []),
+  // LTR-298: the ways out come first and stay in sight, before the (long) list of parts: add a part to Parts (with
+  // the typed text, if any), use the text only on this invoice, or an "Other" line to type freely.
+  const actions: Choice[] = [
+    ...(onAddToCatalog ? [{ kind: 'add-typed', text: typed } as Choice] : []),
+    ...(typed && !exact ? [{ kind: 'use-typed', text: typed } as Choice] : []),
     ...(!typed ? [{ kind: 'other' } as Choice] : []),
   ];
-  const activeIndex = Math.min(active, Math.max(choices.length - 1, 0));
+  const choices: Choice[] = [
+    ...actions,
+    ...matches.map((part): Choice => ({ kind: 'part', id: part.id, label: part.label, category: part.category })),
+  ];
+  // Typing lands on the first part that matches; Enter takes it. With nothing typed, on the first action.
+  const activeIndex = Math.min(active ?? (matches.length ? actions.length : 0), Math.max(choices.length - 1, 0));
 
   useEffect(() => {
     if (!open) return;
@@ -120,7 +127,7 @@ export function PartPicker({
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open) return setOpen(true);
-      setActive((current) => (event.key === 'ArrowDown' ? Math.min(current + 1, choices.length - 1) : Math.max(current - 1, 0)));
+      setActive(event.key === 'ArrowDown' ? Math.min(activeIndex + 1, choices.length - 1) : Math.max(activeIndex - 1, 0));
     } else if (event.key === 'Enter') {
       if (!open) return;
       event.preventDefault();
@@ -153,7 +160,7 @@ export function PartPicker({
           value={query}
           disabled={disabled}
           className="pr-16"
-          onChange={(event) => { setQuery(event.target.value); setActive(0); setOpen(true); }}
+          onChange={(event) => { setQuery(event.target.value); setActive(null); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onClick={() => setOpen(true)}
           onBlur={settle}
@@ -184,12 +191,12 @@ export function PartPicker({
             if (choice.kind === 'part') lastCategory = choice.category;
             const text = choice.kind === 'part' ? choice.label
               : choice.kind === 'use-typed' ? fillPlaceholders(messages.pcPartUseAsTyped, { text: choice.text })
-              : choice.kind === 'add-typed' ? fillPlaceholders(messages.pcPartAddTyped, { text: choice.text })
+              : choice.kind === 'add-typed' ? (choice.text ? fillPlaceholders(messages.pcPartAddTyped, { text: choice.text }) : messages.pcPartAddNew)
               : messages.pcLineOther;
             return (
               <div key={choice.kind === 'part' ? choice.id : choice.kind}>
                 {header ? <p className="px-3 pb-1 pt-2 text-xs font-medium text-muted-foreground">{header}</p> : null}
-                {choice.kind !== 'part' && index > 0 && choices[index - 1].kind === 'part' ? <div className="my-1 border-t" /> : null}
+                {choice.kind === 'part' && index > 0 && choices[index - 1].kind !== 'part' ? <div className="my-1 border-t" /> : null}
                 <div
                   id={`${listId}-${index}`}
                   role="option"
