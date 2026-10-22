@@ -93,7 +93,7 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
         </CardContent>
       </Card>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcInvoicesTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcInvoicesTitle} header={false} table /> : null}
       {data && !data.length ? (
         <EmptyState>
           <p>{filtered ? messages.pcInvoiceNoMatch : messages.pcNoInvoices}</p>

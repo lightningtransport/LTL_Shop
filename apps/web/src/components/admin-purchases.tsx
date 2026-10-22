@@ -121,7 +121,7 @@ export function AdminPurchases({ locale, messages }: { locale: AdminLocale; mess
       />
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcPurchasesTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcPurchasesTitle} header={false} table /> : null}
       {data ? (
         <p className="text-sm text-muted-foreground" data-testid="purchases-summary">
           {fillPlaceholders(messages.pcPurchasesSummary, { count: String(data.totals.count), total: formatCents(data.totals.totalCents, locale) })}

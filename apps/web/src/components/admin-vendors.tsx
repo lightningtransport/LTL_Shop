@@ -30,7 +30,7 @@ export function AdminVendors({ locale, messages }: { locale: AdminLocale; messag
     <div className="space-y-6">
       <PageHeader title={messages.pcVendorsTitle} subtitle={messages.pcVendorsSubtitle} actions={data?.length ? addButton : null} />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcVendorsTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcVendorsTitle} header={false} table /> : null}
       {data && !data.length ? (
         <EmptyState>
           <p>{messages.pcNoVendors}</p>

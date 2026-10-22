@@ -841,5 +841,18 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
+
+  test('LTR-293 §11: a wrong address says so and offers the way home; an empty filtered list offers Clear filters', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/this-does-not-exist');
+    await expect(page.getByText('This page does not exist')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Return to your Home' })).toBeVisible();
+
+    await page.goto('/admin/trucks?search=zzzz-no-truck');
+    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page).toHaveURL(/\/admin\/trucks$/);
+  });
 });
 

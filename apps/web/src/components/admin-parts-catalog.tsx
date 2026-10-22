@@ -217,7 +217,7 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
       ) : null}
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcPartsTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcPartsTitle} header={false} table /> : null}
       {data && filtered && partCount === 0 ? (
         <EmptyState>
           <p>{messages.pcNoParts}</p>
