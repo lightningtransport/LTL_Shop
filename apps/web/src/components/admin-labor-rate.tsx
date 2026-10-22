@@ -10,7 +10,7 @@ import { Button, Card, CardContent, DataTable, DialogActions, InlineAlert, Input
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { removeAdminLaborRate, setAdminLaborRate, setAdminPmOilPrice, useAdminLaborRatePreview, useAdminLaborRates, useAdminPmOilPrices } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 
 const today = () => {
@@ -40,7 +40,8 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
   const previewText = preview
     ? preview.workOrders === 0
       ? fillPlaceholders(messages.pcLaborRatePreviewNone, { date: formatInvoiceDate(from, locale) })
-      : `${fillPlaceholders(messages.pcLaborRatePreview, { count: String(preview.workOrders), date: formatInvoiceDate(from, locale) })}${preview.invoiced ? ` ${fillPlaceholders(messages.pcLaborRatePreviewInvoiced, { count: String(preview.invoiced) })}` : ''}`
+      // LTR-277 §7: "1 completed Work Order", never "1 completed Work Orders".
+      : `${fillPlaceholders(messages.pcLaborRatePreview, { workOrders: adminCountLabel(preview.workOrders, messages.pcLaborRatePreviewWorkOrdersOne, messages.pcLaborRatePreviewWorkOrders), date: formatInvoiceDate(from, locale) })}${preview.invoiced ? ` ${adminCountLabel(preview.invoiced, messages.pcLaborRatePreviewInvoicedOne, messages.pcLaborRatePreviewInvoiced)}` : ''}`
     : null;
 
   async function remove(target: AdminLaborRateDto) {

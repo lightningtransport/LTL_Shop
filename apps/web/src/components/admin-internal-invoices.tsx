@@ -37,6 +37,16 @@ const lastMonth = () => {
 
 const INVOICE_FILTERS = { status: '', month: '' };
 
+/** The last 24 months, newest first ("2026-10"), plus a month from the URL that is older. */
+function monthChoices(selected: string): string[] {
+  const now = new Date();
+  const months = Array.from({ length: 24 }, (_, back) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  });
+  return /^\d{4}-\d{2}$/.test(selected) && !months.includes(selected) ? [...months, selected] : months;
+}
+
 /**
  * LTR-201 / D34 (LB-2): Parts & costs → Internal invoices. One per truck and month; a draft brings what the truck has
  * uncharged up to the end of the month. Sent ones get their SHOP number; Finance gets the PDF outside the app.
@@ -73,7 +83,11 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
           </div>
           <div className="space-y-1">
             <Label htmlFor="invoices-month">{messages.pcInvoiceFilterMonth}</Label>
-            <Input id="invoices-month" type="month" value={filters.month} onChange={(event) => set('month', event.target.value)} />
+            {/* LTR-277 §7: empty means any month, and the control says so (a bare month input drew dashes). */}
+            <Select id="invoices-month" value={filters.month} onChange={(event) => set('month', event.target.value)}>
+              <option value="">{messages.pcInvoiceAnyMonth}</option>
+              {monthChoices(filters.month).map((month) => <option key={month} value={month}>{invoiceMonth(`${month}-01`, locale)}</option>)}
+            </Select>
           </div>
           {filtered ? <Button type="button" variant="ghost" onClick={clear}>{messages.pcClearFilters}</Button> : null}
         </CardContent>
@@ -92,7 +106,13 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
         return (
           <SectionCard key={periodStart} title={invoiceMonth(periodStart, locale)} count={items.length} data-testid="invoices-month">
             <p className="px-4 pt-3 text-xs text-muted-foreground" data-testid="invoices-month-summary">
-              {fillPlaceholders(messages.pcInvoiceMonthSummary, { sent: String(count('sent')), accepted: String(count('accepted')), drafts: String(count('draft')), total: formatCents(invoiced, locale) })}
+              {fillPlaceholders(messages.pcInvoiceMonthSummary, {
+                // LTR-277 §7: "1 draft", never "1 drafts".
+                sent: adminCountLabel(count('sent'), messages.pcInvoiceMonthSentOne, messages.pcInvoiceMonthSent),
+                accepted: adminCountLabel(count('accepted'), messages.pcInvoiceMonthAcceptedOne, messages.pcInvoiceMonthAccepted),
+                drafts: adminCountLabel(count('draft'), messages.pcInvoiceMonthDraftsOne, messages.pcInvoiceMonthDrafts),
+                total: formatCents(invoiced, locale),
+              })}
             </p>
             <DataTable
               className="md:rounded-none md:border-0"
