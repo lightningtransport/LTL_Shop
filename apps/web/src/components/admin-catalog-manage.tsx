@@ -9,7 +9,7 @@ import {
   type AdminCatalogCategorySummaryDto,
   type AdminCatalogJobDto,
 } from '@ltl-shop/shared';
-import { useActionToast } from './action-toast';
+import { useActionToast, type ActionToastAction } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { RenameJobDialog } from './admin-catalog-write';
 import { stepLabel } from './admin-shop-workflow';
@@ -250,12 +250,12 @@ export function CatalogJobRow({
   const locked = Boolean(job.systemKey);
   const used = job.workOrderCount ?? 0;
 
-  async function run(work: () => Promise<unknown>, done: string, after?: () => void) {
+  async function run(work: () => Promise<unknown>, done: string, after?: () => void, action?: ActionToastAction) {
     setBusy(true);
     setError(null);
     try {
       await work();
-      showToast('success', done);
+      showToast('success', done, action);
       after?.();
       onChanged();
     } catch (failure) {
@@ -293,7 +293,11 @@ export function CatalogJobRow({
                 className="tap-inline text-muted-foreground hover:text-foreground"
                 aria-label={fillPlaceholders(messages.catalogRemoveAlias, { alias: item.text })}
                 disabled={busy}
-                onClick={() => void run(() => removeAdminCatalogAlias(job.id, item.id), messages.catalogAliasRemoved)}
+                // LTR-293 §6: the X removes at once, so the toast offers the alias back.
+                onClick={() => void run(() => removeAdminCatalogAlias(job.id, item.id), messages.catalogAliasRemoved, undefined, {
+                  label: messages.undo,
+                  onAction: () => void run(() => addAdminCatalogAlias(job.id, item.text), messages.catalogAliasAdded),
+                })}
               >
                 <X aria-hidden="true" className="size-3" />
               </button>
