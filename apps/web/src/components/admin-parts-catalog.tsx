@@ -438,10 +438,11 @@ function PartMenu({ part, onShelf, messages, onEdit, onAdd, onRemove, onChanged 
     }
   }
   const items: Array<MenuItem | null> = [
-    { key: 'edit', label: messages.pcEditPart, icon: Pencil, onSelect: onEdit },
+    // LTR-293 §13: a menu item that opens a dialog ends in "…" (the same words are the dialog's title, without it).
+    { key: 'edit', label: `${messages.pcEditPart}…`, icon: Pencil, onSelect: onEdit },
     // D47 / HU-M20: the stock actions, also in the part's panel.
-    part.active ? { key: 'add', label: messages.pcAddToStock, icon: PackagePlus, onSelect: onAdd } : null,
-    onShelf ? { key: 'remove', label: messages.pcRemoveFromStock, icon: PackageMinus, onSelect: onRemove } : null,
+    part.active ? { key: 'add', label: `${messages.pcAddToStock}…`, icon: PackagePlus, onSelect: onAdd } : null,
+    onShelf ? { key: 'remove', label: `${messages.pcRemoveFromStock}…`, icon: PackageMinus, onSelect: onRemove } : null,
     // A54: the reason shows before anything is sent.
     part.active && part.openPms.length
       ? { key: 'deactivate', label: messages.pcDeactivate, icon: Power, onSelect: () => showToast('error', fillPlaceholders(messages.pcInOpenPmHelp, { truck: part.openPms[0].truckNumber })) }

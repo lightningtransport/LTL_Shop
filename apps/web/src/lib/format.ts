@@ -33,9 +33,13 @@ export function pauseLabel(
   return labels?.[reason] ?? PAUSE_REASON_LABELS[reason as PauseReason] ?? String(reason);
 }
 
+/**
+ * LTR-293 §13: one way to write miles everywhere ("195,676 mi"), whatever language the browser is set to. The app's
+ * English and Spanish (es-US) group thousands the same way, so it does not follow the browser's own locale.
+ */
 export function formatMileage(n: number | null | undefined) {
   if (n == null) return '—';
-  return `${n.toLocaleString()} mi`;
+  return `${n.toLocaleString('en-US')} mi`;
 }
 
 function escapeRegExp(value: string) {

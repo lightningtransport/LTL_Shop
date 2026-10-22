@@ -253,7 +253,7 @@ function WorkOrderCard({
       </p>
       {isPm && (pmJob ? pmJob.startedAt : wo.startedAt) && mode !== 'completed' ? (
         <p className="text-xs text-shop-muted">
-          {messages.pmStartedAt(new Intl.DateTimeFormat(intlLocale(messages.locale), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
+          {messages.pmStartedAt(new Intl.DateTimeFormat(intlLocale(messages.locale), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York' }).format(new Date((pmJob ? pmJob.startedAt : wo.startedAt)!)))}
         </p>
       ) : null}
       {!isPm && mode !== 'completed' && myJobs.length > 0 ? (
