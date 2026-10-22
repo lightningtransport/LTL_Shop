@@ -147,7 +147,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         </div>
       </form>
     </Modal>
-    {isLoading && !data ? <PageSkeleton label={messages.workOrdersTitle} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p></EmptyState> : <>
+    {isLoading && !data ? <PageSkeleton label={messages.workOrdersTitle} header={false} /> : error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : items.length === 0 ? <EmptyState><p>{messages.noWorkOrders}</p>{/* LTR-293 §11 */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={clearFilters}>{messages.pcClearFilters}</Button> : null}</EmptyState> : <>
       <div className="space-y-3 xl:hidden">{items.map((item) => <AdminWorkOrderItem key={item.id} item={item} locale={locale} messages={messages} fromPath={fromPath} canManage={canCreateWorkOrder} onChanged={() => mutate()} />)}</div>
       <div className="hidden min-h-60 max-h-[calc(100dvh-22rem)] overflow-auto rounded-xl border bg-card xl:block">
         <table className="w-full min-w-[900px] text-left text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-3">{messages.truck}</th><th className="whitespace-nowrap p-3">{messages.displayId}</th><th className="p-3">{messages.workOrderNextColumn}</th><th className="p-3">{messages.status}</th><th className="p-3">{messages.priority}</th><th className="p-3">{messages.progress}</th><th className="p-3">{messages.mechanicsLabel}</th><th className="p-3">{messages.updated}</th></tr></thead>

@@ -1146,7 +1146,8 @@ export function CompactEmpty({ children, className }: { children: React.ReactNod
  * Full-page wait. `header={false}` when the real PageHeader is already on screen above it, so the title
  * does not appear twice and nothing shifts when the data arrives (LTR-167).
  */
-export function PageSkeleton({ label = 'Loading page', header = true }: { label?: string; header?: boolean }) {
+/** `table` (LTR-293 §11): a list that is a table from `md` waits as a table, so the page does not jump when it loads. */
+export function PageSkeleton({ label = 'Loading page', header = true, table = false }: { label?: string; header?: boolean; table?: boolean }) {
   return (
     <div
       className="animate-pulse space-y-6"
@@ -1160,7 +1161,12 @@ export function PageSkeleton({ label = 'Loading page', header = true }: { label?
           <div className="h-4 w-full rounded bg-shop-panel" />
         </div>
       ) : null}
-      <CardListSkeleton />
+      {table ? (
+        <>
+          <div className="md:hidden"><CardListSkeleton /></div>
+          <TableSkeleton />
+        </>
+      ) : <CardListSkeleton />}
       <span className="sr-only">{label}</span>
     </div>
   );
@@ -1185,6 +1191,22 @@ export function LoadFailure({
       <Button type="button" variant="secondary" className="mt-3 w-full sm:w-auto" onClick={onRetry}>
         {retryLabel}
       </Button>
+    </div>
+  );
+}
+
+/** The shape of a DataTable from `md`: a header row and a few rows, in the same bordered box. */
+function TableSkeleton({ rows = 6 }: { rows?: number }) {
+  return (
+    <div className="hidden overflow-hidden rounded-xl border md:block" aria-hidden="true">
+      <div className="flex gap-6 bg-muted/50 p-3">
+        {[24, 16, 20, 12].map((width, index) => <div key={index} className="h-4 rounded bg-shop-border/70" style={{ width: `${width}%` }} />)}
+      </div>
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex gap-6 border-t p-3">
+          {[24, 16, 20, 12].map((width, cell) => <div key={cell} className="h-5 rounded bg-shop-border/60" style={{ width: `${width}%` }} />)}
+        </div>
+      ))}
     </div>
   );
 }

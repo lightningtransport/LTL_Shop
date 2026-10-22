@@ -92,8 +92,8 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         }}
       />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} header={false} /> : null}
-      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p></EmptyState> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} header={false} table /> : null}
+      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/mechanics')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
               wholeCardOpens

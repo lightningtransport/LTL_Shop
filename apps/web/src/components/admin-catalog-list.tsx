@@ -56,7 +56,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       </Card>
       <CatalogSearchResults query={search} messages={messages} />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} table /> : null}
       {!isLoading && !error && items.length === 0 && !search.trim() ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
