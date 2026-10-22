@@ -9,6 +9,7 @@ import {
   adminUpdatePartSchema,
   adminUpdateVendorSchema,
   normalizeCatalogText,
+  normalizeMakeModel,
   partFitsTruck,
   type AdminPartDto,
   type AdminPartOpenPmDto,
@@ -367,7 +368,8 @@ export class PartsCatalogService {
   private uniqueFits(fits: Array<{ make?: string | null; model?: string | null }>) {
     const seen = new Set<string>();
     return fits
-      .map((fit) => ({ make: fit.make ?? null, model: fit.model ?? null }))
+      // LTR-277 §4: a fit is spelled like the trucks it fits (Kentworth → Kenworth, CASCADIA → Cascadia).
+      .map((fit) => normalizeMakeModel(fit.make, fit.model))
       .filter((fit) => !seen.has(fitKey(fit)) && Boolean(seen.add(fitKey(fit))));
   }
 

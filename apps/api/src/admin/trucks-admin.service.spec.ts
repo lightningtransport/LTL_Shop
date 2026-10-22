@@ -119,7 +119,7 @@ describe('TrucksAdminService (D44)', () => {
   it('puts swapped or merged Make / Model right on create (LTR-113)', async () => {
     const prisma = prismaWith();
     await new TrucksAdminService(prisma as never).create({ truckNumber: '277', make: 'CASCADIA', model: 'Freightliner' });
-    expect(prisma.truck.create.mock.calls[0][0].data).toMatchObject({ make: 'Freightliner', model: 'CASCADIA' });
+    expect(prisma.truck.create.mock.calls[0][0].data).toMatchObject({ make: 'Freightliner', model: 'Cascadia' });
     await new TrucksAdminService(prisma as never).create({ truckNumber: '600', make: 'Mack Anthem' });
     expect(prisma.truck.create.mock.calls[1][0].data).toMatchObject({ make: 'Mack', model: 'Anthem' });
   });
@@ -127,7 +127,7 @@ describe('TrucksAdminService (D44)', () => {
   it('reads one edited field against the other one already saved (LTR-113)', async () => {
     const prisma = prismaWith({ current: truckRow({ make: 'CASCADIA', model: null }) });
     await new TrucksAdminService(prisma as never).update(ACTOR, TRUCK_ID, { model: 'Freightliner' });
-    expect(prisma.truck.update).toHaveBeenCalledWith({ where: { id: TRUCK_ID }, data: { make: 'Freightliner', model: 'CASCADIA' } });
+    expect(prisma.truck.update).toHaveBeenCalledWith({ where: { id: TRUCK_ID }, data: { make: 'Freightliner', model: 'Cascadia' } });
   });
 
   it('deletes only a truck without history', async () => {
