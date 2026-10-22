@@ -107,7 +107,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
       />
 
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcOutsideTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcOutsideTitle} header={false} table /> : null}
       {data ? (
         <p className="text-sm text-muted-foreground" data-testid="outside-summary">
           {fillPlaceholders(messages.pcOutsideSummary, { count: String(data.totals.count), total: formatCents(data.totals.totalCents, locale) })}
@@ -123,6 +123,7 @@ export function AdminOutsideRepairs({ locale, messages }: { locale: AdminLocale;
       ) : null}
       {data?.items.length ? (
         <DataTable
+              wholeCardOpens
           items={data.items}
           caption={messages.pcOutsideTitle}
           getKey={(item) => item.id}

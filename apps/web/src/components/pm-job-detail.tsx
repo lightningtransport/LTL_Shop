@@ -171,14 +171,14 @@ export function PmJobDetail({
         <section className="card mb-4 space-y-3" data-testid="pm-continue">
           {stoppedLine ? <p className="text-sm font-medium" role="status">{stoppedLine}</p> : null}
           <Button
+            loading={busy}
             className="w-full"
-            disabled={busy}
             onClick={() => void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs/${pmJob.id}/pm/start`, { method: 'POST' }),
               () => showToast('success', messages.workStartedSuccess),
             )}
           >
-            {busy ? messages.startingWork : messages.continueWork}
+            {messages.continueWork}
           </Button>
         </section>
       ) : null}
@@ -214,6 +214,7 @@ export function PmJobDetail({
           <p className="text-sm text-muted-foreground">{messages.pmJobNotStartedHint}</p>
           {otherRunningPm ? <PmInProgressNotice running={otherRunningPm} /> : null}
           <Button
+            loading={busy}
             className="w-full"
             variant={otherRunningPm ? 'secondary' : undefined}
             disabled={busy || Boolean(otherRunningPm)}
@@ -222,7 +223,7 @@ export function PmJobDetail({
               () => showToast('success', messages.pmServiceStartedSuccess),
             )}
           >
-            {busy ? messages.startingWork : messages.startPmService}
+            {messages.startPmService}
           </Button>
         </section>
       )}
@@ -314,6 +315,7 @@ export function PmJobDetail({
         <DialogActions className="mt-4">
           <Button variant="outline" disabled={busy} onClick={() => setBlockerOpen(false)}>{messages.cancelAction}</Button>
           <Button
+            loading={busy}
             disabled={busy || !blockerReason}
             onClick={() => {
               if (blockerReason === BlockerReason.OTHER && !blockerNotes.trim()) { setBlockerNotesError(true); return; }
@@ -326,7 +328,7 @@ export function PmJobDetail({
               );
             }}
           >
-            {busy ? messages.reportingBlocker : messages.reportBlocker}
+            {messages.reportBlocker}
           </Button>
         </DialogActions>
       </Modal>
@@ -356,7 +358,7 @@ export function PmJobDetail({
         <DialogActions>
           <Button variant="outline" disabled={busy} onClick={() => { if (!busy) setFinishOpen(false); }}>{messages.qc.back}</Button>
           <Button
-            disabled={busy}
+            loading={busy}
             onClick={() => void run(
               () => apiFetch<WorkOrderDetailDto>(`/api/work-orders/${wo.id}/jobs/${pmJob.id}/complete`, { method: 'POST', body: JSON.stringify({}) }),
               () => {
@@ -366,7 +368,7 @@ export function PmJobDetail({
               },
             )}
           >
-            <CheckCheck aria-hidden="true" />{busy ? messages.finishingWork : messages.finishPm}
+            <CheckCheck aria-hidden="true" />{messages.finishPm}
           </Button>
         </DialogActions>
       </Modal>

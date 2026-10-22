@@ -442,7 +442,7 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
                 onChange={(event) => setNote(event.target.value)}
               />
               <div className="flex gap-2">
-                <Button type="submit" disabled={pending || (safetyReturn && !note.trim())}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+                <Button loading={pending} type="submit" disabled={pending || (safetyReturn && !note.trim())}>{messages.blockerConfirmResolve}</Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={() => { setResolving(false); setNote(''); }}>{messages.cancel}</Button>
               </div>
             </form>
@@ -503,8 +503,8 @@ function RequestRow({ request, locale, messages, canManage, onChanged }: {
       <div className="flex flex-wrap gap-2 sm:justify-end">
         <Button asChild variant="ghost"><Link href={adminWorkOrderHref(request.workOrderId, '/admin')}>{messages.dashboardOpenWorkOrder}</Link></Button>
         {canManage ? (
-          <Button type="button" variant="outline" disabled={pending} onClick={() => void markHandled()}>
-            <Check aria-hidden="true" />{pending ? messages.saving : messages.markWorkRequestHandled}
+          <Button loading={pending} type="button" variant="outline" onClick={() => void markHandled()}>
+            <Check aria-hidden="true" />{messages.markWorkRequestHandled}
           </Button>
         ) : null}
       </div>

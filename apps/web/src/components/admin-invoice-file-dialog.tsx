@@ -84,7 +84,7 @@ export function InvoiceFileDialog({ owner, id, current, messages, onClose, onSav
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="button" onClick={() => void save()} disabled={busy || uploading || !changed}>{busy ? messages.pcSaving : messages.pcFileSave}</Button>
+          <Button loading={busy} type="button" onClick={() => void save()} disabled={busy || uploading || !changed}>{messages.pcFileSave}</Button>
         </DialogActions>
       </div>
     </Modal>

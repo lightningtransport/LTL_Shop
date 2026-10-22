@@ -110,7 +110,7 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
               <Input id="labor-rate-from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} />
             </div>
             <div className="pt-6">
-              <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcLaborRateSave}</Button>
+              <Button loading={busy} type="submit">{messages.pcLaborRateSave}</Button>
             </div>
             <div className="basis-full space-y-1">
               <p className="text-xs text-muted-foreground">{messages.pcLaborRateHelp}</p>
@@ -149,7 +149,7 @@ export function AdminLaborRate({ locale, messages }: { locale: AdminLocale; mess
           {saveError ? <InlineAlert className="mb-3">{saveError}</InlineAlert> : null}
           <DialogActions>
             <Button type="button" variant="outline" onClick={() => setRemoving(null)} disabled={busy}>{messages.cancel}</Button>
-            <Button type="button" variant="destructive" disabled={busy} onClick={() => void remove(removing)}>{busy ? messages.pcSaving : messages.pcLaborRateRemove}</Button>
+            <Button loading={busy} type="button" variant="destructive" onClick={() => void remove(removing)}>{messages.pcLaborRateRemove}</Button>
           </DialogActions>
         </Modal>
       ) : null}
@@ -210,7 +210,7 @@ function PmOilPriceCard({ locale, messages, canWrite }: { locale: AdminLocale; m
               <Label htmlFor="oil-price-from">{messages.pcOilPriceFrom}</Label>
               <Input id="oil-price-from" type="date" min={today()} value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} />
             </div>
-            <Button type="submit" disabled={busy || typeof cents !== 'number'}>{busy ? messages.pcSaving : messages.pcOilPriceSave}</Button>
+            <Button loading={busy} type="submit" disabled={busy || typeof cents !== 'number'}>{messages.pcOilPriceSave}</Button>
           </form>
         ) : null}
         {error ? <InlineAlert>{error}</InlineAlert> : null}

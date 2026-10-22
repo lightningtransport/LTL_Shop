@@ -195,7 +195,7 @@ export default function LoginPage() {
         {error ? (
           <InlineAlert>{error}</InlineAlert>
         ) : null}
-        <Button className="w-full" disabled={busy} type="submit">
+        <Button className="w-full" loading={busy} type="submit">
           {messages.signIn}
         </Button>
         <Button
