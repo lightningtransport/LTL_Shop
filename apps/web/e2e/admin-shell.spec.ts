@@ -841,5 +841,22 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
+
+  test('LTR-293 §9: the catalog search and the Custom Jobs tab survive a reload', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/catalog');
+    const search = page.getByRole('textbox', { name: 'Search categories, Jobs or aliases' }).first();
+    await search.fill('brake');
+    await expect(page).toHaveURL(/search=brake/);
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Search categories, Jobs or aliases' }).first()).toHaveValue('brake');
+
+    await page.goto('/admin/catalog/review');
+    await page.getByRole('tab', { name: /Reviewed/ }).click();
+    await expect(page).toHaveURL(/tab=reviewed/);
+    await page.reload();
+    await expect(page.getByRole('tab', { name: /Reviewed/ })).toHaveAttribute('aria-selected', 'true');
+  });
 });
 

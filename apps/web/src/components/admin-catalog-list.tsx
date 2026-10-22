@@ -10,6 +10,9 @@ import { Button, DataTable, PageHeader, Card, CardContent, EmptyState, Input, Lo
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories, useAdminCustomJobs } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
+
+const CATALOG_FILTERS = { search: '' };
 
 export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
   const canWrite = useCanShowManagerWrites();
@@ -17,7 +20,9 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
   // LTR-57: Custom Jobs waiting in the review inbox.
   const { data: customJobs } = useAdminCustomJobs('pending');
   const toReview = (customJobs ?? []).reduce((sum, group) => sum + group.count, 0);
-  const [search, setSearch] = useState('');
+  // LTR-293 §9: the search is in the URL (?search=), typed locally and written after a pause.
+  const { filters, set } = useUrlFilters(CATALOG_FILTERS);
+  const [search, setSearch] = useDebouncedFilterText(filters.search, (next) => set('search', next));
   // LTR-198 / JC2: the box filters Categories by name and, below, finds Jobs and aliases across every Category.
   const items = useMemo(() => {
     const query = search.trim().toLowerCase();
