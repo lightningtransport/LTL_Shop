@@ -886,7 +886,8 @@ de donde venga la acción (`apps/api/src/work-orders/work-order-close-rules.ts`)
   Manager pide lo mismo que Safety: los demás Jobs hechos o cancelados
   (`QC_NOT_READY`). En la tabla de Jobs, su "Mark complete" está apagado y
   en contorno mientras quede trabajo; es el botón principal solo cuando ya se
-  puede usar (LTR-295).
+  puede usar, y tampoco lo es si todo lo demás se canceló (ahí la acción es
+  Cancel Work Order) (LTR-295).
 - **Trabajo hecho (R15):** cerrar pide al menos un Job completado fuera del
   Quality Check. Si todo se canceló responde `NOTHING_DONE` y lo que toca es
   **Cancel Work Order**.

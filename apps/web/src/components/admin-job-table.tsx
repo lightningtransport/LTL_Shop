@@ -291,11 +291,13 @@ export function AdminJobTable({
         // and says "Mark complete", so it never looks like the Job's state.
         // D55 R11 (LTR-295): the Quality Check waits for the other Jobs, so until then it is neither primary nor active.
         const qcWaiting = isQualityCheck && data.jobs.some((other) => other.id !== job.id && other.status === 'to_do');
+        // With everything else cancelled there is nothing to check: Cancel Work Order is the one primary action.
+        const qcPrimary = isQualityCheck && !qcWaiting && data.nextStep?.kind !== 'cancel_work_order';
         action = (
           <Button
             type="button"
             size="sm"
-            variant={isQualityCheck && !qcWaiting ? 'default' : 'outline'}
+            variant={qcPrimary ? 'default' : 'outline'}
             disabled={pending || qcWaiting}
             title={qcWaiting ? messages.qcNotReadyForManager : undefined}
             aria-label={`${messages.completeJobAction}: ${name}`}
