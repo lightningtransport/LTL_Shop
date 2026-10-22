@@ -8,6 +8,7 @@ import { pauseLabel } from '@/lib/format';
 import { isMyJob, isMyPartDone, isStandardWorkWaitingOnManager, jobPersonLabel } from '@/lib/job-assignment';
 import { jobDisplayName } from '@/lib/job-display-name';
 import { useShopLocale } from '@/lib/locale-context';
+import { myCompletedJobsCount } from '@/lib/my-completed-jobs';
 import type { HomeLists } from '@/lib/shop-data';
 import { intlLocale } from '@/lib/shop-locale';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,8 @@ export function StandardHome({
 }) {
   const { messages } = useShopLocale();
   const clockId = data.myClock?.workOrderId ?? null;
+  // LTR-277 §3: the same Jobs the Completed screen lists (open Work Orders too), not the closed Work Orders.
+  const completedJobs = myCompletedJobsCount(data, userId);
   const partDone = (wo: Wo) => isStandardWorkWaitingOnManager(wo) || isMyPartDone(wo, userId);
   const blocked = [...data.active, ...data.created].filter((wo) => !partDone(wo) && onlyBlocked(wo, userId));
   const blockedIds = new Set(blocked.map((wo) => wo.id));
@@ -124,9 +127,9 @@ export function StandardHome({
         </Section>
       ) : null}
 
-      {data.completed.length ? (
+      {completedJobs ? (
         <Button asChild variant="secondary" className="w-full">
-          <Link href="/mechanic/standard/completed">{messages.viewCompletedWork(data.completed.length)}</Link>
+          <Link href="/mechanic/standard/completed">{messages.viewCompletedWork(completedJobs)}</Link>
         </Button>
       ) : null}
     </div>

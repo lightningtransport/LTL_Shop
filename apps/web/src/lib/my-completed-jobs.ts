@@ -22,3 +22,8 @@ export function myCompletedJobs(lists: Lists | undefined, currentUserId: string)
   }
   return groups;
 }
+
+/** LTR-277 §3: "View completed work (N)" counts the Jobs the Completed screen lists, not the closed Work Orders. */
+export function myCompletedJobsCount(lists: Lists | undefined, currentUserId: string): number {
+  return myCompletedJobs(lists, currentUserId).reduce((total, group) => total + group.jobs.length, 0);
+}
