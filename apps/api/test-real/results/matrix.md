@@ -127,7 +127,7 @@ PASA 197 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A107 | D44: desconectar deja de sincronizar; las últimas lecturas y las fallas quedan; la sincronización no lo vuelve a conectar por el id de Ninox | PASA |
 | A108 | D44: un camión conectado sigue conectado aunque Samsara deje de listar su vehículo; Setup → Samsara lo avisa | PASA |
 | A109 | D44: la propuesta aparece después de una sincronización y se conecta de un toque (sin elegir: nada difiere); la propuesta desaparece | PASA |
-| A110 | LTR-113: Make y Model al revés, juntos o repetidos quedan bien al guardar (CASCADIA / Freightliner → Freightliner / CASCADIA; "Mack Anthem" → Mack / Anthem; PETERBILT / PETERBILT 579 → Peterbilt / 579); la marca se escribe de una sola forma | PASA |
+| A110 | LTR-113: Make y Model al revés, juntos o repetidos quedan bien al guardar (CASCADIA / Freightliner → Freightliner / Cascadia; "Mack Anthem" → Mack / Anthem; PETERBILT / PETERBILT 579 → Peterbilt / 579); la marca se escribe de una sola forma; LTR-277: Kentworth → Kenworth y CASCADIA → Cascadia | PASA |
 | A111 | Una línea se ata al Job de su camión: el Job muestra la parte, el costo va al camión con su WO | PASA |
 | A112 | Un Job de otro camión, uno cancelado o un Job sin camión: no se guarda | PASA |
 | A113 | Cambiar el Job de una línea escribe reversas; editar solo las notas no toca el costo | PASA |

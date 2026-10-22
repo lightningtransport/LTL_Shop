@@ -23,6 +23,29 @@ export const KNOWN_TRUCK_MAKES = [
   'Ram',
 ] as const;
 
+/** LTR-277 §4: misspellings seen in our data, read as the make they mean ("Kentworth" → Kenworth). */
+const TRUCK_MAKE_ALIASES: Record<string, (typeof KNOWN_TRUCK_MAKES)[number]> = {
+  kentworth: 'Kenworth',
+};
+
+/**
+ * LTR-277 §4: models spelled one way, so "CASCADIA" and "Cascadia" are one model on every screen.
+ * Only an exact match (ignoring capitals) changes; anything else stays as typed.
+ */
+export const KNOWN_TRUCK_MODELS = [
+  'Cascadia', 'Columbia', 'Coronado', 'M2',
+  'T680', 'T880', 'T800', 'W900', 'W990',
+  'VNL', 'VNR', 'VHD',
+  'Anthem', 'Pinnacle', 'Granite',
+  'LT', 'ProStar', 'LoneStar',
+] as const;
+
+function knownModel(value: string | null): string | null {
+  if (!value) return value;
+  const key = value.toLocaleLowerCase('en-US');
+  return KNOWN_TRUCK_MODELS.find((model) => model.toLocaleLowerCase('en-US') === key) ?? value;
+}
+
 function clean(value: string | null | undefined): string | null {
   const text = value?.replace(/\s+/g, ' ').trim();
   return text ? text : null;
@@ -31,18 +54,18 @@ function clean(value: string | null | undefined): string | null {
 function knownMake(value: string | null): string | null {
   if (!value) return null;
   const key = value.toLocaleLowerCase('en-US');
-  return KNOWN_TRUCK_MAKES.find((make) => make.toLocaleLowerCase('en-US') === key) ?? null;
+  return KNOWN_TRUCK_MAKES.find((make) => make.toLocaleLowerCase('en-US') === key) ?? TRUCK_MAKE_ALIASES[key] ?? null;
 }
 
 /** "Mack Anthem" → Mack + "Anthem". The longest make wins ("Western Star" before a shorter one). */
 function splitMakePrefix(value: string): { make: string; rest: string } | null {
   const key = value.toLocaleLowerCase('en-US');
-  const make = [...KNOWN_TRUCK_MAKES]
+  const spelled = [...KNOWN_TRUCK_MAKES, ...Object.keys(TRUCK_MAKE_ALIASES)]
     .sort((a, b) => b.length - a.length)
     .find((candidate) => key.startsWith(`${candidate.toLocaleLowerCase('en-US')} `));
-  if (!make) return null;
-  const rest = value.slice(make.length).trim();
-  return rest ? { make, rest } : null;
+  if (!spelled) return null;
+  const rest = value.slice(spelled.length).trim();
+  return rest ? { make: knownMake(spelled)!, rest } : null;
 }
 
 /** "PETERBILT 579" with make Peterbilt → "579". A Model that is only the make stays as typed. */
@@ -59,7 +82,9 @@ function withoutMake(model: string | null, make: string): string | null {
  * - a known make is spelled one way ("FREIGHTLINER" → "Freightliner");
  * - swapped fields are put back (Make "CASCADIA", Model "Freightliner" → Freightliner / CASCADIA);
  * - a Make that holds both ("Mack Anthem") is split when Model is empty or says the same;
- * - a Model that repeats the make drops it (Peterbilt / "PETERBILT 579" → Peterbilt / "579").
+ * - a Model that repeats the make drops it (Peterbilt / "PETERBILT 579" → Peterbilt / "579");
+ * - LTR-277 §4: a known misspelling is the make it means ("Kentworth" → Kenworth) and a known
+ *   model is spelled one way ("CASCADIA" → "Cascadia").
  * Anything it does not recognise stays as typed (only extra spaces go).
  */
 export function normalizeMakeModel(
@@ -72,13 +97,13 @@ export function normalizeMakeModel(
   if (!knownMake(make) && knownMake(model)) [make, model] = [model, make];
 
   const known = knownMake(make);
-  if (known) return { make: known, model: withoutMake(model, known) };
+  if (known) return { make: known, model: knownModel(withoutMake(model, known)) };
 
   if (make) {
     const split = splitMakePrefix(make);
     if (split && (!model || model.toLocaleLowerCase('en-US') === split.rest.toLocaleLowerCase('en-US'))) {
-      return { make: split.make, model: model ?? split.rest };
+      return { make: split.make, model: knownModel(model ?? split.rest) };
     }
   }
-  return { make, model };
+  return { make, model: knownModel(model) };
 }

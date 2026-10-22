@@ -126,6 +126,14 @@ Esquema: `apps/api/prisma/schema.prisma`. Tipos compartidos:
   (1950 a dos años adelante), placas, dueño, compañía, dispatcher y
   aseguradora. Lo vacío queda `null`. El millaje **no** se escribe aquí
   (D10; la API lo rechaza con 400).
+- **Marca y modelo de una sola forma (LTR-113, LTR-277 §4):** el formulario,
+  Ninox, Samsara y los Fits de las partes pasan por `normalizeMakeModel`
+  (`packages/shared/src/vehicle.ts`): campos al revés, "Mack Anthem" junto,
+  la marca repetida en el modelo, una marca mal escrita conocida ("Kentworth"
+  → Kenworth) y los modelos conocidos con una sola grafía ("CASCADIA" →
+  "Cascadia", "t680" → "T680"). Lo ya guardado se corrige con Release safety →
+  `truck_make_model` (`list`, y `apply` con el OK del dueño); también corrige
+  los Fits de las partes y quita los que quedan repetidos.
 - **Desactivado (`deactivated_at`, `deactivated_by_id`):** `PATCH … { active:
   false }` se niega con `TRUCK_HAS_OPEN_WORK_ORDER` (409, con el WO) si tiene
   una Work Order abierta. Desactivado sale de `GET /trucks` y de la búsqueda
