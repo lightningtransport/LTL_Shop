@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import { ListChecks, MoreHorizontal, PackageMinus, PackagePlus, Pencil, Plus, Power, X } from 'lucide-react';
 import {
   centsToInput,
@@ -22,7 +22,7 @@ import {
 } from './ui';
 import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
-import { createAdminPart, createAdminPartCategory, updateAdminPart, useAdminPartsCatalog, useAdminStock, useAdminVendors } from '@/lib/admin-data';
+import { createAdminPart, createAdminPartCategory, createAdminVendor, updateAdminPart, useAdminPartsCatalog, useAdminStock, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
 import { adminCountLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { AdminNavLink } from './admin-nav-link';
@@ -120,7 +120,7 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
   const { filters, set, clear, query, active: filtered } = useUrlFilters(CATALOG_FILTERS);
   const [search, setSearch] = useDebouncedFilterText(filters.q, (next) => set('q', next));
   const { data, error, isLoading, mutate } = useAdminPartsCatalog(query);
-  const { data: vendors } = useAdminVendors();
+  const { data: vendors, mutate: mutateVendors } = useAdminVendors();
   const [editing, setEditing] = useState<AdminPartDto | 'new' | null>(null);
   const [addingCategory, setAddingCategory] = useState(false);
   // D47 / HU-M20 (LTR-246): the shelf of every part, so Parts is the inventory (Stock left the menu).
@@ -244,6 +244,8 @@ export function AdminPartsCatalog({ locale, messages }: { locale: AdminLocale; m
           messages={messages}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); void mutate(); }}
+          onVendorAdded={() => void mutateVendors()}
+          onCategoryAdded={() => void mutate()}
         />
       ) : null}
       {panel ? (
@@ -463,8 +465,13 @@ type FitRow = { make: string; model: string };
 /**
  * Add or edit a part. D45 / ST-2: a tire category asks for size and New or Recap; every part can have a minimum in
  * stock. `preset` comes from an "Other" purchase line (HU-R2): its name and number, and a repair category first.
+ * LTR-298: the category and the usual vendor can be added from here ("+ Add category…", "+ Add vendor…"), and a
+ * part added from a purchase starts with that purchase's vendor, so loading an invoice never sends the Manager to
+ * another screen.
  */
-export function PartDialog({ part, categories, truckMakes, vendors, locale, messages, onClose, onSaved, preset }: {
+const ADD_NEW = '__add_new__';
+
+export function PartDialog({ part, categories, truckMakes, vendors, locale, messages, onClose, onSaved, onVendorAdded, onCategoryAdded, preset }: {
   part: AdminPartDto | null;
   categories: AdminPartCategoryDto[];
   truckMakes: string[];
@@ -473,7 +480,10 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
   messages: AdminMessages;
   onClose: () => void;
   onSaved: (id: string) => void;
-  preset?: { displayName: string; partNumber?: string | null };
+  /** LTR-298: reload Vendors / Parts after "+ Add vendor…" or "+ Add category…" here. */
+  onVendorAdded?: () => void;
+  onCategoryAdded?: () => void;
+  preset?: { displayName: string; partNumber?: string | null; defaultVendorId?: string };
 }) {
   const { showToast } = useActionToast();
   const firstCategory = preset ? categories.find((category) => category.kind === 'repair') ?? categories[0] : categories[0];
@@ -486,7 +496,14 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
   const [allTrucks, setAllTrucks] = useState(!part || part.fits.length === 0);
   const [fits, setFits] = useState<FitRow[]>(part?.fits.length ? part.fits.map((fit) => ({ make: fit.make ?? '', model: fit.model ?? '' })) : [{ make: truckMakes[0] ?? '', model: '' }]);
   const [cost, setCost] = useState(centsToInput(part?.unitCostCents));
-  const [vendorId, setVendorId] = useState(part?.defaultVendor?.id ?? '');
+  const [vendorId, setVendorId] = useState(part?.defaultVendor?.id ?? preset?.defaultVendorId ?? '');
+  // LTR-298: what was added from here, listed until the lists reload. One per tap (the ref beats the re-render).
+  const [newVendor, setNewVendor] = useState<string | null>(null);
+  const [addedVendors, setAddedVendors] = useState<{ id: string; name: string }[]>([]);
+  const [newCategory, setNewCategory] = useState<{ name: string; kind: 'repair' | 'tire' } | null>(null);
+  const [addedCategories, setAddedCategories] = useState<AdminPartCategoryDto[]>([]);
+  const [adding, setAdding] = useState(false);
+  const addingRef = useRef(false);
   const [active, setActive] = useState(part?.active ?? true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -496,9 +513,13 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
   const cleanFits = fits.filter((fit) => fit.make.trim() || fit.model.trim()).map((fit) => ({ make: fit.make.trim() || null, model: fit.model.trim() || null }));
   const fitsMissing = !allTrucks && cleanFits.length === 0;
   const lockedByPm = Boolean(part?.openPms.length);
-  const vendorChoices = vendors.filter((vendor) => (vendor.active && vendor.doesParts) || vendor.id === vendorId);
+  const vendorChoices = [
+    ...vendors.filter((vendor) => (vendor.active && vendor.doesParts) || vendor.id === vendorId),
+    ...addedVendors.filter((added) => !vendors.some((vendor) => vendor.id === added.id)),
+  ];
+  const categoryChoices = [...categories, ...addedCategories.filter((added) => !categories.some((category) => category.id === added.id))];
   const makeChoices = [...new Set([...truckMakes, ...fits.map((fit) => fit.make).filter(Boolean)])];
-  const kind = categories.find((category) => category.id === categoryId)?.kind ?? 'pm';
+  const kind = categoryChoices.find((category) => category.id === categoryId)?.kind ?? 'pm';
   const isTire = kind === 'tire';
   const minStockValue = minStock.trim() === '' ? null : /^\d+$/.test(minStock.trim()) ? Number(minStock.trim()) : undefined;
   const tireMissing = isTire && (!tireSize.trim() || !tireType);
@@ -522,6 +543,44 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
     ? displayName !== part.displayName || partNumber !== (part.partNumber ?? '') || cost !== centsToInput(part.unitCostCents) || vendorId !== (part.defaultVendor?.id ?? '') || active !== part.active
       || tireSize !== (part.tireSize ?? '') || tireType !== (part.tireType ?? '') || minStock !== (part.minStock !== null ? String(part.minStock) : '')
     : Boolean(displayName.trim() || partNumber.trim() || cost.trim() || tireSize.trim() || minStock.trim());
+
+  async function addVendor() {
+    if (!newVendor?.trim() || addingRef.current) return;
+    addingRef.current = true;
+    setAdding(true);
+    try {
+      const created = await createAdminVendor({ name: newVendor.trim(), doesParts: true });
+      setAddedVendors((current) => [...current, { id: created.id, name: newVendor.trim() }]);
+      onVendorAdded?.();
+      setVendorId(created.id);
+      setNewVendor(null);
+      showToast('success', messages.pcVendorAdded);
+    } catch (failure) {
+      setError(partsCostsFailure(failure, messages));
+    } finally {
+      addingRef.current = false;
+      setAdding(false);
+    }
+  }
+
+  async function addCategory() {
+    if (!newCategory?.name.trim() || addingRef.current) return;
+    addingRef.current = true;
+    setAdding(true);
+    try {
+      const created = await createAdminPartCategory({ name: newCategory.name.trim(), kind: newCategory.kind });
+      setAddedCategories((current) => [...current, { id: created.id, name: newCategory.name.trim(), kind: newCategory.kind, parts: [] }]);
+      onCategoryAdded?.();
+      setCategoryId(created.id);
+      setNewCategory(null);
+      showToast('success', messages.pcCategoryAdded);
+    } catch (failure) {
+      setError(partsCostsFailure(failure, messages));
+    } finally {
+      addingRef.current = false;
+      setAdding(false);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -566,10 +625,38 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
         ) : (
           <div className="space-y-1.5">
             <Label htmlFor="part-category">{messages.pcCategory}</Label>
-            <Select id="part-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={busy} aria-invalid={categoryMissing || undefined} aria-describedby={categoryMissing ? 'part-category-error' : undefined}>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`}</option>)}
+            <Select
+              id="part-category"
+              value={newCategory ? ADD_NEW : categoryId}
+              disabled={busy}
+              aria-invalid={categoryMissing || undefined}
+              aria-describedby={categoryMissing ? 'part-category-error' : undefined}
+              onChange={(event) => {
+                if (event.target.value === ADD_NEW) return setNewCategory({ name: '', kind: 'repair' });
+                setNewCategory(null);
+                setCategoryId(event.target.value);
+              }}
+            >
+              {categoryChoices.map((category) => <option key={category.id} value={category.id}>{category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`}</option>)}
+              <option value={ADD_NEW}>{messages.pcAddCategoryOption}</option>
             </Select>
             <RequiredNote show={categoryMissing} id="part-category-error" messages={messages} />
+            {newCategory ? (
+              <div className="space-y-2 rounded-lg border p-3" data-testid="part-new-category">
+                <div className="flex gap-2">
+                  <Input aria-label={messages.pcCategoryName} placeholder={messages.pcCategoryName} value={newCategory.name} onChange={(event) => setNewCategory({ ...newCategory, name: event.target.value })} autoComplete="off" />
+                  <Button type="button" variant="outline" disabled={!newCategory.name.trim() || adding} aria-busy={adding || undefined} onClick={() => void addCategory()}>{messages.pcAddCategory}</Button>
+                </div>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  {(['repair', 'tire'] as const).map((value) => (
+                    <label key={value} className="flex items-center gap-2">
+                      <input type="radio" name="part-new-category-kind" checked={newCategory.kind === value} onChange={() => setNewCategory({ ...newCategory, kind: value })} disabled={adding} />
+                      {kindLabel(value, messages)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
         {lockedByPm ? <InlineAlert className="border-warning/40 bg-warning-surface text-warning-foreground">{fillPlaceholders(messages.pcInOpenPmHelp, { truck: part!.openPms.map((pm) => pm.truckNumber).join(', ') })}</InlineAlert> : null}
@@ -655,10 +742,26 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="part-vendor">{messages.pcUsualVendor}</Label>
-            <Select id="part-vendor" value={vendorId} onChange={(event) => setVendorId(event.target.value)} disabled={busy}>
+            <Select
+              id="part-vendor"
+              value={newVendor !== null ? ADD_NEW : vendorId}
+              disabled={busy}
+              onChange={(event) => {
+                if (event.target.value === ADD_NEW) return setNewVendor('');
+                setNewVendor(null);
+                setVendorId(event.target.value);
+              }}
+            >
               <option value="">{messages.pcNoVendor}</option>
               {vendorChoices.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+              <option value={ADD_NEW}>{messages.pcAddVendorOption}</option>
             </Select>
+            {newVendor !== null ? (
+              <div className="flex gap-2">
+                <Input aria-label={messages.pcNewVendorName} placeholder={messages.pcNewVendorName} value={newVendor} onChange={(event) => setNewVendor(event.target.value)} autoComplete="off" />
+                <Button type="button" variant="outline" disabled={!newVendor.trim() || adding} aria-busy={adding || undefined} onClick={() => void addVendor()}>{messages.pcAddVendor}</Button>
+              </div>
+            ) : null}
           </div>
         </div>
 
