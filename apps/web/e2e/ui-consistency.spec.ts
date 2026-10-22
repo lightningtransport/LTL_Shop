@@ -61,6 +61,22 @@ test.describe('shared UI consistency', () => {
     await expect(page.getByRole('region', { name: 'Operational summary' })).toHaveCount(0);
   });
 
+  test('LTR-293 §6: Unassign is one tap and the toast gives the Job back to who had it', async ({ page }) => {
+    await signInAsManager(page);
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000106');
+    const trigger = page.getByRole('button', { name: 'Mechanic for Inspect brake chamber' });
+    const picker = page.getByTestId('mechanic-picker');
+    await trigger.click();
+    await picker.getByRole('option', { name: /Anthony/ }).click();
+    await expect(trigger).toContainText('Anthony');
+
+    await trigger.click();
+    await picker.getByRole('option', { name: 'Unassign' }).click();
+    await expect(trigger).not.toContainText('Anthony');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(trigger).toContainText('Anthony');
+  });
+
   test('Return to Service says the Truck leaves Ready to Go (LTR-151)', async ({ page }) => {
     await signInAsManager(page);
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000104');

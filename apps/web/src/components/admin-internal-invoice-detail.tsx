@@ -54,7 +54,7 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
   const canWrite = useCanShowManagerWrites();
   const { showToast } = useActionToast();
   const { data, error, isLoading, mutate } = useAdminInternalInvoice(id);
-  const [dialog, setDialog] = useState<'send' | 'void' | 'delete' | null>(null);
+  const [dialog, setDialog] = useState<'send' | 'accept' | 'void' | 'delete' | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   // PCA11 (UX-5-006): "Internal invoices › SHOP-2026-0004" in the top bar and the tab.
@@ -119,7 +119,8 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
               <Button type="button" onClick={() => window.print()} title={messages.pcInvoiceDownloadHint}><Download aria-hidden="true" />{messages.pcInvoiceDownload}</Button>
             ) : null}
             {data.status === 'sent' ? (
-              <Button type="button" variant="outline" disabled={busy} onClick={() => void run(() => acceptAdminInternalInvoice(id), messages.pcInvoiceAcceptedToast)}><Check aria-hidden="true" />{messages.pcInvoiceAccept}</Button>
+              // LTR-293 §6: accepting cannot be undone (only Void after it), so it asks first, like Send and Void.
+              <Button type="button" variant="outline" disabled={busy} onClick={() => setDialog('accept')}><Check aria-hidden="true" />{messages.pcInvoiceAccept}</Button>
             ) : null}
             {data.status === 'sent' || data.status === 'accepted' ? (
               <Button type="button" variant="outline" onClick={() => setDialog('void')} disabled={busy}><Ban aria-hidden="true" />{messages.pcVoid}</Button>
@@ -184,6 +185,15 @@ export function AdminInternalInvoiceDetail({ id, locale, messages }: { id: strin
               const sent = await sendAdminInternalInvoice(id);
               showToast('success', fillPlaceholders(messages.pcInvoiceSentToast, { number: sent.number }));
             }, '')}>{messages.pcInvoiceSend}</Button>
+          </DialogActions>
+        </Modal>
+      ) : null}
+      {dialog === 'accept' ? (
+        <Modal open title={messages.pcInvoiceAcceptTitle} description={messages.pcInvoiceAcceptBody} onClose={() => setDialog(null)} closeLabel={messages.closeDialog}>
+          {actionError ? <InlineAlert className="mb-3">{actionError}</InlineAlert> : null}
+          <DialogActions>
+            <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>{messages.cancel}</Button>
+            <Button type="button" disabled={busy} onClick={() => void run(() => acceptAdminInternalInvoice(id), messages.pcInvoiceAcceptedToast)}>{messages.pcInvoiceAccept}</Button>
           </DialogActions>
         </Modal>
       ) : null}
