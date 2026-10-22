@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
-import { myCompletedJobs } from './my-completed-jobs';
+import { myCompletedJobs, myCompletedJobsCount } from './my-completed-jobs';
 
 const me = { id: 'me', name: 'Me' };
 const other = { id: 'other', name: 'Other' };
@@ -31,5 +31,20 @@ describe('myCompletedJobs (LTR-189 W11)', () => {
     expect(myCompletedJobs({ completed: [wo('WO-1', 'completed', [{ status: 'completed', completedBy: other }])] }, 'me')).toEqual([]);
     expect(myCompletedJobs(undefined, 'me')).toEqual([]);
     expect(myCompletedJobs({ active: [] }, '')).toEqual([]);
+  });
+});
+
+describe('myCompletedJobsCount (LTR-277 §3)', () => {
+  it('counts the Jobs the Completed screen lists, not the closed Work Orders', () => {
+    const lists = {
+      active: [wo('WO-5', 'in_progress', [{ status: 'completed', completedBy: me }, { status: 'completed', completedBy: me }])],
+      completed: [
+        wo('WO-1', 'completed', [{ status: 'completed', completedBy: me }, { status: 'completed', completedBy: other }]),
+        wo('WO-3', 'completed', [{ status: 'completed', completedBy: other }]),
+      ],
+    };
+    // Two closed Work Orders, three of my Jobs.
+    expect(myCompletedJobsCount(lists, 'me')).toBe(3);
+    expect(myCompletedJobsCount(undefined, 'me')).toBe(0);
   });
 });

@@ -1017,7 +1017,7 @@ Shop Admin, Yard, Work Orders).
 | `/mechanic/pm/new` | Create PM service. |
 | `/mechanic/{standard,pm}/trucks`, `/trucks/[id]/history` | Buscar camión e historial de reparaciones. |
 | (aviso en el inicio y el detalle) | Si la app detuvo su reloj (cierre del día o cambio de camión) y le queda trabajo: "Ayer quedó en curso · toca Continuar" o "Estás trabajando en la unidad 944 · toca Continuar para trabajar aquí", junto al botón Continue de siempre. El PM job tiene su propio Continue (D20, D21). |
-| `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). |
+| `/mechanic/{standard,pm}/completed` | Pestaña "Completados": Standard lista los Jobs que ese mecánico completó (el Work Order puede seguir abierto); PM lista los servicios de PM terminados (LTR-189 W11). En el home del Standard, "View completed work (N)" cuenta esos mismos Jobs, no los Work Orders cerrados, y aparece aunque el Work Order siga abierto; en PM el número sigue siendo de servicios (LTR-277 §3). |
 
 ### Todos
 `/login`, `/reset-password`, `/access-denied`.
