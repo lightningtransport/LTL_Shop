@@ -33,7 +33,7 @@ import { useAuth } from '@/lib/auth-context';
 import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { workOrderDetailFromResult } from '@/lib/admin-mutation-result';
 import { useCategories } from '@/lib/shop-data';
-import { useActionToast } from './action-toast';
+import { useActionToast, type ActionToastAction } from './action-toast';
 import {
   Button,
   CardListSkeleton,
@@ -195,7 +195,7 @@ export function AdminWorkOrderDetail({
   const safetyReturn = safetyReturnJobId ? safetyReturnOf(safetyReturnJobId) : null;
   const labor = laborByMechanic(data);
 
-  async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string) {
+  async function runMutation(action: string, successMessage: string, operation: () => Promise<unknown>, onError: (failure: unknown) => string, toastAction?: (result: unknown) => ActionToastAction | undefined) {
     if (pendingAction) return;
     setPendingAction(action);
     setFeedback(null);
@@ -206,7 +206,7 @@ export function AdminWorkOrderDetail({
       await applyWorkOrderResult(result);
       void mutateRelated(isWorkOrderRelatedListKey, undefined, { revalidate: true, populateCache: false });
       // LTR-168: success is the toast only (the status badge shows the result); errors also stay inline.
-      showToast('success', successMessage);
+      showToast('success', successMessage, toastAction?.(result));
     } catch (failure) {
       const message = onError(failure);
       setFeedback({ kind: 'error', message });
@@ -431,7 +431,15 @@ export function AdminWorkOrderDetail({
               if (mechanicId) {
                 void runMutation(`assign-job-${jobId}`, messages.assignJobSuccess, () => assignAdminWorkOrderJob(id, jobId, { mechanicId, expectedVersion: data.version }), (failure) => jobChangeError(failure, messages));
               } else {
-                void runMutation(`unassign-job-${jobId}`, messages.unassignJobSuccess, () => unassignAdminWorkOrderJob(id, jobId, data.version), (failure) => jobChangeError(failure, messages));
+                // LTR-293 §6: unassigning is one tap, so the toast offers it back (as Assign from the Next step does).
+                const previous = data.jobs.find((job) => job.id === jobId)?.assignedMechanic ?? null;
+                void runMutation(`unassign-job-${jobId}`, messages.unassignJobSuccess, () => unassignAdminWorkOrderJob(id, jobId, data.version), (failure) => jobChangeError(failure, messages), (result) => previous ? {
+                  label: messages.undo,
+                  onAction: () => {
+                    const version = workOrderDetailFromResult(result, id)?.version ?? data.version;
+                    void runMutation(`assign-job-${jobId}`, messages.assignJobSuccess, () => assignAdminWorkOrderJob(id, jobId, { mechanicId: previous.id, expectedVersion: version }), (failure) => jobChangeError(failure, messages));
+                  },
+                } : undefined);
               }
             }}
             onComplete={(jobId) => {
