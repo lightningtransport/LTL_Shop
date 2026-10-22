@@ -372,8 +372,8 @@ function SheetFlow({
           {signed ? (state.canAssign ? copy.jobsGoTo(state.workOrder?.displayId ?? '') : copy.jobsGoToManager) : copy.signToSave}
         </span>
         <Button type="button" variant="outline" onClick={() => setView('sheet')} disabled={pending}><ArrowLeft aria-hidden="true" />{copy.back}</Button>
-        <Button type="button" className="flex-1 sm:flex-none" disabled={!signed || pending} onClick={() => void submit()} data-testid="inspection-save">
-          {pending ? copy.saving : created ? copy.saveCreate(created) : preview.issues ? copy.saveNotes : copy.saveNoIssues}
+        <Button loading={pending} type="button" className="flex-1 sm:flex-none" disabled={!signed || pending} onClick={() => void submit()} data-testid="inspection-save">
+          {created ? copy.saveCreate(created) : preview.issues ? copy.saveNotes : copy.saveNoIssues}
         </Button>
       </FixedBar>
     );
@@ -967,7 +967,7 @@ function PreviewJobRow({
       <div className="shrink-0">
         {job.existing ? <Badge variant="secondary">{copy.addsToExisting(job.displayName)}</Badge>
           : canAssign ? (
-            <select className="field !min-h-9 w-full !py-1.5 !text-sm sm:w-44" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
+            <select className="field !min-h-9 w-full !py-1.5 text-base sm:w-44 sm:text-sm" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
               <option value="">{copy.assignLater}</option>
               {alignment?.queue ? <option value={ALIGNMENT_QUEUE}>{copy.alignmentQueue}</option> : null}
               {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}

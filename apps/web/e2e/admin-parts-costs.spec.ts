@@ -114,15 +114,25 @@ test('manager loads a purchase: live total, repeated invoice warning, split truc
   await form.getByLabel('Invoice #').fill('88412200');
   await expect(form.getByTestId('duplicate-invoice')).toHaveCount(0);
 
-  // D-PC6: picking the part fills the last price paid to this vendor.
-  await form.getByLabel('Part', { exact: true }).first().selectOption({ label: 'Fuel Filter 4 Micron · LFF8897' });
+  // D-PC6: picking the part fills the last price paid to this vendor. LTR-298: the part is typed and filtered.
+  const firstPart = form.getByRole('combobox', { name: 'Part' }).first();
+  await firstPart.fill('lff88');
+  const parts = form.getByRole('listbox');
+  await expect(parts.getByRole('option')).toHaveCount(3); // "Add … to Parts…", "Use …", the part
+  await expect(parts.getByRole('option').first()).toHaveText('Add “lff88” to Parts…');
+  await parts.getByRole('option', { name: 'Fuel Filter 4 Micron · LFF8897' }).click();
+  await expect(firstPart).toHaveValue('Fuel Filter 4 Micron · LFF8897');
   await expect(form.getByLabel('Unit cost').first()).toHaveValue('24.10');
   await expect(form.getByTestId('cost-source').first()).toHaveText('Last price paid to FleetPride (Oct 6, 2026).');
   await form.getByLabel('Qty').first().fill('2');
   await form.getByRole('button', { name: 'Add line' }).click();
-  await form.getByLabel('Part', { exact: true }).nth(1).selectOption({ label: 'Other — only on this invoice' });
+  // LTR-298: a part that is not in Parts is used as typed, only on this invoice.
+  const secondPart = form.getByRole('combobox', { name: 'Part' }).nth(1);
+  await secondPart.fill('Shop rags');
+  await expect(form.getByText('No part in Parts matches “Shop rags”.')).toBeVisible();
+  await form.getByRole('listbox').getByRole('option', { name: 'Use “Shop rags” only on this invoice' }).click();
   await expect(form.getByTestId('other-hint')).toContainText('Saved only on this purchase; it is not added to Parts.');
-  await form.getByPlaceholder('Description').fill('Shop rags');
+  await expect(secondPart).toHaveValue('Shop rags');
   await form.getByLabel('Unit cost').nth(1).fill('10');
   await form.getByLabel('Tax').fill('1.50');
   await expect(form.getByTestId('purchase-total')).toHaveText('$59.70');
@@ -166,6 +176,40 @@ test('a new purchase that was not saved comes back in the same tab; Discard asks
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+// LTR-298: loading an invoice never sends the Manager to another screen: the part, its category and its vendor
+// are added from the purchase line, and the part starts with the invoice's vendor.
+test('manager adds a part that is not in Parts from the purchase line, with a new category; the invoice vendor comes set', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog', { name: 'New purchase' });
+  await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
+  const part = form.getByRole('combobox', { name: 'Part' }).first();
+  await part.fill('Brake drum 16.5');
+  await form.getByRole('listbox').getByRole('option', { name: 'Add “Brake drum 16.5” to Parts…' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add part' });
+  await expect(dialog.getByLabel('Name')).toHaveValue('Brake drum 16.5');
+  // LTR-298: nothing preselected; the category is picked or added here.
+  await expect(dialog.getByLabel('Category').locator('option:checked')).toHaveText('Pick a category');
+  await expect(dialog.getByLabel('Usual vendor').locator('option:checked')).toHaveText('FleetPride');
+  await dialog.getByLabel('Category').selectOption({ label: '+ Add category…' });
+  await dialog.getByLabel('Category name').fill('Brakes');
+  await dialog.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByText('Category added')).toBeVisible();
+  await expect(dialog.getByLabel('Category').locator('option:checked')).toHaveText('Brakes · Repair');
+  await dialog.getByLabel('Usual vendor').selectOption({ label: '+ Add vendor…' });
+  await dialog.getByLabel('New vendor name').fill('Brake Supply Co');
+  await dialog.getByRole('button', { name: 'Add vendor' }).click();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await expect(dialog.getByLabel('Usual vendor').locator('option:checked')).toHaveText('Brake Supply Co');
+  await dialog.getByRole('button', { name: 'Add part' }).click();
+
+  await expect(page.getByText('Added to the catalog; this line now uses it')).toBeVisible();
+  await expect(part).toHaveValue('Brake drum 16.5');
+  await expect(form.getByTestId('other-hint')).toHaveCount(0);
+});
+
 // LTR-200 / D32 (PC-3): Outside repairs.
 test('manager loads an outside shop invoice from the Job: truck and Job come picked; a purchase invoice number is refused', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');
@@ -177,17 +221,30 @@ test('manager loads an outside shop invoice from the Job: truck and Job come pic
   await expect(form.getByLabel('Job sent to an external shop').locator('option:checked')).toHaveText('Radiator Repair · WO-001 · part out since Oct 6, 2026');
   await expect(page).toHaveURL(/\/admin\/parts\/outside-repairs$/);
 
+  // LTR-298: a vendor that is not in Vendors yet is added from here, with "Does repairs".
+  await form.getByLabel('Vendor').selectOption({ label: '+ Add vendor…' });
+  await form.getByLabel('New vendor name').fill('Radiator Masters');
+  await form.getByRole('button', { name: 'Add vendor' }).click();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await expect(form.getByLabel('Vendor').locator('option:checked')).toHaveText('Radiator Masters');
   await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
   await form.getByLabel('Invoice #').fill('88412093');
   await form.getByLabel('Invoice #').blur();
   await expect(form.getByTestId('duplicate-invoice')).toContainText('It was loaded as a purchase.');
   await form.getByLabel('Invoice #').fill('DP-4410');
-  await form.getByLabel('What was done').fill('Radiator recore');
-  await form.getByLabel('Amount (USD)').fill('1,840');
+  // LTR-298: the invoice as the shop wrote it: one job per line, the total is their sum.
+  await form.getByLabel('Job done').first().fill('Radiator recore');
+  await form.getByLabel('Amount', { exact: true }).first().fill('1,600');
+  await form.getByRole('button', { name: 'Add job' }).click();
+  await form.getByLabel('Job done').nth(1).fill('Coolant flush');
+  await form.getByLabel('Amount', { exact: true }).nth(1).fill('240');
+  await expect(form.getByTestId('outside-total')).toHaveText('$1,840.00');
   await form.getByRole('button', { name: 'New outside repair' }).click();
 
   await expect(page.getByText('Outside repair saved · $1,840.00')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'FleetPride · DP-4410' })).toBeVisible();
+  await expect(page.getByTestId('outside-lines')).toContainText('Radiator recore');
+  await expect(page.getByTestId('outside-lines')).toContainText('Coolant flush');
   await expect(page.getByTestId('outside-job')).toHaveText('Radiator Repair · WO-001 · part');
 });
 
@@ -203,8 +260,21 @@ test('manager sets the shop labor rate from a date; the same date twice is refus
   await page.getByLabel('From', { exact: true }).fill('2026-09-01');
   // PCA7 (UX-10-005): before saving, the screen says what the date recalculates and what is already invoiced.
   await expect(page.getByTestId('labor-rate-preview')).toHaveText('Saving recalculates 3 completed Work Orders with work from Sep 1, 2026. 1 already invoiced: the difference goes on the next invoice.');
+  // LTR-293 §8: while it saves, the button keeps "Save rate", shows a spinner and is busy (held open here on purpose).
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route('**/api/admin/parts-costs/labor-rates', async (route) => {
+    if (route.request().method() === 'POST') await held;
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Save rate' }).click();
+  const saving = page.getByRole('button', { name: 'Save rate' });
+  await expect(saving).toHaveAttribute('aria-busy', 'true');
+  await expect(saving).toBeDisabled();
+  await expect(saving.locator('[data-spinner]')).toBeVisible();
+  release();
   await expect(page.getByText('Rate saved · 3 Work Orders recalculated')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save rate' })).not.toHaveAttribute('aria-busy');
   await expect(page.getByTestId('labor-rate-current')).toContainText('$95.00 per hour, since Sep 1, 2026');
   await page.getByLabel('Rate per hour (USD)').fill('100');
   await page.getByLabel('From', { exact: true }).fill('2026-09-01');

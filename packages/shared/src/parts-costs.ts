@@ -464,13 +464,23 @@ export function truckAmounts(lines: Array<{ truckId: string | null; lineTotalCen
 
 // ── PC-3: outside repairs ────────────────────────────────────────────────────────────────────────────────────
 
+/** LTR-298: one job on the outside shop's invoice. */
+export const adminOutsideRepairLineSchema = z.object({
+  description: z.string().trim().min(1).max(200),
+  amountCents: moneyCents,
+});
+
 export const adminSaveOutsideRepairSchema = z.object({
   truckId: z.string().uuid(),
   vendorId: z.string().uuid(),
   invoiceNumber: z.string().trim().min(1).max(60),
   invoiceDate: isoDate,
+  /** The jobs as one text (the lines joined with " · " when `lines` is sent). */
   description: z.string().trim().min(1).max(500),
+  /** The invoice total: with `lines`, it must be their sum (`TOTAL_MISMATCH` otherwise). */
   amountCents: moneyCents,
+  /** LTR-298: the jobs, each with its amount. Optional, so a repair can still be saved as one text and one amount. */
+  lines: z.array(adminOutsideRepairLineSchema).min(1).max(50).optional(),
   /** The Job sent to an external shop (out now, or back within 90 days). Null = not tied to a Job. */
   workOrderJobId: z.string().uuid().nullable().optional(),
   notes: optionalText(1000),
@@ -521,8 +531,16 @@ export interface AdminOutsideRepairListDto {
   totals: { count: number; totalCents: number };
 }
 
+export interface AdminOutsideRepairLineDto {
+  id: string;
+  description: string;
+  amountCents: number;
+}
+
 export interface AdminOutsideRepairDetailDto extends AdminOutsideRepairSummaryDto {
   notes: string | null;
+  /** LTR-298: the jobs on the invoice. A repair saved before LTR-298 reads as one line (its description and amount). */
+  lines: AdminOutsideRepairLineDto[];
   attachment: AdminAttachmentDto | null;
   createdBy: { id: string; name: string } | null;
   createdAt: string;

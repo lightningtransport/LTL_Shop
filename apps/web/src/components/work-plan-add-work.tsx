@@ -40,6 +40,7 @@ export function WorkPlanAddWork({
   standardMechanics = [],
   onSubmit,
   onCancel,
+  onDirtyChange,
 }: {
   /** D42 / S-6: the truck whose Samsara faults are recommended at the top. */
   truckId?: string;
@@ -52,11 +53,16 @@ export function WorkPlanAddWork({
   standardMechanics?: ReadonlyArray<{ id: string; name: string }>;
   onSubmit: (jobs: WorkPlanJobDraft[]) => Promise<boolean | void> | boolean | void;
   onCancel?: () => void;
+  /** LTR-293 §14: tells the sheet when something is typed or picked, so Escape or a tap outside does not drop it. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [categoryId, setCategoryId] = useState('');
   const [jobQuery, setJobQuery] = useState('');
   const [customName, setCustomName] = useState('');
   const [drafts, setDrafts] = useState<WorkPlanJobDraft[]>([]);
+  const dirty = drafts.length > 0 || customName.trim() !== '';
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   // D25: the Manager (or System Admin) can save the custom Job into the catalog as it is added.
   const canAddToCatalog = useCanShowManagerWrites();
   const [alsoAddToCatalog, setAlsoAddToCatalog] = useState(false);
@@ -183,12 +189,15 @@ export function WorkPlanAddWork({
   async function dismissFault(item: TruckFaultRecommendationDto, reason: string) {
     if (!truckId) return;
     setFaultError(null);
+    // LTR-293 §14: the fault leaves the Jobs being added before the server answers; if it fails, it comes back.
+    const before = drafts;
     try {
       removeFault(item.fault.id);
       await refreshRecommendations(await dismissAdminTruckFault(truckId, item.fault.id, reason), { revalidate: false });
       setCatalogNotice(messages.faultRecDismissed);
       void mutate(`/api/admin/trucks/${truckId}/faults`);
     } catch {
+      setDrafts(before);
       setFaultError(messages.faultRecFailed);
     }
   }
@@ -480,8 +489,8 @@ export function WorkPlanAddWork({
                   disabled={disabled}
                   onChange={(event) => setCustomName(event.target.value)}
                 />
-                <Button type="submit" variant="outline" aria-label={messages.addCustomJob} disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate}>
-                  {catalogSaving ? messages.addCustomJobToCatalogBusy : messages.addShort}
+                <Button loading={catalogSaving} type="submit" variant="outline" aria-label={messages.addCustomJob} disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate}>
+                  {messages.addShort}
                 </Button>
               </div>
               {customIsDuplicate ? <p className="text-destructive-text" role="alert">{messages.customJobDuplicate}</p> : null}
@@ -554,8 +563,8 @@ export function WorkPlanAddWork({
       <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-card px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))] sm:flex-row sm:items-center sm:justify-end">
         {!drafts.length ? <p className="text-xs text-muted-foreground sm:mr-auto">{messages.addWorkAtLeastOne}</p> : null}
         {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>{messages.cancel}</Button> : null}
-        <Button type="button" aria-label={messages.workPlanAddWorkSubmit} disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
-          {submitting ? messages.workPlanAddingWork : drafts.length ? fillPlaceholders(messages.addWorkSubmitCount, { count: String(drafts.length) }) : messages.workPlanAddWorkSubmit}
+        <Button loading={submitting} type="button" aria-label={messages.workPlanAddWorkSubmit} disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
+          {drafts.length ? fillPlaceholders(messages.addWorkSubmitCount, { count: String(drafts.length) }) : messages.workPlanAddWorkSubmit}
         </Button>
       </div>
     </div>

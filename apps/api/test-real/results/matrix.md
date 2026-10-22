@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 204 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 205 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -178,6 +178,7 @@ PASA 204 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A158 | R15: si todo se canceló, no se cierra: se cancela la Work Order (caso 917 / 823) | PASA |
 | A159 | R8: el PM no se termina sin millaje, sin partes ni con un millaje por debajo del camión (D10) | PASA |
 | A160 | R15 en pantalla: con todo cancelado fuera del QC, el siguiente paso es Cancel Work Order en todas partes | PASA |
+| A161 | La factura del taller trae sus trabajos como líneas; el total es la suma; una de antes se lee como una sola línea (LTR-298) | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

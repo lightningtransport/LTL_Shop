@@ -60,6 +60,8 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
   useAdminBreadcrumb([{ label: copy.setupTitle }]);
   const [rows, setRows] = useState<Row[]>([]);
   const [limits, setLimits] = useState<InspectionTireLimits | null>(null);
+  // LTR-293 §12: what is being typed in a limit, so the field can be emptied and retyped (it used to snap to 0).
+  const [limitDrafts, setLimitDrafts] = useState<Partial<Record<keyof InspectionTireLimits, string>>>({});
   const [dialog, setDialog] = useState<Dialog>(null);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -124,8 +126,13 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
         inputMode="numeric"
         className="tnum"
         disabled={!canEdit}
-        value={limits[field]}
-        onChange={(event) => setLimits({ ...limits, [field]: Math.max(0, Math.round(Number(event.target.value) || 0)) })}
+        value={limitDrafts[field] ?? limits[field]}
+        onChange={(event) => {
+          const raw = event.target.value;
+          setLimitDrafts({ ...limitDrafts, [field]: raw });
+          if (raw.trim() !== '') setLimits({ ...limits, [field]: Math.max(0, Math.round(Number(raw) || 0)) });
+        }}
+        onBlur={() => setLimitDrafts(({ [field]: _done, ...rest }) => rest)}
       />
     </label>
   );
@@ -226,7 +233,7 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
           <div className="mx-auto flex max-w-[1440px] items-center justify-end gap-2 px-4 py-3 md:px-6">
             <span className="mr-auto text-sm font-medium" role="status">{copy.unsaved}</span>
             <Button type="button" variant="ghost" disabled={pending} onClick={() => { setRows(rowsOf(data)); setLimits(data.limits); setFailure(null); }}>{copy.discard}</Button>
-            <Button type="button" disabled={pending} onClick={() => void save()} data-testid="checklist-save">{pending ? copy.saving : copy.saveChanges}</Button>
+            <Button loading={pending} type="button" onClick={() => void save()} data-testid="checklist-save">{copy.saveChanges}</Button>
           </div>
         </div>
       ) : null}

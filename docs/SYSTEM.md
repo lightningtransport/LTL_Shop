@@ -387,9 +387,16 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   Un **número de parte es de una sola parte** en todo el catálogo (sin
   mayúsculas, espacios ni guiones): 409 `PART_NUMBER_EXISTS` dice cuál es. Parts
   filtra por **Type** (PM · Repair · Tires; `?kind=`). **El PM solo ve
-  categorías `pm`** y rechaza una parte de otra. En New purchase, una línea
-  "Other" tiene **Add to catalog**: abre Agregar parte con su descripción y una
-  categoría de repuestos, y al guardar la línea usa la parte nueva.
+  categorías `pm`** y rechaza una parte de otra. En New purchase, **la parte se
+  escribe** (LTR-298): el campo filtra Parts por nombre o número mientras se
+  escribe. **Arriba de la lista, siempre a la vista**, van las salidas:
+  **Add a new part to Parts…** (con el texto escrito, si lo hay: abre Agregar
+  parte con ese texto, **sin categoría preseleccionada** y con **el proveedor
+  de la compra como habitual**, y al guardar la línea usa la parte nueva) y usar el
+  texto tal cual solo en esa factura ("Other"). Agregar parte tiene **+ Add
+  category…** y **+ Add vendor…** dentro del mismo diálogo, así cargar una
+  factura nunca manda al Manager a otra pantalla. Salir del campo con un texto que no es una parte lo deja como
+  "Other"; no se pierde nada escrito.
 - **Las partes del PM son las de tipo PM del mismo catálogo** (no hay un
   catálogo aparte). Admin → Parts & costs → **Parts**
   (`/admin/parts/catalog`) las muestra por las 9 categorías del PM con su costo
@@ -568,8 +575,15 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
 
 ### Reparaciones externas (`outside_repairs`; LTR-200 / D32, PC-3)
 - **Outside repairs** (`/admin/parts/outside-repairs`): camión (obligatorio),
-  proveedor, fecha y número de factura, qué se hizo, monto, factura adjunta y
-  notas; opcionalmente **el Job enviado a taller externo** (D24).
+  proveedor, fecha y número de factura, **los trabajos de la factura**
+  (`outside_repair_lines`, LTR-298: qué se hizo × monto, una línea por trabajo;
+  el total es la suma y la API rechaza uno que no cuadre, `TOTAL_MISMATCH`),
+  factura adjunta y notas; opcionalmente **el Job enviado a taller externo**
+  (D24). `description` y `amount_cents` de la reparación quedan como resumen
+  (los textos unidos con " · " y la suma): es lo que ven la lista, el libro y
+  el chip del Job. Una reparación guardada antes de LTR-298 se lee como una
+  sola línea. El proveedor que falta se agrega desde el formulario
+  (**+ Add vendor…**, nace con "Does repairs"), igual que en una compra.
 - **Los Jobs que se ofrecen** (`GET /external-jobs?truckId=`): los del camión que
   están afuera ahora y los que salieron alguna vez, sin límite de tiempo (del Activity Log,
   `job_sent_external` / `job_returned_external`; PCA3). En el Work Order, cada Job trae

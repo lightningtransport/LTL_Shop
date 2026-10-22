@@ -89,13 +89,15 @@ export function NewWorkOrderDialog({
             maxLength={2000}
             disabled={pending}
             onChange={(event) => setNotes(event.target.value)}
+            // LTR-293 §12: ⌘/Ctrl+Enter in the note creates the Work Order; Enter alone is a new line.
+            onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void create(); } }}
           />
         </label>
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={close}>{messages.cancel}</Button>
-          <Button type="button" className="flex-1" disabled={pending} onClick={() => void create()}>
-            {pending ? messages.creatingWorkOrder : messages.newWorkOrderCreate}
+          <Button loading={pending} type="button" className="flex-1" onClick={() => void create()}>
+            {messages.newWorkOrderCreate}
           </Button>
         </div>
       </div>

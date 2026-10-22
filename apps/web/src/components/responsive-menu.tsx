@@ -19,7 +19,8 @@ export type MenuItem = {
   testId?: string;
 };
 
-const ITEM = 'flex min-h-11 w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 text-left text-sm outline-none [@media(pointer:fine)]:min-h-9 data-[highlighted]:bg-accent hover:bg-accent';
+// LTR-293 §14: the phone sheet's items are plain buttons (no Radix `data-highlighted`), so the keyboard focus shows too.
+const ITEM = 'flex min-h-11 w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 text-left text-sm outline-none [@media(pointer:fine)]:min-h-9 data-[highlighted]:bg-accent hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring';
 
 /**
  * Stage 8 (F3, mockups): one menu for "…" buttons — a dropdown on the card color with an optional header label,

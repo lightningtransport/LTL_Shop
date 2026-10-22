@@ -1,6 +1,6 @@
-# Propuesta: áreas en paralelo, un camión a la vez, tread en el mínimo y card de Tires (D56)
+# Propuesta: áreas en paralelo, un camión a la vez, tread en el mínimo y card de Tires (D57)
 
-**Estado (2026-10-22): decidida por el dueño, sin construir.** El dueño trabajó el camión 911 en iPad el 2026-10-22, anotó lo que no entendió y después lo habló con el Shop Manager. Las respuestas de los dos están en §2 y son **D56** en [`DECISIONS.md`](../../DECISIONS.md). Las etapas AP-1 a AP-7 (§5) se construyen una por PR.
+**Estado (2026-10-22): decidida por el dueño, sin construir.** El dueño trabajó el camión 911 en iPad el 2026-10-22, anotó lo que no entendió y después lo habló con el Shop Manager. Las respuestas de los dos están en §2 y son **D57** en [`DECISIONS.md`](../../DECISIONS.md). Las etapas AP-1 a AP-7 (§5) se construyen una por PR.
 **Origen:** fotos del 911 en iPad (WO-026, Work Plan del camión y card de Tires) y la conversación con el Shop Manager.
 **Linear:** Epic LTR-299. Etapas: AP-1 LTR-300, AP-2 LTR-301, AP-3 LTR-302, AP-4 LTR-303, AP-5 LTR-304, AP-6 LTR-305, AP-7 LTR-306.
 **Fecha:** 2026-10-22 · **Rama:** `claude/truck-911-inspection-order-569a5d` (solo documentación).
@@ -126,7 +126,7 @@ Para el 911 queda: **PM** → PM A Service · **Alignment** → Alignment, Tires
 
 Los Jobs sin dueño del área Shop Work (defectos de la inspección, pedidos de Safety, Add work sin asignar) aparecen en la app del mecánico general bajo **"Available in the shop"**, igual que las colas de D28: Take lo hace dueño, Release lo devuelve; el camión que alguien tiene no se muestra (§3.3). El Manager sigue asignando directo. Internamente es `workflowStepKey = shop_work` con capability `MECHANIC_STANDARD`; si hace falta una fila en `shop_workflow_steps` se decide al diseñar AP-6.
 
-## 4. Reglas (D56)
+## 4. Reglas (D57)
 
 1. Inspección primera, Quality Check último (D19, D41, D55 siguen).
 2. PM, Alignment, Shop Work y Detailing son **áreas sin orden entre sí**. No se reordenan ni se bloquean entre ellas. Un área sin Jobs vivos es "no aplica", como hoy.

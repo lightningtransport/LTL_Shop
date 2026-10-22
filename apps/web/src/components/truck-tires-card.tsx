@@ -25,7 +25,7 @@ export function TruckTiresCard({ truckId, locale }: { truckId: string; locale: I
   const tires = current.length ? current : data.previousTires;
   const previous = current.length ? new Map(data.previousTires.map((tire) => [tire.position, tire])) : new Map();
   const at = (position: TirePosition) => tires.find((tire) => tire.position === position);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }); // LTR-293 §13: the shop's day, not the device's
   const flagged = TIRE_POSITIONS.map(at).filter((tire) => tire && tire.status !== TireReadingStatus.OK);
   const ok = tires.filter((tire) => tire.status === TireReadingStatus.OK).length;
   const firstPrevious = data.previousTires[0];

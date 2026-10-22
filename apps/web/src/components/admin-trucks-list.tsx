@@ -18,6 +18,7 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import { formatVehicleYmm } from '@/lib/format';
 import { faultSeverityLabel, faultSeverityVariant, isOpenWorkOrderStatus, isStaleLocation, shortLocation, yardPlaceText } from '@/lib/samsara-view';
 import { cn } from '@/lib/utils';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /**
  * Admin → Trucks. TL-1…TL-8 (OPEN_ISSUES §1z, ux-audit/admin-trucks-list): four columns in the order the Manager reads
@@ -25,6 +26,8 @@ import { cn } from '@/lib/utils';
  * Company and operational status stay on the Truck page: they were the same for almost every truck.
  */
 export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.trucksTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();
@@ -108,10 +111,11 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
         }}
       />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} header={false} /> : null}
-      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.trucksTitle} header={false} table /> : null}
+      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/trucks')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.trucksTitle}
           getKey={(item) => item.truck.id}

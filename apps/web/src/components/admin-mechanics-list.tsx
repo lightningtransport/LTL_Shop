@@ -13,6 +13,7 @@ import { useCanShowManagerWrites, useIsSystemAdmin } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { MechanicMode } from '@ltl-shop/shared';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /** ME5: Standard, PM, Safety — or System Admin for an admin row on the roster. */
 export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | 'capabilities'>, messages: AdminMessages) {
@@ -24,6 +25,8 @@ export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | '
 }
 
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.mechanicsTitle);
   // D22: the Shop Manager manages the roster (System Admin too); the Job catalog too (D25).
   const canWrite = useCanShowManagerWrites();
   // LTR-253 / D48: only a System Admin adds Shop Managers and System Admins.
@@ -92,10 +95,11 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
         }}
       />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} header={false} /> : null}
-      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p></EmptyState> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.mechanicsTitle} header={false} table /> : null}
+      {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/mechanics')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.mechanicsTitle}
           getKey={(item) => item.id}

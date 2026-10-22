@@ -30,7 +30,7 @@ export function AdminVendors({ locale, messages }: { locale: AdminLocale; messag
     <div className="space-y-6">
       <PageHeader title={messages.pcVendorsTitle} subtitle={messages.pcVendorsSubtitle} actions={data?.length ? addButton : null} />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcVendorsTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcVendorsTitle} header={false} table /> : null}
       {data && !data.length ? (
         <EmptyState>
           <p>{messages.pcNoVendors}</p>
@@ -39,6 +39,7 @@ export function AdminVendors({ locale, messages }: { locale: AdminLocale; messag
       ) : null}
       {data?.length ? (
         <DataTable
+              wholeCardOpens
           items={data}
           caption={messages.pcVendorsTitle}
           getKey={(vendor) => vendor.id}
@@ -206,7 +207,7 @@ function VendorDialog({ vendor, messages, onClose, onSaved }: {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vendor-account">{messages.pcVendorAccount}</Label>
-          <Input id="vendor-account" className="font-mono" value={form.accountNumber} onChange={(event) => set('accountNumber', event.target.value)} disabled={busy} autoComplete="off" />
+          <Input id="vendor-account" className="font-mono" spellCheck={false} autoCapitalize="characters" autoCorrect="off" value={form.accountNumber} onChange={(event) => set('accountNumber', event.target.value)} disabled={busy} autoComplete="off" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vendor-notes">{messages.pcVendorNotes}</Label>

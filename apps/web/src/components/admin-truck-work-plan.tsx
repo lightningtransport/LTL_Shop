@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode, useRef, useCallback } from 'react';
 import {
   AppCapability,
   JobStatus,
@@ -84,6 +84,9 @@ export function AdminTruckWorkPlan({
   onError: (message: string | null) => void;
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  // LTR-293 §14: while Add work holds something typed or picked, Escape or a tap outside does not close it.
+  const addWorkDirty = useRef(false);
+  const setAddWorkDirtyFlag = useCallback((dirty: boolean) => { addWorkDirty.current = dirty; }, []);
   const [pickerJobId, setPickerJobId] = useState<string | null>(null);
   const { showToast } = useActionToast();
   const canInspect = plan.capabilities.canRecordInspection;
@@ -362,6 +365,7 @@ export function AdminTruckWorkPlan({
           closeLabel={messages.closeDialog}
           onClose={() => onAddWorkOpenChange(false)}
           testId="work-plan-add-work-panel"
+          dismissible={() => !addWorkDirty.current}
         >
           <div id="work-plan-add-work">
             <WorkPlanAddWork
@@ -373,6 +377,7 @@ export function AdminTruckWorkPlan({
               standardMechanics={standardMechanics}
               onSubmit={handleAddWork}
               onCancel={() => onAddWorkOpenChange(false)}
+              onDirtyChange={setAddWorkDirtyFlag}
             />
           </div>
         </SideSheet>

@@ -43,6 +43,7 @@ const repairInclude = {
   workOrderJob: { select: { id: true, displayName: true, workOrder: { select: { id: true, displayId: true } } } },
   createdBy: { select: { id: true, name: true } },
   voidedBy: { select: { id: true, name: true } },
+  lines: { select: { id: true, description: true, amountCents: true }, orderBy: { sortOrder: 'asc' as const } },
 } satisfies Prisma.OutsideRepairInclude;
 
 type RepairRow = Prisma.OutsideRepairGetPayload<{ include: typeof repairInclude }>;
@@ -88,6 +89,8 @@ export class OutsideRepairsService {
     return {
       ...this.summary(row, Boolean(attachment)),
       notes: row.notes,
+      // LTR-298: a repair saved before the lines existed reads as one line.
+      lines: row.lines.length ? row.lines : [{ id: row.id, description: row.description, amountCents: row.amountCents }],
       attachment,
       createdBy: row.createdBy,
       createdAt: row.createdAt.toISOString(),
@@ -119,6 +122,22 @@ export class OutsideRepairsService {
   /** What the ledger is written from; two repairs with the same key write the same row. */
   private ledgerKey(row: RepairRow) {
     return JSON.stringify([row.vendorId, row.invoiceNumber, dateOnly(row.invoiceDate), row.amountCents, row.truckId, row.description, row.workOrderId, row.workOrderJobId]);
+  }
+
+  /**
+   * LTR-298: the jobs on the invoice. With lines, the total must be their sum and the description is the lines
+   * joined (what the list, the ledger and the Job chip show); without them, both are what was sent.
+   */
+  private linesOf(input: SaveInput) {
+    if (!input.lines) return { description: input.description, amountCents: input.amountCents, lines: [] as { description: string; amountCents: number; sortOrder: number }[] };
+    const amountCents = input.lines.reduce((sum, line) => sum + line.amountCents, 0);
+    if (amountCents !== input.amountCents) throw new BadRequestException({ code: 'TOTAL_MISMATCH', message: 'The amount does not match the lines.', totalCents: amountCents });
+    const joined = input.lines.map((line) => line.description).join(' · ');
+    return {
+      description: joined.length > 500 ? `${joined.slice(0, 499)}…` : joined,
+      amountCents,
+      lines: input.lines.map((line, index) => ({ description: line.description, amountCents: line.amountCents, sortOrder: index })),
+    };
   }
 
   /** The Jobs of this truck that are at an external shop now, or went out at some point (from the Activity Log). */
@@ -177,8 +196,9 @@ export class OutsideRepairsService {
         const saved = await tx.outsideRepair.findUnique({ where: { idempotencyKey: key }, select: { id: true } });
         if (saved) return { id: saved.id, replayed: true };
         await assertNewInvoice(tx, input.vendorId, invoiceNorm);
+        const jobs = this.linesOf(input);
         const repair = await tx.outsideRepair.create({
-          data: { ...this.fields(input, invoiceNorm, link), idempotencyKey: key, createdById: actor.id },
+          data: { ...this.fields(input, invoiceNorm, link, jobs), idempotencyKey: key, createdById: actor.id, lines: { create: jobs.lines } },
           include: repairInclude,
         });
         await this.writeLedger(tx, repair, actor.id);
@@ -212,7 +232,12 @@ export class OutsideRepairsService {
     return this.prisma.$transaction(async (tx) => {
       const link = await this.prepare(tx, input, before.vendorId);
       await assertNewInvoice(tx, input.vendorId, invoiceNorm, id);
-      const repair = await tx.outsideRepair.update({ where: { id }, data: this.fields(input, invoiceNorm, link), include: repairInclude });
+      const jobs = this.linesOf(input);
+      const repair = await tx.outsideRepair.update({
+        where: { id },
+        data: { ...this.fields(input, invoiceNorm, link, jobs), lines: { deleteMany: {}, create: jobs.lines } },
+        include: repairInclude,
+      });
       // PCA6 (UX-10-004): only a change that reaches the ledger rewrites it; a new file or a note does not.
       if (this.ledgerKey(before) !== this.ledgerKey(repair)) {
         await reverseSource(tx, { sourceType: SOURCE, sourceId: id }, actor.id);
@@ -282,15 +307,20 @@ export class OutsideRepairsService {
     return { workOrderId: job.workOrder.id, workOrderJobId: job.id, externalKind };
   }
 
-  private fields(input: SaveInput, invoiceNorm: string, link: { workOrderId: string | null; workOrderJobId: string | null; externalKind: 'part' | 'truck' | null }) {
+  private fields(
+    input: SaveInput,
+    invoiceNorm: string,
+    link: { workOrderId: string | null; workOrderJobId: string | null; externalKind: 'part' | 'truck' | null },
+    jobs: { description: string; amountCents: number },
+  ) {
     return {
       truckId: input.truckId,
       vendorId: input.vendorId,
       invoiceNumber: input.invoiceNumber,
       invoiceNorm,
       invoiceDate: asDate(input.invoiceDate),
-      description: input.description,
-      amountCents: input.amountCents,
+      description: jobs.description,
+      amountCents: jobs.amountCents,
       notes: input.notes ?? null,
       ...link,
     };

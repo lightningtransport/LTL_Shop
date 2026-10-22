@@ -73,21 +73,27 @@ export function WorkPlanFaultRecommendations({
             <li key={id} className={cn('space-y-2 px-3 py-2.5', pickingFaultId === id && 'bg-accent')} data-testid="fault-recommendation">
               <div className="flex items-start gap-3">
                 {item.suggestedJob && !item.existingJob ? (
-                  <input
-                    type="checkbox"
-                    className="mt-1 size-4 shrink-0"
-                    checked={checked}
-                    disabled={disabled}
-                    aria-label={fillPlaceholders(messages.faultRecAddJob, { job: item.suggestedJob.displayName })}
-                    onChange={() => onToggleSuggested(item)}
-                  />
+                  // LTR-293 §7: the box gets a 40 px tap area, and the fault's text below is its label.
+                  <label className="-m-3 shrink-0 p-3">
+                    <input
+                      id={`fault-rec-${id}`}
+                      type="checkbox"
+                      className="mt-1 block size-4"
+                      checked={checked}
+                      disabled={disabled}
+                      aria-label={fillPlaceholders(messages.faultRecAddJob, { job: item.suggestedJob.displayName })}
+                      onChange={() => onToggleSuggested(item)}
+                    />
+                  </label>
                 ) : <span className="w-4 shrink-0" aria-hidden="true" />}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {reasonBadge(item)}
                     {item.stillAfter ? <span className="text-xs text-warning-foreground">{fillPlaceholders(messages.faultRecStillAfter, { wo: item.stillAfter.displayId })}</span> : null}
                   </div>
-                  <p className="mt-1 text-sm font-medium">{item.fault.description}</p>
+                  {item.suggestedJob && !item.existingJob
+                    ? <label htmlFor={`fault-rec-${id}`} className="mt-1 block text-sm font-medium">{item.fault.description}</label>
+                    : <p className="mt-1 text-sm font-medium">{item.fault.description}</p>}
                   <p className="font-mono text-xs text-muted-foreground">{item.fault.code}</p>
                   {item.suggestedJob && !item.existingJob ? (
                     <p className="mt-1 text-sm">{fillPlaceholders(messages.faultRecAddJob, { job: item.suggestedJob.displayName })} <span className="text-xs text-muted-foreground">· {item.suggestedJob.categoryName}</span></p>
