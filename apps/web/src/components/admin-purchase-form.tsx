@@ -173,6 +173,9 @@ export function PurchaseForm({
   const [duplicate, setDuplicate] = useState<AdminInvoiceMatchDto | null>(null);
   const [newVendor, setNewVendor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // LTR-293 §5: one vendor per tap; the ref stops a second tap before React re-renders the disabled button.
+  const [addingVendor, setAddingVendor] = useState(false);
+  const addingVendorRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
@@ -260,7 +263,9 @@ export function PurchaseForm({
   }
 
   async function addVendor() {
-    if (!newVendor?.trim()) return;
+    if (!newVendor?.trim() || addingVendorRef.current) return;
+    addingVendorRef.current = true;
+    setAddingVendor(true);
     try {
       const created = await createAdminVendor({ name: newVendor.trim(), doesParts: true });
       onVendorAdded();
@@ -269,6 +274,9 @@ export function PurchaseForm({
       showToast('success', messages.pcVendorAdded);
     } catch (failure) {
       setError(partsCostsFailure(failure, messages));
+    } finally {
+      addingVendorRef.current = false;
+      setAddingVendor(false);
     }
   }
 
@@ -444,7 +452,7 @@ export function PurchaseForm({
             {newVendor !== null ? (
               <div className="flex gap-2">
                 <Input aria-label={messages.pcNewVendorName} placeholder={messages.pcNewVendorName} value={newVendor} onChange={(event) => setNewVendor(event.target.value)} autoComplete="off" />
-                <Button type="button" variant="outline" disabled={!newVendor.trim()} onClick={() => void addVendor()}>{messages.pcAddVendor}</Button>
+                <Button type="button" variant="outline" disabled={!newVendor.trim() || addingVendor} aria-busy={addingVendor || undefined} onClick={() => void addVendor()}>{messages.pcAddVendor}</Button>
               </div>
             ) : null}
           </div>
