@@ -116,6 +116,8 @@ export default function RepairHistoryPage() {
                   <p className="font-semibold">{item.primaryCategoryName}</p>
                   <p className="mt-1 text-sm text-shop-muted">
                     {new Date(item.date).toLocaleDateString(intlLocale(messages.locale), {
+                      // LTR-293 §13: the shop's day, not the phone's.
+                      timeZone: 'America/New_York',
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',

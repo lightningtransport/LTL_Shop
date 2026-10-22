@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatIsoDate, formatVehicleYmm, pauseLabel, statusLabel } from './format';
+import { formatIsoDate, formatVehicleYmm, pauseLabel, statusLabel, formatMileage } from './format';
 import { formatAdminDateOnly } from './admin-format';
 import { getShopCopy } from './locale-context';
 
@@ -35,3 +35,11 @@ describe('date-only identity formatters', () => {
     expect(pauseLabel('end_of_shift', getShopCopy('es').pauseReason)).toBe('Fin del turno');
   });
 });
+
+describe('formatMileage (LTR-293 §13)', () => {
+  it('writes miles the same way whatever the browser language', () => {
+    expect(formatMileage(195676)).toBe('195,676 mi');
+    expect(formatMileage(null)).toBe('—');
+  });
+});
+

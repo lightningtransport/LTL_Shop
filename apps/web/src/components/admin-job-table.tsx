@@ -188,8 +188,8 @@ export function AdminJobTable({
     const highlighted = highlightedJobId === job.id;
 
     const items: MenuItem[] = [];
-    if (canHelp) items.push({ key: 'helper', label: messages.addHelperAction, icon: Users, testId: 'admin-wo-job-add-helper', onSelect: () => setDialog({ kind: 'helper', jobId: job.id }) });
-    if (canSendOut) items.push({ key: 'external', label: messages.sendExternalAction, icon: Building2, testId: 'admin-wo-job-send-external', onSelect: () => setDialog({ kind: 'external', jobId: job.id }) });
+    if (canHelp) items.push({ key: 'helper', label: `${messages.addHelperAction}…`, icon: Users, testId: 'admin-wo-job-add-helper', onSelect: () => setDialog({ kind: 'helper', jobId: job.id }) });
+    if (canSendOut) items.push({ key: 'external', label: `${messages.sendExternalAction}…`, icon: Building2, testId: 'admin-wo-job-send-external', onSelect: () => setDialog({ kind: 'external', jobId: job.id }) });
     // LTR-200 / PC-3: the outside shop's invoice for this Job, with the truck and the Job already picked.
     // PCA3 (UX-10-001): also once the Job is back, which is when the invoice usually arrives.
     const outsideInvoiceHref = `/admin/parts/outside-repairs?new=1&forTruck=${data.truck.id}&jobId=${job.id}&from=${encodeURIComponent(`/admin/work-orders/${data.id}`)}`;

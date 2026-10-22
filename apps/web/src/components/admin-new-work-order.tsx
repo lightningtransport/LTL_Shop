@@ -369,6 +369,8 @@ export function AdminNewWorkOrder({
               value={notes}
               maxLength={2000}
               onChange={(event) => setNotes(event.target.value)}
+              // LTR-293 §12: ⌘/Ctrl+Enter in the note creates the Work Order; Enter alone is a new line.
+              onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submit(); } }}
             />
           </label>
           {error ? <InlineAlert className="sm:col-span-2">{error}</InlineAlert> : null}

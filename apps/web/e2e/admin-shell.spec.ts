@@ -842,6 +842,16 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
 
+  test('LTR-293 §12: catalog search results are links (they open in a new tab with Cmd/Ctrl-click)', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/catalog');
+    await page.getByRole('textbox', { name: 'Search categories, Jobs or aliases' }).first().fill('brake');
+    const results = page.getByTestId('catalog-search-results');
+    await expect(results.getByRole('link').first()).toHaveAttribute('href', /\/admin\/catalog\/categories\//);
+    await expect(results.getByRole('button')).toHaveCount(0);
+  });
+
   test('LTR-293 §7: on a phone, tapping anywhere on a Trucks card opens the truck', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
