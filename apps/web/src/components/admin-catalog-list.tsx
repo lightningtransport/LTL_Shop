@@ -65,6 +65,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       ) : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.catalogTitle}
           getKey={(item) => item.id}

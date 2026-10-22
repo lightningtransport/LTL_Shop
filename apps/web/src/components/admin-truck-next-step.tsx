@@ -117,7 +117,7 @@ export function AdminTruckNextStep({
     />
   );
   const act = (label: string, Icon: LucideIcon | null, onClick: () => void, variant?: 'outline') => canManage ? (
-    <Button type="button" variant={variant} disabled={pending} onClick={onClick}>{Icon ? <Icon aria-hidden="true" /> : null}{pending ? messages.saving : label}</Button>
+    <Button loading={pending} type="button" variant={variant} onClick={onClick}>{Icon ? <Icon aria-hidden="true" /> : null}{label}</Button>
   ) : null;
 
   // Stage 8 (mockup): one callout per Next step kind — tone, icon, title, sub and the action that moves it forward.

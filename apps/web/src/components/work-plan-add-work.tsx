@@ -480,8 +480,8 @@ export function WorkPlanAddWork({
                   disabled={disabled}
                   onChange={(event) => setCustomName(event.target.value)}
                 />
-                <Button type="submit" variant="outline" aria-label={messages.addCustomJob} disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate}>
-                  {catalogSaving ? messages.addCustomJobToCatalogBusy : messages.addShort}
+                <Button loading={catalogSaving} type="submit" variant="outline" aria-label={messages.addCustomJob} disabled={disabled || catalogSaving || !customName.trim() || customIsDuplicate}>
+                  {messages.addShort}
                 </Button>
               </div>
               {customIsDuplicate ? <p className="text-destructive-text" role="alert">{messages.customJobDuplicate}</p> : null}
@@ -554,8 +554,8 @@ export function WorkPlanAddWork({
       <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t bg-card px-5 py-3 pb-[calc(0.75rem+var(--app-safe-bottom))] sm:flex-row sm:items-center sm:justify-end">
         {!drafts.length ? <p className="text-xs text-muted-foreground sm:mr-auto">{messages.addWorkAtLeastOne}</p> : null}
         {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>{messages.cancel}</Button> : null}
-        <Button type="button" aria-label={messages.workPlanAddWorkSubmit} disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
-          {submitting ? messages.workPlanAddingWork : drafts.length ? fillPlaceholders(messages.addWorkSubmitCount, { count: String(drafts.length) }) : messages.workPlanAddWorkSubmit}
+        <Button loading={submitting} type="button" aria-label={messages.workPlanAddWorkSubmit} disabled={disabled || submitting || drafts.length === 0} onClick={() => void submit()}>
+          {drafts.length ? fillPlaceholders(messages.addWorkSubmitCount, { count: String(drafts.length) }) : messages.workPlanAddWorkSubmit}
         </Button>
       </div>
     </div>

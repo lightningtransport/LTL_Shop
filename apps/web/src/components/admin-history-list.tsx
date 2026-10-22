@@ -63,6 +63,7 @@ export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; me
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noHistory}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/history')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.historyTitle}
           getKey={(item) => item.id}

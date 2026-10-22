@@ -374,8 +374,8 @@ export function AdminNewWorkOrder({
           {error ? <InlineAlert className="sm:col-span-2">{error}</InlineAlert> : null}
         </CardContent>
         <CardFooter className="border-t pt-4">
-          <Button type="button" className="w-full sm:ml-auto sm:w-auto" disabled={submitBlocked} onClick={() => void submit()}>
-            {busy ? messages.creatingWorkOrder : messages.createWorkOrderSubmit}
+          <Button loading={busy} type="button" className="w-full sm:ml-auto sm:w-auto" disabled={submitBlocked} onClick={() => void submit()}>
+            {messages.createWorkOrderSubmit}
           </Button>
         </CardFooter>
       </Card>

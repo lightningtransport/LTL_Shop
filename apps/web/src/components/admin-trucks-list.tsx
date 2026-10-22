@@ -112,6 +112,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p>{/* LTR-293 §11: an empty filtered list offers the way out. */}{searchParams.toString() ? <Button type="button" variant="outline" className="mt-4" onClick={() => router.replace('/admin/trucks')}>{messages.pcClearFilters}</Button> : null}</EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.trucksTitle}
           getKey={(item) => item.truck.id}

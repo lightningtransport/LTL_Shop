@@ -203,8 +203,21 @@ test('manager sets the shop labor rate from a date; the same date twice is refus
   await page.getByLabel('From', { exact: true }).fill('2026-09-01');
   // PCA7 (UX-10-005): before saving, the screen says what the date recalculates and what is already invoiced.
   await expect(page.getByTestId('labor-rate-preview')).toHaveText('Saving recalculates 3 completed Work Orders with work from Sep 1, 2026. 1 already invoiced: the difference goes on the next invoice.');
+  // LTR-293 §8: while it saves, the button keeps "Save rate", shows a spinner and is busy (held open here on purpose).
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route('**/api/admin/parts-costs/labor-rates', async (route) => {
+    if (route.request().method() === 'POST') await held;
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Save rate' }).click();
+  const saving = page.getByRole('button', { name: 'Save rate' });
+  await expect(saving).toHaveAttribute('aria-busy', 'true');
+  await expect(saving).toBeDisabled();
+  await expect(saving.locator('[data-spinner]')).toBeVisible();
+  release();
   await expect(page.getByText('Rate saved · 3 Work Orders recalculated')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save rate' })).not.toHaveAttribute('aria-busy');
   await expect(page.getByTestId('labor-rate-current')).toContainText('$95.00 per hour, since Sep 1, 2026');
   await page.getByLabel('Rate per hour (USD)').fill('100');
   await page.getByLabel('From', { exact: true }).fill('2026-09-01');

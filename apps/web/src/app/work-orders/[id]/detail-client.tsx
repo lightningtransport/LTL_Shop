@@ -303,9 +303,9 @@ export default function WorkOrderDetailPage() {
               </p>
             ) : null}
             {needsStart ? (
-              <Button className="mt-3 w-full" disabled={busy} onClick={() => void startOrContinue()}>
+              <Button loading={busy} className="mt-3 w-full" onClick={() => void startOrContinue()}>
                 <Play aria-hidden="true" />
-                {busy ? messages.startingWork : startedHereBefore ? messages.continueWork : messages.startWork}
+                {startedHereBefore ? messages.continueWork : messages.startWork}
               </Button>
             ) : null}
             {wo.status === 'waiting_paused' ? (
@@ -582,7 +582,7 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
-            disabled={busy}
+            loading={busy}
             onClick={() => {
               if (!finishJob || busy) return;
               const jobId = finishJob.id;
@@ -615,7 +615,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            {busy ? messages.completingJob : messages.jobFinishConfirm}
+            {messages.jobFinishConfirm}
           </Button>
         </DialogActions>
       </Modal>
@@ -692,6 +692,7 @@ export default function WorkOrderDetailPage() {
             {messages.cancelAction}
           </Button>
           <Button
+            loading={busy}
             disabled={!pauseReason || !blockerJob || busy}
             onClick={() => {
               if (busy || !blockerJob) return;
@@ -720,7 +721,7 @@ export default function WorkOrderDetailPage() {
               );
             }}
           >
-            {busy ? messages.reportingBlocker : messages.reportBlocker}
+            {messages.reportBlocker}
           </Button>
         </DialogActions>
       </Modal>

@@ -103,8 +103,8 @@ export function CloseWorkOrderDialog({
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={close}>{messages.cancel}</Button>
-          <Button type="button" className="flex-1" disabled={pending || (askReason && !reason.trim())} onClick={() => void confirm()}>
-            {pending ? messages.saving : askReason ? messages.closeWithoutInspectionAction : messages.truckNextStepCloseAction}
+          <Button loading={pending} type="button" className="flex-1" disabled={pending || (askReason && !reason.trim())} onClick={() => void confirm()}>
+            {askReason ? messages.closeWithoutInspectionAction : messages.truckNextStepCloseAction}
           </Button>
         </div>
       </div>

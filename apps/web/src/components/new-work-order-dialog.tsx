@@ -94,8 +94,8 @@ export function NewWorkOrderDialog({
         {error ? <p className="text-sm font-medium text-destructive-text" role="alert">{error}</p> : null}
         <div className="flex gap-2">
           <Button type="button" variant="outline" className="flex-1" disabled={pending} onClick={close}>{messages.cancel}</Button>
-          <Button type="button" className="flex-1" disabled={pending} onClick={() => void create()}>
-            {pending ? messages.creatingWorkOrder : messages.newWorkOrderCreate}
+          <Button loading={pending} type="button" className="flex-1" onClick={() => void create()}>
+            {messages.newWorkOrderCreate}
           </Button>
         </div>
       </div>

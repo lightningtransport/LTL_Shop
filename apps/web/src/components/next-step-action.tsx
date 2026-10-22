@@ -99,8 +99,8 @@ export function NextStepAction({
   // Stage 8 (mockups): full-size buttons with the step's icon.
   const Icon = STEP_ICON[step.kind];
   const button = (text: string, onClick: () => void, variant: 'default' | 'outline' = 'default') => (
-    <Button type="button" variant={variant} disabled={pending} onClick={onClick} data-testid="next-step-action" data-kind={step.kind}>
-      {Icon && !pending ? <Icon aria-hidden="true" /> : null}{pending ? messages.saving : text}
+    <Button loading={pending} type="button" variant={variant} onClick={onClick} data-testid="next-step-action" data-kind={step.kind}>
+      {Icon ? <Icon aria-hidden="true" /> : null}{text}
     </Button>
   );
   const link = (text: string, href: string) => (
@@ -272,9 +272,9 @@ function AssignAction({ step, workOrderId, expectedVersion, messages, onChanged 
       messages={messages}
       onPick={(mechanic) => void pick(mechanic)}
       trigger={(
-        <Button type="button" disabled={pending} aria-haspopup="listbox" data-testid="next-step-action" data-kind="assign">
-          {pending ? null : <UserPlus aria-hidden="true" />}
-          {pending ? messages.saving : messages.truckNextStepAssignAction}
+        <Button loading={pending} type="button" aria-haspopup="listbox" data-testid="next-step-action" data-kind="assign">
+          <UserPlus aria-hidden="true" />
+          {messages.truckNextStepAssignAction}
         </Button>
       )}
     />
