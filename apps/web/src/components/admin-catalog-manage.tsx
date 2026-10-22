@@ -158,11 +158,12 @@ export function CategoryMenu({
   }
 
   const items: MenuItem[] = locked ? [] : ([
-    { key: 'rename', label: messages.catalogRenameCategory, icon: Pencil, onSelect: () => open('rename') },
+    // LTR-293 §13: menu items that open a dialog end in "…".
+    { key: 'rename', label: `${messages.catalogRenameCategory}…`, icon: Pencil, onSelect: () => open('rename') },
     inactive
       ? { key: 'activate', label: messages.catalogActivateCategory, icon: Power, onSelect: () => void run(() => updateAdminCatalogCategory(category.id, { status: CatalogStatus.ACTIVE }), messages.catalogCategoryActivated) }
-      : category.holdsSystemJob ? null : { key: 'deactivate', label: messages.catalogDeactivateCategory, icon: Power, onSelect: () => open('deactivate') },
-    { key: 'delete', label: messages.catalogDeleteCategory, icon: Trash2, destructive: true, separatorBefore: true, onSelect: () => open('delete') },
+      : category.holdsSystemJob ? null : { key: 'deactivate', label: `${messages.catalogDeactivateCategory}…`, icon: Power, onSelect: () => open('deactivate') },
+    { key: 'delete', label: `${messages.catalogDeleteCategory}…`, icon: Trash2, destructive: true, separatorBefore: true, onSelect: () => open('delete') },
   ] as Array<MenuItem | null>).filter((item): item is MenuItem => item !== null);
 
   if (!items.length) return null;

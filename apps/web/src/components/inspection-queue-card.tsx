@@ -21,7 +21,7 @@ export function InspectionQueueCard({ enabled, mode }: { enabled: boolean; mode:
   if (!enabled || !data?.length) return null;
   const waiting = data.filter((item) => !item.inspectedAt).length;
   const base = `/mechanic/${mode === MechanicMode.PM ? 'pm' : 'standard'}`;
-  const date = (iso: string) => new Date(iso).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(messages.locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }); // LTR-293 §13: the shop's day, not the phone's
   return (
     <section className="mb-6 space-y-2" aria-labelledby="inspection-queue-title" data-testid="inspection-queue">
       <div>
