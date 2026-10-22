@@ -1,7 +1,7 @@
 # Recorrido del camión, de punta a punta (user journey)
 
 **Estado:** es el mapa del recorrido como está en producción (2026-10-21, `main`
-875781c). Se armó para D52 y ahí se vieron los huecos G11–G14 de
+05299e1, con el QA de producción de LTR-277). Se armó para D52 y ahí se vieron los huecos G11–G14 de
 [`USER_FLOWS.md`](../../USER_FLOWS.md) §9. El dibujo completo, con un carril por
 persona y los huecos de cada etapa, está en
 [`recorrido-camion.tldr`](recorrido-camion.tldr). Para abrirlo, entra a
@@ -17,18 +17,34 @@ están en [`SYSTEM.md`](../../SYSTEM.md) y las pruebas en `USER_FLOWS.md`.
 | 3 | Abrir la Work Order | Manager (o el PM con Create PM service) | Nace con PM · Alignment · Detailing · Quality Check, cada uno con su equipo. Con WO abierta el camión está **In shop** | D1, D49 · HU-M1 |
 | 4 | Inspección de llegada | Manager o mecánico con permiso | 53 puntos y 10 llantas; cada defecto crea su Job. Los Jobs de llantas van a **Alignment** y dicen qué llanta y por qué | D41, D54 · HU-M16, HU-M17 |
 | 5 | Planear y repartir | Manager | Add work (fallas de Samsara, catálogo, Custom), un dueño por Job, partes compradas o del stock | D42, D45 · HU-M3, HU-M14 |
-| 6 | El mecánico trabaja | Mecánico, Mecánico PM | My work › Start, en teléfono o tablet (PWA). Ve qué está activo, no cuánto lleva. Report blocker → el Manager hace Resolve. El PM anota millaje y partes | D18–D21, D54 · HU-ME1–ME6, HU-PM1 |
+| 6 | El mecánico trabaja | Mecánico, Mecánico PM | My work › Start, en teléfono o tablet (PWA). Ve qué está activo, no cuánto lleva. Report blocker → el Manager hace Resolve. El PM anota millaje y partes; si el millaje guardado quedó por debajo del camión, lo avisa al abrir | D18–D21, D54 · HU-ME1–ME6, HU-PM1 |
 | 7 | Quality Check | Safety (o el Manager de respaldo) | Take → Approve, o Return con hallazgos y vuelve a planear | D19, D46 · HU-QC1 |
 | 8 | Cerrar → Ready to Go | Manager | Close Work Order. Las partes del PM salen del estante; la mano de obra va al costo del camión | D34 · HU-M5 |
 | 9 | Sale del taller | Manager, Samsara | Departures por día, primero "Not ready · N Jobs left". Return to Service. Si Samsara lo ve fuera estando en Ready to Go: "Left the yard · Confirm Return to Service". La app nunca lo hace sola | D51, D52 · HU-M6, HU-M22 |
 | 10 | Después | Samsara, Manager, Finanzas | La falla "Fixed" o "Came back". Fin de mes: Internal invoices → PDF a Finanzas. Si vuelve, es otra visita con otra Work Order | D42, D34 · HU-M13 |
 
+## Lo que se cerró desde el primer dibujo
+
+- Etapas 2 y 4: un contador del Dashboard en 0 ya no esconde las llegadas sin
+  Work Order ni la inspección (#394).
+- Etapa 6: el PM avisa al abrir si el millaje quedó corto (#395); "View
+  completed work (N)" cuenta los Jobs que abre (#396); botones a lo ancho,
+  nada bajo 12px y "en este dispositivo" (LTR-274, LTR-275); el rediseño de
+  las apps de mecánico está cerrado (LTR-194).
+- Etapa 7: Safety a lo ancho en el iPad (LTR-272).
+
 ## Huecos que siguen abiertos
 
 - Incoming trae camiones de más (LTR-262).
-- Departures solo trae las salidas de hoy (LTR-255, LTR-73).
+- Departures solo trae las salidas de hoy (LTR-255; LTR-73 se cerró como
+  duplicado).
 - Hay 26 camiones en "301 Yard" sin WO (LTR-256).
 - Ninox no recibe el estado del taller (P4).
 - Fotos y videos del defecto todavía no (LTR-233).
+- Del QA de producción (LTR-277): los camiones 9050, 9220 y 9680 de la demo
+  siguen en producción (§6) y el vendor "Prueba" con su compra está en el
+  borrador de la factura de octubre (§5); los dos esperan al dueño. También el
+  interruptor de partes del PM en el iPad (§8), la pestaña Shop del Yard en el
+  teléfono (§10) y el filtro Month de las facturas internas (§7).
 
 La lista completa está en `OPEN_ISSUES.md`.
