@@ -32,6 +32,7 @@ import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
+import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 
 type FileState = { id: string | null; name: string; percent: number; error: string | null };
 
@@ -132,6 +133,9 @@ export function OutsideRepairForm({
     ...(typeof amount !== 'number' ? [{ label: messages.pcMissingAmount, fieldId: 'outside-amount' }] : []),
   ];
   const dirty = JSON.stringify(form) !== JSON.stringify(initial) || (file?.id ?? null) !== (repair?.attachment?.id ?? null);
+
+  // LTR-293 §2: a reload, closing the tab or a link away asks first, not only closing this dialog.
+  useUnsavedChangesGuard(dirty && !busy, messages.unsavedChangesConfirm);
 
   async function checkDuplicate() {
     if (!form.vendorId || !form.invoiceNumber.trim()) return setDuplicate(null);

@@ -29,6 +29,7 @@ import type { AdminMessages } from '@/lib/admin-messages';
 import { needsComparison, samsaraFieldRows, type SamsaraFieldRow } from '@/lib/samsara-connect';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { cn } from '@/lib/utils';
+import { draftKeys, readDraftJson, writeDraftJson } from '@/lib/local-draft';
 
 export const truckCopy = (messages: AdminMessages) => ({
   locale: messages.locale,
@@ -93,6 +94,8 @@ export function TruckFormDialog({
   onClose: () => void;
   onSaved: (truck: TruckDto) => void;
 }) {
+  // LTR-293 §2: what was typed stays on this device; reopening the form after a reload or Back brings it back.
+  const draftKey = draftKeys.truckForm(truck?.id ?? null);
   const [form, setForm] = useState(() => formFrom(truck));
   const [error, setError] = useState<string | null>(null);
   const [vinOwner, setVinOwner] = useState<{ id: string; truckNumber: string } | null>(null);
@@ -103,12 +106,12 @@ export function TruckFormDialog({
 
   useEffect(() => {
     if (open) {
-      setForm(formFrom(truck));
+      setForm({ ...formFrom(truck), ...(readDraftJson<Partial<ReturnType<typeof formFrom>>>(draftKey) ?? {}) });
       setError(null);
       setVinOwner(null);
       setShowErrors(false);
     }
-  }, [open, truck]);
+  }, [open, truck, draftKey]);
 
   const range = truckYearRange();
   const yearValue = form.year.trim() ? Number(form.year) : null;
@@ -123,6 +126,16 @@ export function TruckFormDialog({
     .map(({ key, label }) => ({ label: String(messages[label]), fieldId: `truck-form-${key}` }));
 
   const dirty = JSON.stringify(form) !== JSON.stringify(formFrom(truck));
+
+  useEffect(() => {
+    if (open) writeDraftJson(draftKey, dirty ? form : null);
+  }, [open, draftKey, dirty, form]);
+
+  // Cancel discards on purpose; Save sends it.
+  const discard = () => {
+    writeDraftJson(draftKey, null);
+    onClose();
+  };
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -144,7 +157,9 @@ export function TruckFormDialog({
       licensePlate: form.licensePlate, owner: form.owner, company: form.company, dispatcher: form.dispatcher, insurance: form.insurance,
     };
     try {
-      onSaved(truck ? await updateAdminTruck(truck.id, input) : await createAdminTruck(input));
+      const saved = truck ? await updateAdminTruck(truck.id, input) : await createAdminTruck(input);
+      writeDraftJson(draftKey, null);
+      onSaved(saved);
     } catch (failure) {
       const other = failure instanceof ApiError && apiErrorCode(failure) === 'TRUCK_VIN_TAKEN'
         ? (failure.body as { truck?: { id: string; truckNumber: string } }).truck ?? null
@@ -201,7 +216,7 @@ export function TruckFormDialog({
           </InlineAlert>
         ) : null}
         <DialogActions>
-          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
+          <Button type="button" variant="outline" onClick={discard} disabled={busy}>{messages.cancel}</Button>
           <Button type="submit" disabled={busy}>{truck ? messages.truckSave : messages.truckAdd}</Button>
         </DialogActions>
       </form>

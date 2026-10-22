@@ -74,6 +74,23 @@ test('manager adds a vendor; the same name in other capitals is refused', async 
   await expect(page.getByRole('row', { name: /Diesel Pro/ })).toContainText('Outside repairs');
 });
 
+test('LTR-293 §5: a double tap on "Add vendor" in a purchase creates one vendor', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog');
+  await form.getByLabel('Vendor').selectOption({ label: '+ Add vendor…' });
+  await form.getByRole('textbox', { name: 'New vendor name' }).fill('Rush Truck Centers');
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/admin/parts-costs/vendors')) posts.push(request.url());
+  });
+  await form.getByRole('button', { name: 'Add vendor' }).dblclick();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(posts).toHaveLength(1);
+});
+
 test('the System Admin sees Parts & costs too (D-PC7)', async ({ page }) => {
   await loginToAdmin(page, 'system-admin@lightning.local');
   await expectPartsCostsNav(page);

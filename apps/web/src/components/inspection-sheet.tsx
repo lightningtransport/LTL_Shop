@@ -232,10 +232,14 @@ function SheetFlow({
     : {}), [adding, saved]);
 
   const [stored, store, clearStored] = useLocalDraft(adding ? null : inspectionDraftKey(truckId, state.workOrder?.id));
-  const [addDraft, setAddDraft] = useState<SheetDraft>({ ...EMPTY_DRAFT, answers: baseAnswers });
-  useEffect(() => setAddDraft({ ...EMPTY_DRAFT, answers: baseAnswers }), [baseAnswers]);
+  // LTR-293 §2: Add defects keeps its own draft on this device too (it used to live only in memory).
+  const [addStored, storeAdd, clearAddStored] = useLocalDraft(adding ? `${inspectionDraftKey(truckId, state.workOrder?.id)}:add` : null);
+  const addDraft = useMemo<SheetDraft>(() => {
+    const kept = addStored ? parseDraft(addStored) : null;
+    return { ...EMPTY_DRAFT, ...kept, answers: { ...baseAnswers, ...kept?.answers } };
+  }, [addStored, baseAnswers]);
   const draft = adding ? addDraft : parseDraft(stored);
-  const setDraft = (next: SheetDraft) => (adding ? setAddDraft(next) : store(JSON.stringify(next)));
+  const setDraft = (next: SheetDraft) => (adding ? storeAdd(JSON.stringify(next)) : store(JSON.stringify(next)));
 
   const [view, setView] = useState<'sheet' | 'review'>('sheet');
   const [open, setOpen] = useState<Record<string, boolean>>({ interior: true, engine: true, exterior: true });
@@ -308,6 +312,7 @@ function SheetFlow({
           defects: [...newIds].map((id) => ({ inspectionItemId: id, note: draft.answers[id].note.trim() })),
           ...(assignments?.length ? { assignments } : {}),
         });
+        clearAddStored();
         await onDone(next, copy.defectsAdded(newIds.size, preview.newJobs.length));
       } else {
         const next = await saveTruckInspection(mode, truckId, {
