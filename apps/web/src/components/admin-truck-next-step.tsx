@@ -8,6 +8,7 @@ import {
   CircleAlert,
   CircleCheck,
   CirclePause,
+  CircleX,
   ClipboardCheck,
   FilePlus,
   Flag,
@@ -207,6 +208,18 @@ export function AdminTruckNextStep({
         actions: act(messages.truckNextStepQcAction, null, () => void run(messages.workPlanJobCompleted, () => completeAdminJob(step.jobId!, { expectedVersion: version })), 'outline'),
         // D-SET6: the Manager reaches Quality Check as backup from here (D29).
         extra: <Link className="tap-inline text-sm font-medium text-primary hover:underline" href="/qc">{messages.shopWorkflowQcBackupLink}</Link>,
+      });
+    case 'cancel_work_order':
+      // D55 R15 (LTR-295): every Job but the Quality Check was cancelled; the visit is cancelled on its Work Order.
+      return box({
+        tone: 'warning',
+        icon: CircleX,
+        eyebrow: messages.calloutNextStep,
+        title: messages.calloutCancelWorkOrderTitle,
+        sub: messages.calloutCancelWorkOrderSub,
+        actions: canManage && step.workOrderId ? (
+          <Button asChild variant="outline"><Link href={`/admin/work-orders/${step.workOrderId}#next-step`}><CircleX aria-hidden="true" />{messages.cancelWorkOrderTitle}</Link></Button>
+        ) : null,
       });
     case 'close':
       // Owner decision (2026-10-05): closing confirms — it makes the Truck Ready to Go.

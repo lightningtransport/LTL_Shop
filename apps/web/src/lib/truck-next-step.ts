@@ -41,6 +41,8 @@ export function truckNextStepText(step: TruckNextStepDto | null | undefined, mes
       return messages.truckNextStepQc;
     case 'close':
       return messages.truckNextStepClose;
+    case 'cancel_work_order':
+      return messages.truckNextStepCancelWorkOrder;
     case 'return_to_service': {
       // D52 (LTR-260): Samsara saw it leave the yard after the close, or leave and come back.
       const move = step.yardMove;
@@ -68,6 +70,7 @@ export function truckNextStepActionLabel(step: TruckNextStepDto | null | undefin
     case 'assign': return messages.truckNextStepAssignAction;
     case 'qc': return messages.truckNextStepQcAction;
     case 'close': return messages.truckNextStepCloseAction;
+    case 'cancel_work_order': return messages.cancelWorkOrderTitle;
     case 'return_to_service': return messages.returnToServiceTitle;
     case 'create_work_order': return messages.truckNextStepCreateAction;
     default: return null;

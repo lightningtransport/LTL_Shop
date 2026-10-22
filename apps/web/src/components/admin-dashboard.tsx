@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, ClipboardCheck, FilePlus, Flag, MessageSquarePlus, OctagonPause, Plus, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Building2, CalendarClock, Check, CircleAlert, CircleCheck, CircleX, ClipboardCheck, FilePlus, Flag, MessageSquarePlus, OctagonPause, Plus, ShieldCheck, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
 import { AppCapability, BlockerReason, type AdminOpenWorkRequestDto, type AdminWorkOrderSummaryDto, type YardSamsaraTruckDto } from '@ltl-shop/shared';
 import { NextStepAction } from './next-step-action';
 import { NewWorkOrderDialog } from './new-work-order-dialog';
@@ -35,6 +35,7 @@ import {
 const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: LucideIcon; tone: string }> = {
   blocked: { label: 'dashboardGroupBlocked', Icon: OctagonPause, tone: 'text-warning-foreground dark:text-warning' },
   close: { label: 'dashboardGroupClose', Icon: Flag, tone: 'text-primary' },
+  cancel: { label: 'dashboardGroupCancel', Icon: CircleX, tone: 'text-muted-foreground' },
   return_to_service: { label: 'dashboardGroupReadyToGo', Icon: Truck, tone: 'text-success' },
   assign: { label: 'dashboardGroupUnassigned', Icon: UserPlus, tone: 'text-primary' },
   inspect: { label: 'dashboardGroupInspect', Icon: ClipboardCheck, tone: 'text-primary' },
@@ -349,6 +350,10 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
     case 'close':
       title = fillPlaceholders(messages.dashCloseTitle, { count: String(item.jobsTotal) });
       detail = messages.dashCloseSub;
+      break;
+    case 'cancel_work_order':
+      title = messages.calloutCancelWorkOrderTitle;
+      detail = messages.calloutCancelWorkOrderSub;
       break;
     case 'return_to_service':
       // D52 (LTR-260): Samsara saw it leave the yard after the close (or leave and come back): confirm, do not assume.

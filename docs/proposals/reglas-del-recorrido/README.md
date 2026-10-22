@@ -95,8 +95,9 @@ agente.
 ## Lo que salió de aquí
 
 - R2, R9, R11 y R15 frenan desde LTR-294, con las pruebas A154 a A158.
-- R8 sigue sin una prueba propia de "millaje o partes faltantes"; queda en
-  LTR-294 como pendiente.
+- R8 tiene su prueba desde LTR-295 (A159).
+- LTR-295: con todo cancelado, el siguiente paso es Cancel Work Order (A160), y
+  el "Mark complete" del QC queda apagado mientras haya trabajo pendiente.
 - La decisión es **D55** en `DECISIONS.md`; `SYSTEM.md` §5 tiene las reglas.
 - El recorrido del camión (`proposals/truck-journey/`) las muestra en las
   etapas 4, 7 y 8.
