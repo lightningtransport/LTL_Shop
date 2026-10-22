@@ -14,6 +14,7 @@ import { rankTruckResults } from '@/lib/truck-search';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import { OpenWorkOrderTag } from './open-work-order-tag';
 import { Card, CardListSkeleton, EmptyState, HomeTopBar, Input, Label, LoadFailure, PageHeader } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 /** LTR-133: a mechanic finds any Truck and opens its repair history. */
@@ -22,6 +23,8 @@ const TRUCK_SEARCH_FILTERS = { search: '' };
 export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
   const { token, sessionLoading } = useAuth();
   const { messages } = useShopLocale();
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.mechanicTrucksTitle);
   const router = useRouter();
   // LTR-293 §9: the truck search is in the URL (?search=), so Back from a truck keeps it.
   const { filters, set } = useUrlFilters(TRUCK_SEARCH_FILTERS);

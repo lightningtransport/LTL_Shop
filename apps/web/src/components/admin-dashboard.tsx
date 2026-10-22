@@ -31,6 +31,7 @@ import {
   type DashboardCounter,
   type DashboardGroup,
 } from '@/lib/dashboard-queue';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: LucideIcon; tone: string }> = {
   blocked: { label: 'dashboardGroupBlocked', Icon: OctagonPause, tone: 'text-warning-foreground dark:text-warning' },
@@ -51,6 +52,8 @@ const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: Luc
  * shop, and the mechanics' work requests. History counts are one quiet line of links.
  */
 export function AdminDashboard({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.title);
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminDashboard();
   const { data: dispatch, mutate: mutateDispatch } = useAdminYardDataBoundary();
@@ -439,7 +442,7 @@ function QueueRow({ item, group, leavesOn, locale, messages, canManage, onChange
                 onChange={(event) => setNote(event.target.value)}
               />
               <div className="flex gap-2">
-                <Button type="submit" disabled={pending || (safetyReturn && !note.trim())}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+                <Button loading={pending} type="submit" disabled={pending || (safetyReturn && !note.trim())}>{messages.blockerConfirmResolve}</Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={() => { setResolving(false); setNote(''); }}>{messages.cancel}</Button>
               </div>
             </form>
@@ -500,8 +503,8 @@ function RequestRow({ request, locale, messages, canManage, onChanged }: {
       <div className="flex flex-wrap gap-2 sm:justify-end">
         <Button asChild variant="ghost"><Link href={adminWorkOrderHref(request.workOrderId, '/admin')}>{messages.dashboardOpenWorkOrder}</Link></Button>
         {canManage ? (
-          <Button type="button" variant="outline" disabled={pending} onClick={() => void markHandled()}>
-            <Check aria-hidden="true" />{pending ? messages.saving : messages.markWorkRequestHandled}
+          <Button loading={pending} type="button" variant="outline" onClick={() => void markHandled()}>
+            <Check aria-hidden="true" />{messages.markWorkRequestHandled}
           </Button>
         ) : null}
       </div>

@@ -10,11 +10,14 @@ import { Button, DataTable, PageHeader, Card, CardContent, EmptyState, Input, Lo
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories, useAdminCustomJobs } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 const CATALOG_FILTERS = { search: '' };
 
 export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.catalogTitle);
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   // LTR-57: Custom Jobs waiting in the review inbox.
@@ -61,7 +64,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       </Card>
       <CatalogSearchResults query={search} messages={messages} />
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.catalogTitle} header={false} table /> : null}
       {!isLoading && !error && items.length === 0 && !search.trim() ? (
         <EmptyState>
           <p>{search.trim() ? messages.catalogNoMatches : messages.catalogNoCategories}</p>
@@ -70,6 +73,7 @@ export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: 
       ) : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.catalogTitle}
           getKey={(item) => item.id}

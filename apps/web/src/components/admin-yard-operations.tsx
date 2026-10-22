@@ -39,6 +39,7 @@ import { AdminYardDataBoundaryCards } from './admin-yard-data-boundary-cards';
 import { YardSamsaraCounters } from './admin-yard-samsara-counters';
 import { KanbanBoard, KanbanColumn, KanbanFullscreenButton, KanbanOpenBoardLink, useBrowserFullscreen } from './kanban';
 import { Button, LoadFailure, PageSkeleton, PriorityBadge } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 const phaseMessageKey = {
@@ -55,6 +56,8 @@ const phaseMessageKey = {
 const DISPATCH_FILTERS = { dispatchSearch: '' };
 
 export function AdminYardOperations({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.yardOperationsTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<YardOperationsFilters>(() => readYardOperationsFilters(searchParams));

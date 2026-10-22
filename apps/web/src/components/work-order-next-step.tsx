@@ -81,7 +81,7 @@ export function WorkOrderNextStep({
   const resolved = blockers.filter((blocker) => blocker.resolvedAt);
   const footer = resolved.length ? <ResolvedFooter blockers={resolved} locale={locale} messages={messages} /> : null;
   const primary = (label: string, Icon: typeof Check, onClick: () => void) => (
-    <Button type="button" disabled={pending} onClick={onClick}><Icon aria-hidden="true" />{pending ? messages.saving : label}</Button>
+    <Button loading={pending} type="button" onClick={onClick}><Icon aria-hidden="true" />{label}</Button>
   );
   const box = (props: {
     tone: CalloutTone;
@@ -327,7 +327,7 @@ export function BlockerCallout({
                 onChange={(event) => setNote(event.target.value)}
               />
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1 sm:flex-none" disabled={pending || (safetyReturn && !note.trim())}>{pending ? messages.saving : messages.blockerConfirmResolve}</Button>
+                <Button loading={pending} type="submit" className="flex-1 sm:flex-none" disabled={pending || (safetyReturn && !note.trim())}>{messages.blockerConfirmResolve}</Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={() => { setResolving(false); setNote(''); }}>{messages.cancel}</Button>
               </div>
             </form>

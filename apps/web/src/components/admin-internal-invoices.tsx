@@ -93,7 +93,7 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
         </CardContent>
       </Card>
       {error ? <LoadFailure message={messages.loadError} retryLabel={messages.retry} onRetry={() => void mutate()} /> : null}
-      {isLoading && !data ? <PageSkeleton label={messages.pcInvoicesTitle} header={false} /> : null}
+      {isLoading && !data ? <PageSkeleton label={messages.pcInvoicesTitle} header={false} table /> : null}
       {data && !data.length ? (
         <EmptyState>
           <p>{filtered ? messages.pcInvoiceNoMatch : messages.pcNoInvoices}</p>
@@ -115,6 +115,7 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
               })}
             </p>
             <DataTable
+              wholeCardOpens
               className="md:rounded-none md:border-0"
               items={items}
               caption={invoiceMonth(periodStart, locale)}
@@ -321,7 +322,7 @@ function NewInvoiceDialog({ trucks, messages, onClose, onCreated }: {
         ) : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy}>{busy ? messages.pcSaving : messages.pcInvoiceCreate}</Button>
+          <Button loading={busy} type="submit">{messages.pcInvoiceCreate}</Button>
         </DialogActions>
       </form>
     </Modal>

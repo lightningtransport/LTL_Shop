@@ -306,9 +306,9 @@ function SyncCard({ sync, canSync, syncing, onSync, locale, messages }: {
       title={messages.samsaraSyncTitle}
       data-testid="samsara-sync"
       action={canSync ? (
-        <Button type="button" size="sm" disabled={syncing} onClick={onSync}>
-          <Zap aria-hidden="true" className={syncing ? 'animate-pulse' : undefined} />
-          {syncing ? messages.samsaraSyncing : messages.samsaraSyncNow}
+        <Button loading={syncing} type="button" size="sm" onClick={onSync}>
+          <Zap aria-hidden="true" />
+          {messages.samsaraSyncNow}
         </Button>
       ) : null}
     >

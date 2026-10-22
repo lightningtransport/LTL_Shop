@@ -33,6 +33,7 @@ import {
   Badge, Button, CardListSkeleton, CountChip, DialogActions, HomeTopBar, InlineAlert, Input, Label, Modal, PageHeader, PriorityBadge,
   SectionCard, Select, Textarea,
 } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 import { useUrlFilters } from '@/lib/use-url-filters';
 
 const QC_REVIEW_FILTERS = { review: '' };
@@ -87,6 +88,8 @@ export function QualityCheckPage() {
     if (!sessionLoading && !token) replaceAppLocation('/login', router);
     if (!sessionLoading && token && user && !canPerform) replaceAppLocation(defaultWorkspacePath(user), router);
   }, [sessionLoading, token, user, canPerform, router]);
+  // LTR-293 §10: the browser tab says which screen this is (before the early return: it is a hook).
+  useDocumentTitle(messages.qc.title);
   if (!sessionLoading && !token) return <SessionSignInFallback />;
 
   const t = messages.qc;

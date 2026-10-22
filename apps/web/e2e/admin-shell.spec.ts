@@ -842,6 +842,44 @@ test.describe('Shop Admin Phase 2A', () => {
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
 
+  test('LTR-293 §7: on a phone, tapping anywhere on a Trucks card opens the truck', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/trucks');
+    const card = page.locator('tbody tr').first();
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    // Bottom-right corner of the card: far from the truck number link.
+    await card.click({ position: { x: box!.width - 12, y: box!.height - 12 } });
+    await expect(page).toHaveURL(/\/admin\/trucks\/[^/?]+/);
+  });
+
+  test('LTR-293 §11: a wrong address says so and offers the way home; an empty filtered list offers Clear filters', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/this-does-not-exist');
+    await expect(page.getByText('This page does not exist')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Return to your Home' })).toBeVisible();
+
+    await page.goto('/admin/trucks?search=zzzz-no-truck');
+    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page).toHaveURL(/\/admin\/trucks$/);
+  });
+
+  test('LTR-293 §10: each screen names the browser tab, a Work Order by its number', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await expect(page).toHaveTitle('Dashboard — Lightning Shop');
+    await page.goto('/admin/work-orders');
+    await expect(page).toHaveTitle('Work Orders — Lightning Shop');
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page).toHaveTitle(/^WO-0101 — Lightning Shop$/);
+    await page.goto('/admin/trucks');
+    await expect(page).toHaveTitle('Trucks — Lightning Shop');
+  });
+
   test('LTR-293 §9: the catalog search and the Custom Jobs tab survive a reload', async ({ page }) => {
     await devLogin(page, 'manager@lightning.local');
     await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
