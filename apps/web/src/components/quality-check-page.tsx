@@ -34,7 +34,9 @@ import {
   SectionCard, Select, Textarea,
 } from './ui';
 import { useDocumentTitle } from './admin-breadcrumb';
+import { useUrlFilters } from '@/lib/use-url-filters';
 
+const QC_REVIEW_FILTERS = { review: '' };
 type Tab = 'review' | 'returned' | 'done';
 /** D46 / SQ-3: one thing Safety found, with the catalog Job that fixes it when they know it. */
 type FindingDraft = { key: string; text: string; catalogJobId: string };
@@ -64,7 +66,10 @@ export function QualityCheckPage() {
   const isBackup = !isSafety && canShowManagerWrites(user?.role, user);
   const canPerform = isSafety || isBackup;
   const { data, error, mutate } = useQualityCheckQueue(!!token && canPerform);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // LTR-293 §9: the truck under review is in the URL (?review=<Work Order>), so a reload or a shared link opens it.
+  const { filters: reviewFilters, set: setReviewFilter } = useUrlFilters(QC_REVIEW_FILTERS);
+  const openId = reviewFilters.review || null;
+  const setOpenId = (next: string | null) => setReviewFilter('review', next ?? '');
   const [busy, setBusy] = useState<Action | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
