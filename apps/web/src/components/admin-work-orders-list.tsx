@@ -94,7 +94,7 @@ export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale;
         <div className="flex min-w-0 items-end gap-2 [@container(min-width:44rem)]:flex-wrap [@container(min-width:68rem)]:flex-nowrap [@container(min-width:68rem)]:gap-1.5">
           {/* UX-4-005: the search keeps 14rem next to the inline filters; short placeholder, full aria-label. */}
           <label className="min-w-0 flex-1 space-y-1 [@container(min-width:44rem)]:basis-full [@container(min-width:68rem)]:min-w-[14rem] [@container(min-width:68rem)]:flex-[1.35] [@container(min-width:68rem)]:basis-0">
-            <span className="sr-only [@container(min-width:68rem)]:not-sr-only [@container(min-width:68rem)]:block [@container(min-width:68rem)]:truncate [@container(min-width:68rem)]:text-xs [@container(min-width:68rem)]:font-medium" title={messages.search}>{messages.search}</span>
+            <span className="sr-only [@container(min-width:68rem)]:not-sr-only [@container(min-width:68rem)]:block [@container(min-width:68rem)]:truncate [@container(min-width:68rem)]:text-xs [@container(min-width:68rem)]:font-medium" title={messages.search}>{messages.searchShort}</span>
             <Input
               type="search"
               autoComplete="off"

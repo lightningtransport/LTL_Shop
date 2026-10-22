@@ -28,7 +28,7 @@ test('manager manages the roster (D22) and the Job Catalog (D25)', async ({ page
   await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
   // LTR-198 / D30: the Manager manages Categories too.
-  await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add category' })).toBeVisible();
   await page.getByRole('link', { name: 'Brakes' }).click();
   await expect(page.getByRole('heading', { name: 'Brakes' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Actions for / }).first()).toBeVisible();
@@ -143,7 +143,7 @@ test('system admin with only admin.access sees catalog and roster writes', async
   await expect(page.getByText('Only a Shop Manager or the System Admin can change them')).toHaveCount(0);
   await expect(page.getByTestId('pd-light-tip')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add Job' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add Category' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add category' })).toBeVisible();
 
   // LTR-198 / JC2: the search finds Jobs and aliases in every Category, accents ignored.
   const search = page.getByLabel('Search categories, Jobs or aliases');

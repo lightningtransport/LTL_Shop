@@ -30,6 +30,7 @@ import type { AdminMessages } from '@/lib/admin-messages';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { adminWriteFailureMessage } from '@/lib/system-admin';
 import { ApiError } from '@/lib/api';
+import { withoutTicketId } from '@/lib/catalog-reason';
 
 const catalogCopy = (messages: AdminMessages) => ({
   locale: messages.locale,
@@ -217,7 +218,7 @@ export function CategoryStatusNote({ category, messages }: { category: AdminCata
       {category.systemKey ? <Badge variant="outline"><Lock aria-hidden="true" className="size-3" />{messages.catalogSystemBadge}</Badge> : null}
       {category.status === CatalogStatus.INACTIVE ? <Badge variant="secondary">{messages.catalogInactive}</Badge> : null}
       {category.status === CatalogStatus.INACTIVE && category.inactiveReason ? (
-        <span className="w-full text-xs text-muted-foreground">{category.inactiveReason}</span>
+        <span className="w-full text-xs text-muted-foreground">{withoutTicketId(category.inactiveReason)}</span>
       ) : null}
     </>
   );
