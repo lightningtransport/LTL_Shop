@@ -41,6 +41,7 @@ import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
 import { formatInvoiceDate } from '@/lib/parts-costs-format';
 import { pdfTextLines } from '@/lib/pdf-text';
+import { useUnsavedChangesGuard } from '@/lib/use-unsaved-changes-guard';
 
 const DRAFT_KEY = 'ltl.admin.purchase-draft';
 const OTHER = '__other__';
@@ -248,6 +249,9 @@ export function PurchaseForm({
   ];
   const trucksInvoiced = shares.filter((row) => row.truckId);
   const dirty = JSON.stringify(state) !== pristine.current || (file?.id ?? null) !== (purchase?.attachment?.id ?? null);
+
+  // LTR-293 §2: a reload, closing the tab or a link away asks first, not only closing this dialog.
+  useUnsavedChangesGuard(dirty && !busy, messages.unsavedChangesConfirm);
 
   async function checkDuplicate() {
     if (!state.vendorId || !state.invoiceNumber.trim()) return setDuplicate(null);

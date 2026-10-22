@@ -12,6 +12,7 @@ import { isWorkOrderRelatedListKey } from '@/lib/swr-cache-keys';
 import { WORK_ORDER_LIST_REVALIDATE } from '@/lib/swr-work-order-cache';
 import { useActionToast } from './action-toast';
 import { Button, Modal, Select, Textarea } from './ui';
+import { draftKeys, useLocalDraft } from '@/lib/local-draft';
 
 /**
  * Owner decision (2026-10-05): "New Work Order" on the Truck is a dialog (priority and an optional
@@ -34,7 +35,8 @@ export function NewWorkOrderDialog({
   const { showToast } = useActionToast();
   const { mutate } = useSWRConfig();
   const [priority, setPriority] = useState<Priority>(Priority.NORMAL);
-  const [notes, setNotes] = useState('');
+  // LTR-293 §2: the note stays on this device for this truck until the Work Order is created.
+  const [notes, setNotes, clearNotes] = useLocalDraft(draftKeys.newWorkOrderNote(truck.id));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +44,6 @@ export function NewWorkOrderDialog({
     if (pending) return;
     setError(null);
     setPriority(Priority.NORMAL);
-    setNotes('');
     onClose();
   }
 
@@ -55,7 +56,7 @@ export function NewWorkOrderDialog({
       showToast('success', fillPlaceholders(messages.newWorkOrderCreated, { id: created.displayId, truck: truck.truckNumber }));
       void mutate(isWorkOrderRelatedListKey, undefined, WORK_ORDER_LIST_REVALIDATE);
       setPriority(Priority.NORMAL);
-      setNotes('');
+      clearNotes();
       onClose();
       await onCreated();
     } catch (failure) {

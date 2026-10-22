@@ -822,4 +822,21 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.waitForTimeout(300);
     expect(Math.abs((await scrollTop()) - before)).toBeLessThanOrEqual(2);
   });
+
+  test('LTR-293 §2: the Manager\'s note and a new Work Order note survive a reload', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    const note = page.getByRole('textbox', { name: 'Add note' });
+    await note.fill('Waiting on the air dryer from Rush');
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Add note' })).toHaveValue('Waiting on the air dryer from Rush');
+
+    await page.goto('/admin/work-orders/new');
+    const notes = page.getByRole('textbox', { name: 'Notes (optional)' });
+    await notes.fill('Driver says it pulls left');
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
+  });
 });
+
