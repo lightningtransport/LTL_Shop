@@ -274,7 +274,9 @@ export function PmServiceCard({
 
   const canEdit = data.canEdit;
   const hasValidObservedMileage = /^\d+$/.test(mileage);
-  const showBelow = mileageBelowCurrent && mileageTouched;
+  // LTR-277 §2: a saved mileage left below the Truck's says so on open; a new one waits for the field to be left.
+  const savedBelow = mileageBelowCurrent && mileage === (data.observedMileage?.toString() ?? '');
+  const showBelow = mileageBelowCurrent && (mileageTouched || savedBelow);
   // Block A (PM2, PM3): a part chosen now could not be saved, so the parts wait until the mileage can be.
   const partsLocked = mileageNeedsConfirmation || mileageEmpty || mileageBelowCurrent || !hasValidObservedMileage;
   const usable = data.categories.filter((category) => category.parts.length > 0);
@@ -419,7 +421,10 @@ export function PmServiceCard({
       <SectionCard title={messages.partsUsed} count={chosen} action={<span className="text-xs text-muted-foreground">{messages.partsUsedHint}</span>}>
         {partsLocked && canEdit ? (
           <p className="border-b bg-warning-surface px-4 py-2 text-sm text-warning-foreground" id="pm-parts-locked">
-            {mileageNeedsConfirmation ? messages.confirmMileageFirst : mileageEmpty && data.observedMileage !== null ? messages.enterMileageToSave : messages.enterMileageHint}
+            {mileageNeedsConfirmation ? messages.confirmMileageFirst
+              : mileageEmpty && data.observedMileage !== null ? messages.enterMileageToSave
+              : mileageCheck?.ok === false ? messages.mileageBelowCurrent(formatMileage(mileageCheck.currentMileage))
+              : messages.enterMileageHint}
           </p>
         ) : null}
         <ul className="divide-y">

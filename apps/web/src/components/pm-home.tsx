@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, CircleCheck, Play, Plus } from 'lucide-react';
-import type { WorkOrderSummaryDto } from '@ltl-shop/shared';
+import { ChevronRight, CircleAlert, CircleCheck, Play, Plus } from 'lucide-react';
+import { checkPmObservedMileage, type WorkOrderSummaryDto } from '@ltl-shop/shared';
 import { formatMileage, pauseLabel } from '@/lib/format';
 import { useShopLocale } from '@/lib/locale-context';
 import type { HomeLists } from '@/lib/shop-data';
@@ -147,15 +147,17 @@ function RunningCard({ wo }: { wo: Wo }) {
   const service = wo.pmJob?.displayName ?? messages.pmServiceLabel;
   const mileage = wo.pmJob?.observedMileage ?? null;
   const parts = wo.pmJob?.partsCount ?? 0;
+  // LTR-277 §2: a mileage left below the Truck's is not done; the card says to check it, like the PM screen.
+  const mileageBelow = mileage !== null && checkPmObservedMileage(mileage, wo.pmJob?.truckMileage ?? null).ok === false;
   return (
     <div className="rounded-xl border border-primary bg-card ring-1 ring-primary" data-testid={`pm-running-${wo.truckNumber}`}>
       <div className="space-y-1 p-3">
         <p className="font-display text-lg font-semibold">{messages.truckTitle(wo.truckNumber)}</p>
         <p className="text-sm text-muted-foreground">{messages.pmStartedLine(service)} · <span className="font-mono">{wo.displayId}</span></p>
         <p className="flex flex-wrap items-center gap-x-2 text-sm">
-          <span className={`flex items-center gap-1 ${mileage !== null ? 'text-success' : 'text-muted-foreground'}`}>
-            {mileage !== null ? <CircleCheck aria-hidden="true" className="size-4" /> : null}
-            {mileage !== null ? messages.pmSummaryMileage(formatMileage(mileage)) : messages.pmSummaryMileageMissing}
+          <span className={`flex items-center gap-1 ${mileageBelow ? 'text-warning-foreground dark:text-warning' : mileage !== null ? 'text-success' : 'text-muted-foreground'}`} data-testid="pm-running-mileage">
+            {mileageBelow ? <CircleAlert aria-hidden="true" className="size-4" /> : mileage !== null ? <CircleCheck aria-hidden="true" className="size-4" /> : null}
+            {mileageBelow ? messages.pmSummaryMileageCheck : mileage !== null ? messages.pmSummaryMileage(formatMileage(mileage)) : messages.pmSummaryMileageMissing}
           </span>
           <span aria-hidden="true" className="text-muted-foreground">·</span>
           <span className={parts ? 'text-success' : 'text-muted-foreground'}>{messages.pmPartsLabel} {parts}</span>

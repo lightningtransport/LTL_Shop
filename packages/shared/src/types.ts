@@ -270,6 +270,8 @@ export interface WorkOrderSummaryDto {
     /** Stage PM-1 (PM workspace list only): the PM's mileage and how many parts it has. */
     observedMileage?: number | null;
     partsCount?: number;
+    /** LTR-277 §2 (PM workspace list only): the Truck's mileage now, so a PM left below it is not shown as done. */
+    truckMileage?: number | null;
   } | null;
   /** Stage PM-1 (PM workspace list only): the truck's previous finished PM ("Last PM: 196,400 mi · May 30"). */
   lastPm?: { observedMileage: number | null; completedAt: string } | null;
