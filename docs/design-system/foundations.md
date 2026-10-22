@@ -205,3 +205,12 @@ either. Mechanics never see elapsed time (D54).
 `:focus-visible` uses `2px solid var(--ring)` with 2px offset.
 `#main-content[tabindex='-1']:focus-visible` stays outline-free so
 `PathScrollReset` can land there without a focus ring.
+
+## Scroll between screens (LTR-293 §1)
+
+`PathScrollReset` owns scroll restoration. Going forward (a link, `router.push`,
+a `?action=` push) opens at the top. Back and Forward return to where the person
+was on that screen. A `router.replace` on the same screen (filters, search) does
+not move the page; a replace to another screen (a redirect) opens at the top. Use
+`router.replace` for filters, never `push`, or Back fills with filter steps and
+the page jumps.

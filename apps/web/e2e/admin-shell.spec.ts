@@ -786,5 +786,40 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
     await expect(page.getByTestId('admin-wo-job-row').nth(1)).toContainText('Inspect brake chamber · ayudante');
   });
-});
 
+  test('LTR-293 §1: Back returns to the place in the list; a filter does not jump to the top', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await page.goto('/admin/work-orders');
+    await expect(page.getByText('WO-0101').first()).toBeVisible();
+    const main = page.locator('#main-content main');
+    const scrollTop = () => main.evaluate((element) => element.scrollTop);
+    const room = await main.evaluate((element) => element.scrollHeight - element.clientHeight);
+    expect(room).toBeGreaterThan(150);
+    const place = Math.min(400, room);
+    await main.evaluate((element, top) => { element.scrollTop = top; }, place);
+    await expect.poll(scrollTop).toBe(place);
+    // Let the scroll be noted, then open a Work Order without letting Playwright scroll to the link.
+    await page.waitForTimeout(100);
+    await main.evaluate((element) => (element.querySelector('a[href*="/admin/work-orders/00000000"]') as HTMLAnchorElement).click());
+    await expect(page).toHaveURL(/\/admin\/work-orders\/00000000/);
+    await expect.poll(scrollTop).toBe(0);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/admin\/work-orders$/);
+    await expect.poll(scrollTop, { timeout: 5_000 }).toBeGreaterThanOrEqual(place - 2);
+
+    // A replace on the same screen (how every filter changes the URL) leaves the page where it was. The param changes
+    // nothing in the list, so a shorter list cannot be what moves it.
+    const before = await scrollTop();
+    await page.evaluate(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('ltr293', '1');
+      // Plain state, so Next.js applies the new URL and the route hooks update, as with router.replace.
+      window.history.replaceState({}, '', url);
+    });
+    await expect(page).toHaveURL(/ltr293=1/);
+    await page.waitForTimeout(300);
+    expect(Math.abs((await scrollTop()) - before)).toBeLessThanOrEqual(2);
+  });
+});
