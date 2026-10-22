@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shop areas · one truck at a time (D56)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  const tok = (name) => `color-mix(in oklch, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: Object.fromEntries(['background', 'foreground', 'card', 'muted', 'muted-foreground', 'primary', 'primary-foreground', 'accent', 'border', 'ring', 'success', 'warning', 'warning-foreground', 'warning-surface', 'destructive', 'destructive-text', 'sunken'].map((n) => [n, tok(n)])),
+        borderColor: { DEFAULT: 'var(--border)' },
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      },
+    },
+  };
+</script>
+<style>
+  /* Same tokens as apps/web/src/app/globals.css (copied from docs/proposals/yard-dispatch-plan/mockup.html). */
+  :root {
+    --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.6929);
+    --card: oklch(0.9842 0.0034 247.8575); --muted: oklch(0.9683 0.0069 247.8956);
+    --muted-foreground: oklch(0.5 0.0407 257.4166); --primary: oklch(0.5358 0.1444 248.0435);
+    --primary-foreground: oklch(1 0 0); --accent: oklch(0.9514 0.025 236.8242);
+    --border: oklch(0.9288 0.0126 255.5078); --ring: oklch(0.5358 0.1444 248.0435);
+    --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+    --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+    --destructive: oklch(0.55 0.2 25.3313); --destructive-text: oklch(0.5 0.19 27);
+    --sunken: oklch(0.965 0.006 247.9);
+  }
+  .dark {
+    --background: oklch(0.2077 0.0398 265.7549); --foreground: oklch(0.9842 0.0034 247.8575);
+    --card: oklch(0.2795 0.0368 260.031); --muted: oklch(0.31 0.037 259);
+    --muted-foreground: oklch(0.7107 0.0351 256.7878); --primary: oklch(0.7535 0.139 232.6615);
+    --primary-foreground: oklch(0.2077 0.0398 265.7549); --accent: oklch(0.33 0.04 258);
+    --border: oklch(0.3717 0.0392 257.287); --ring: oklch(0.7535 0.139 232.6615);
+    --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6054);
+    --warning-foreground: oklch(0.92 0.12 91.6054); --warning-surface: oklch(0.29 0.05 78);
+    --destructive: oklch(0.3958 0.1331 25.723); --destructive-text: oklch(0.78 0.12 22);
+    --sunken: oklch(0.24 0.038 263);
+  }
+  html *, html ::before, html ::after { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); letter-spacing: -0.01em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+  svg.lucide.s12 { width: 12px; height: 12px; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; border-radius: 6px; border-width: 1px; padding: 2px 8px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .b-stop { border-color: color-mix(in oklch, var(--destructive) 50%, transparent); background: color-mix(in oklch, var(--destructive) 15%, transparent); color: var(--destructive-text); }
+  .b-warn { border-color: color-mix(in oklch, var(--warning) 50%, transparent); background: color-mix(in oklch, var(--warning-surface) 70%, transparent); color: var(--warning-foreground); }
+  .b-ok { border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); color: var(--success); }
+  .b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary); }
+  .b-out { color: var(--muted-foreground); }
+  .tire { min-height: 44px; min-width: 76px; justify-content: center; font-size: 13px; }
+  .group-title { font-size: 14px; font-weight: 600; }
+  .area-head { background: var(--sunken); }
+  .avatar { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+  .screen { display: none; } .screen.on { display: block; }
+  .col { width: 272px; flex: 0 0 auto; }
+  .dot { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; }
+</style>
+</head>
+<body class="font-sans antialiased">
+
+<header class="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
+    <span class="mr-2 text-sm font-semibold">Áreas en paralelo · propuesta (D56)</span>
+    <nav id="nav" class="flex flex-wrap gap-1 text-sm"></nav>
+    <button id="width" class="ml-auto rounded-md border px-2 py-1 text-xs text-muted-foreground">Ver como teléfono</button>
+    <button id="theme" class="rounded-md border px-2 py-1 text-xs text-muted-foreground">Dark</button>
+  </div>
+</header>
+
+<main id="frame" class="mx-auto max-w-6xl px-4 py-6 transition-all">
+
+<div class="mb-5 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+  <p><b class="text-foreground">Qué cambia.</b> Inspección primero y Quality Check último. En el medio hay cuatro <b>áreas sin orden</b> (PM · Alignment · Shop Work · Detailing) y <b>un camión lo tiene una sola área a la vez</b>: quien empieza un Job se lo lleva, al terminar lo suelta. Tires y Flat Repair son de Alignment. Los números son los del 911 (WO-026, 22 de octubre).</p>
+</div>
+
+<!-- 1. Work Plan -->
+<section class="screen" data-name="Truck · Work Plan">
+  <p class="text-sm text-muted-foreground">Trucks › 911</p>
+  <div class="mt-3 rounded-xl border bg-card p-4">
+    <p class="text-xs text-muted-foreground">Next step</p>
+    <p class="font-semibold">Waiting for a mechanic</p>
+    <p class="text-sm text-muted-foreground">Alignment, Detailing and 1 repair left · PM done</p>
+  </div>
+
+  <div class="mt-4 rounded-xl border bg-card">
+    <div class="flex items-center justify-between border-b px-4 py-3"><h2 class="font-semibold">Work Plan</h2><span class="text-xs text-muted-foreground">Jobs on WO-026</span></div>
+
+    <div class="flex items-start gap-3 border-b px-4 py-3">
+      <span class="mt-0.5 inline-flex size-5 items-center justify-center rounded-full bg-success/15 text-success"><i data-lucide="check" class="s12"></i></span>
+      <div class="text-sm"><b>Inspection</b> <span class="text-muted-foreground">· Issues found · Oct 22, 10:26 AM</span><br><a class="text-primary" href="#">View report</a> · <a class="text-primary" href="#">Add defects</a></div>
+    </div>
+
+    <div class="border-b px-4 py-2 text-xs text-muted-foreground">Shop areas · any order, one at a time</div>
+
+    <div id="areas"></div>
+
+    <div class="flex items-start gap-3 border-b px-4 py-3">
+      <span class="mt-0.5 inline-flex size-5 items-center justify-center rounded-full border"></span>
+      <div class="flex-1 text-sm"><b>Quality Check</b> <span class="text-muted-foreground">· 1 pending · Safety takes it when every area is done</span></div>
+    </div>
+    <div class="flex items-start gap-3 px-4 py-3">
+      <span class="mt-0.5 inline-flex size-5 items-center justify-center rounded-full border"></span>
+      <div class="text-sm"><b>Close Work Order</b> <span class="text-muted-foreground">· When every step is done</span></div>
+    </div>
+  </div>
+  <p class="mt-2 text-xs text-muted-foreground">Las cuatro áreas no llevan número. El chip "Daniel is here" marca el área que tiene el camión; con nadie, el Next step dice "Waiting for a mechanic".</p>
+</section>
+
+<!-- 2. WO table -->
+<section class="screen" data-name="Work Order · Jobs">
+  <p class="text-sm text-muted-foreground">Trucks › 911 › WO-026</p>
+  <div class="mt-3 rounded-xl border bg-card">
+    <div class="flex items-center justify-between border-b px-4 py-3"><h2 class="font-semibold">Jobs <span class="ml-1 rounded-md border px-1.5 text-xs text-muted-foreground">7</span></h2><a class="text-sm text-primary" href="#">+ Add work in Work Plan</a></div>
+    <div class="grid grid-cols-[1fr_120px_110px_130px] gap-2 border-b px-4 py-2 text-xs text-muted-foreground max-sm:hidden"><span>Job</span><span>Mechanic</span><span>Status</span><span class="text-right">Action</span></div>
+    <div id="wo"></div>
+  </div>
+  <p class="mt-2 text-xs text-muted-foreground">Una fila de encabezado por área (fondo <code>sunken</code>). Tires y Flat Repair bajo Alignment; Mirrors bajo Shop Work; QC siempre último. La descripción del Job de llantas dice por qué, igual que la ve el mecánico.</p>
+</section>
+
+<!-- 3. Tires card -->
+<section class="screen" data-name="Truck · Tires">
+  <div class="max-w-xl rounded-xl border bg-card">
+    <div class="flex items-center justify-between border-b px-4 py-3"><h2 class="flex items-center gap-2 font-semibold"><i data-lucide="circle-dot" class="text-muted-foreground"></i>Tires</h2><span class="text-xs text-muted-foreground tnum">3/10 OK</span></div>
+    <div class="space-y-2 p-4" id="tires"></div>
+    <div class="flex flex-wrap gap-3 border-t px-4 py-2 text-xs text-muted-foreground">
+      <span class="inline-flex items-center gap-1"><i data-lucide="check" class="s12 text-success"></i>OK</span>
+      <span class="inline-flex items-center gap-1"><i data-lucide="eye" class="s12 text-warning-foreground"></i>Watch (no Job)</span>
+      <span class="inline-flex items-center gap-1"><i data-lucide="octagon-alert" class="s12 text-destructive-text"></i>Job</span>
+      <span class="ml-auto">Steer: Job ≤ 4/32 · Watch 5–6 · Drive: Job ≤ 2/32 · Watch 3–4</span>
+    </div>
+    <div class="space-y-2 border-t p-4 text-sm" id="tirelist"></div>
+    <p class="border-t px-4 py-2 text-xs text-muted-foreground">Checked Oct 22 by Crixcrox · previous Sep 30</p>
+  </div>
+  <p class="mt-2 text-xs text-muted-foreground">Cada chip muestra PSI y tread, con ícono por estado (nunca solo color) y 44 px de alto en táctil. La lista agrupa por estado y dice el motivo. La regla de tread cambió: en el mínimo ya es Job (RFI 4/32 pasa de Watch a Job con la regla nueva; aquí se muestra como quedó guardada: Watch).</p>
+</section>
+
+<!-- 4. Yard Kanban -->
+<section class="screen" data-name="Yard · Shop board">
+  <h1 class="text-2xl font-semibold tracking-tight">Yard Operations</h1>
+  <div class="mt-3 flex gap-6 border-b text-sm"><span class="border-b-2 border-primary pb-2 font-medium">Shop</span><span class="pb-2 text-muted-foreground">Dispatch</span></div>
+  <div class="mt-4 flex gap-3 overflow-x-auto pb-3" id="kanban"></div>
+  <p class="mt-2 text-xs text-muted-foreground">9 columnas: la columna dice dónde está el camión <b>ahora</b>. "Waiting for a mechanic" son los camiones parados que nadie trabaja; la tarjeta dice qué falta. En una columna de área la tarjeta dice quién lo tiene.</p>
+</section>
+
+<!-- 5. Mechanic app -->
+<section class="screen" data-name="Mechanic · My work">
+  <div class="max-w-md space-y-3">
+    <h1 class="text-xl font-semibold">My work</h1>
+    <h2 class="group-title text-muted-foreground">Your Jobs</h2>
+    <div class="rounded-xl border bg-card">
+      <div class="p-4 text-sm"><p class="font-semibold">Truck 911 · Alignment</p><p class="text-muted-foreground">Alignment · Tires · Flat Repair</p>
+        <p class="mt-2"><span class="badge b-warn"><i data-lucide="user" class="s12"></i>With Daniel · PM · wait</span></p></div>
+      <div class="border-t p-2"><button class="w-full rounded-md border px-3 py-2 text-sm text-muted-foreground" disabled>Start · when the truck is free</button></div>
+    </div>
+    <div class="rounded-xl border bg-card">
+      <div class="p-4 text-sm"><p class="font-semibold">Truck 608 · Alignment</p><p class="text-muted-foreground">Alignment</p><p class="mt-2"><span class="badge b-ok"><i data-lucide="check" class="s12"></i>Truck is free</span></p></div>
+      <div class="border-t p-2"><button class="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">Start</button></div>
+    </div>
+    <h2 class="group-title text-muted-foreground">Available in the shop</h2>
+    <div class="rounded-xl border bg-card">
+      <div class="p-4 text-sm"><p class="font-semibold">Truck 943 · Mirrors</p><p class="text-muted-foreground">Cab, Body &amp; Glass · from the inspection</p></div>
+      <div class="border-t p-2"><button class="w-full rounded-md border px-3 py-2 text-sm font-medium">Take</button></div>
+    </div>
+  </div>
+  <p class="mt-2 text-xs text-muted-foreground">Un Job ya asignado en un camión que otro tiene espera con el botón apagado. "Available in the shop" es la cola nueva de Shop Work (AP-6); los camiones que alguien tiene no salen en ella.</p>
+</section>
+
+</main>
+
+<script>
+const jobs = [
+  { area: 'PM', name: 'PM A Service', sub: 'PM · completed from the PM service', who: 'MPM', tone: 'pm', status: 'Done 11:40 AM', done: true },
+  { area: 'Alignment', name: 'Alignment', sub: 'Suspension & Steering', who: 'MA', tone: 'al' },
+  { area: 'Alignment', name: 'Tires', sub: 'Tires & Wheels', who: 'MA', tone: 'al', desc: ['LF · tread 3/32 (min 4) · worn', 'RF · tread 3/32 (min 4) · worn', 'RRI · tread 1/32 (min 2) · worn'], pill: 'Tires · 3 to confirm' },
+  { area: 'Alignment', name: 'Flat Repair', sub: 'Tires & Wheels', who: 'MA', tone: 'al', desc: ['RFO · 150 PSI (should be 95) · high pressure', 'LRO · 125 PSI (should be 95) · high pressure', 'LRI · 120 PSI (should be 95) · high pressure', 'RRI · 158 PSI (should be 95) · high pressure'] },
+  { area: 'Shop Work', name: 'Mirrors', sub: 'Cab, Body & Glass', who: 'MG', tone: 'mg', desc: ['Mirrors: Estan rotos'] },
+  { area: 'Detailing', name: 'Detailing', sub: 'Detailing', who: 'MD', tone: 'md' },
+];
+const tones = { pm: 'bg-warning-surface text-warning-foreground', al: 'bg-destructive/10 text-destructive-text', mg: 'bg-primary/10 text-primary', md: 'bg-accent text-primary' };
+const av = (j) => `<span class="avatar ${tones[j.tone]}">${j.who}</span><span>${j.who}</span>`;
+const status = (j) => j.done ? `<span class="inline-flex items-center gap-1 text-muted-foreground"><i data-lucide="check" class="s12 text-success"></i>${j.status}</span>` : `<span class="inline-flex items-center gap-1 text-muted-foreground"><span class="dot border"></span>To do</span>`;
+
+// 1. Work Plan areas
+const areaList = ['PM', 'Alignment', 'Shop Work', 'Detailing'];
+document.getElementById('areas').innerHTML = areaList.map((a) => {
+  const js = jobs.filter((j) => j.area === a);
+  const pending = js.filter((j) => !j.done).length;
+  return `<div class="border-b">
+    <div class="flex items-center gap-3 px-4 py-2.5"><span class="inline-flex size-5 items-center justify-center rounded-full ${pending ? 'border' : 'bg-success/15 text-success'}">${pending ? '' : '<i data-lucide="check" class="s12"></i>'}</span>
+      <span class="group-title">${a}</span><span class="text-sm text-muted-foreground">· ${pending ? pending + ' pending' : 'Done'}</span>
+      ${a === 'PM' ? '' : ''}</div>
+    ${js.map((j) => `<div class="grid grid-cols-[1fr_120px_110px_32px] items-center gap-2 px-4 py-2 pl-12 text-sm"><div><p>${j.name}</p><p class="text-xs text-muted-foreground">${j.sub.split(' · ')[0]}</p></div><div class="flex items-center gap-2">${av(j)}</div><div>${status(j)}</div><i data-lucide="external-link" class="text-muted-foreground"></i></div>`).join('')}
+  </div>`;
+}).join('');
+
+// 2. WO table
+const order = ['PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check'];
+const qc = { area: 'Quality Check', name: 'Quality Check', sub: 'Final step · Safety takes it from their screen', who: 'Safety', tone: 'md' };
+document.getElementById('wo').innerHTML = order.map((a) => {
+  const js = (a === 'Quality Check' ? [qc] : jobs.filter((j) => j.area === a));
+  return `<div class="area-head border-b px-4 py-1.5 group-title">${a} <span class="text-xs font-normal text-muted-foreground">· ${js.length}</span></div>` +
+    js.map((j) => `<div class="grid grid-cols-[1fr_120px_110px_130px] items-center gap-2 border-b px-4 py-3 text-sm max-sm:grid-cols-1">
+      <div><p class="${j.done ? 'text-muted-foreground' : ''}">${j.name}</p><p class="text-xs text-muted-foreground">${j.sub}</p>
+        ${j.pill ? `<span class="badge b-warn mt-1" title="3 tires proposed from stock · confirm in Parts…"><i data-lucide="circle-dot" class="s12"></i>${j.pill}</span>` : ''}
+        ${j.desc ? `<div class="mt-1 text-xs text-muted-foreground">${j.desc.join('<br>')}</div>` : ''}</div>
+      <div class="flex items-center gap-2">${j.who === 'Safety' ? '<i data-lucide="shield-check" class="text-muted-foreground"></i><span>Safety</span>' : av(j)}</div>
+      <div>${status(j)}</div>
+      <div class="text-right">${j.done ? '' : `<button class="rounded-md border px-3 py-1.5 text-sm ${j.name === 'Quality Check' ? 'text-muted-foreground' : ''}">${j.name.startsWith('PM') ? 'PM A ▾' : 'Mark complete'}</button>`} <span class="text-muted-foreground">…</span></div>
+    </div>`).join('');
+}).join('');
+
+// 3. Tires
+const T = { LF: [100, 3, 'fix'], RF: [100, 3, 'fix'], LFO: [100, 8, 'ok'], LFI: [100, 8, 'ok'], RFI: [111, 4, 'watch'], RFO: [150, 5, 'fix'], LRO: [125, 8, 'fix'], LRI: [120, 8, 'fix'], RRI: [158, 1, 'fix'], RRO: [95, 8, 'ok'] };
+const cls = { ok: ['b-ok', 'check'], watch: ['b-warn', 'eye'], fix: ['b-stop', 'octagon-alert'] };
+const chip = (p) => { const [psi, tr, s] = T[p]; return `<span class="badge tire ${cls[s][0]} tnum" title="${p}: ${psi} PSI · ${tr}/32"><i data-lucide="${cls[s][1]}" class="s12"></i>${psi} · ${tr}/32</span>`; };
+const row = (label, left, right) => `<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2"><div class="flex gap-1.5">${left.map(chip).join('')}</div><span class="text-xs text-muted-foreground">${label}</span><div class="flex justify-end gap-1.5">${right.map(chip).join('')}</div></div>`;
+document.getElementById('tires').innerHTML = row('Steer', ['LF'], ['RF']) + row('Drive 1', ['LFO', 'LFI'], ['RFI', 'RFO']) + row('Drive 2', ['LRO', 'LRI'], ['RRI', 'RRO']);
+const why = (p) => { const [psi, tr, s] = T[p]; const steer = p === 'LF' || p === 'RF'; const min = steer ? 4 : 2, target = steer ? 110 : 95; if (tr <= min - (s === 'watch' ? 0 : 1) && s === 'fix') return `${p} ${psi} PSI · ${tr}/32 (min ${min}) · worn`; if (s === 'fix') return `${p} ${psi} PSI (should be ${target}) · ${psi > target ? 'high' : 'low'} pressure`; return `${p} ${psi} PSI · ${tr}/32`; };
+const fix = Object.keys(T).filter((p) => T[p][2] === 'fix'), watch = Object.keys(T).filter((p) => T[p][2] === 'watch');
+document.getElementById('tirelist').innerHTML = `<p><span class="badge b-stop mr-1"><i data-lucide="octagon-alert" class="s12"></i>Job</span></p><ul class="ml-1 space-y-0.5 text-muted-foreground tnum">${fix.map((p) => `<li>${why(p)}</li>`).join('')}</ul>
+  <p class="pt-1"><span class="badge b-warn mr-1"><i data-lucide="eye" class="s12"></i>Watch</span></p><ul class="ml-1 text-muted-foreground tnum">${watch.map((p) => `<li>${why(p)}</li>`).join('')}</ul>`;
+
+// 4. Kanban
+const cols = [
+  ['Inspection', [{ n: '943', s: 'Arrived 8:10 AM', k: 'muted' }]],
+  ['Waiting for a mechanic', [{ n: '911', s: 'WO-026', chips: ['PM ✓', 'Alignment', 'Detailing', '1 repair'] }, { n: '608', s: 'WO-031', chips: ['PM ✓', 'Alignment ✓', '2 repairs'] }]],
+  ['PM', [{ n: '907', s: 'WO-029', who: 'Daniel · PM A Service' }]],
+  ['Alignment', [{ n: '866', s: 'WO-024', who: 'MA · Tires', old: true }]],
+  ['Shop Work', []],
+  ['Detailing', [{ n: '836', s: 'WO-030', who: 'Anthony · Detailing' }]],
+  ['Quality Check', [{ n: '845', s: 'WO-022 · waiting for Safety' }]],
+  ['Ready to close', []],
+  ['Ready to Go', [{ n: '823', s: 'Since Oct 21' }]],
+];
+document.getElementById('kanban').innerHTML = cols.map(([t, cards]) => `<div class="col rounded-xl border bg-sunken p-2">
+  <p class="px-1 pb-2 text-sm font-semibold">${t} <span class="text-muted-foreground">${cards.length}</span></p>
+  ${cards.length ? cards.map((c) => `<div class="mb-2 rounded-lg border bg-card p-3 text-sm"><p class="font-semibold">${c.n} <span class="text-xs font-normal text-muted-foreground">· ${c.s}</span></p>
+    ${c.who ? `<p class="mt-1 inline-flex items-center gap-1"><i data-lucide="wrench" class="s12 text-primary"></i>${c.who}</p>${c.old ? '<p class="text-xs text-warning-foreground">since yesterday</p>' : ''}` : ''}
+    ${c.chips ? `<div class="mt-1.5 flex flex-wrap gap-1">${c.chips.map((x) => `<span class="badge ${x.endsWith('✓') ? 'b-out' : 'b-info'}">${x}</span>`).join('')}</div>` : ''}
+  </div>`).join('') : '<p class="px-1 text-xs text-muted-foreground">No trucks</p>'}
+</div>`).join('');
+
+// nav / theme / width
+const screens = [...document.querySelectorAll('.screen')];
+const nav = document.getElementById('nav');
+screens.forEach((s, i) => { const b = document.createElement('button'); b.className = 'rounded-md border px-2 py-1 text-xs'; b.textContent = s.dataset.name; b.onclick = () => show(i); nav.appendChild(b); });
+function show(i) { screens.forEach((s, j) => s.classList.toggle('on', i === j)); [...nav.children].forEach((b, j) => b.classList.toggle('bg-accent', i === j)); try { history.replaceState(null, '', '#' + i); } catch {} }
+show(Number(location.hash.slice(1)) || 0);
+document.getElementById('theme').onclick = () => document.documentElement.classList.toggle('dark');
+document.getElementById('width').onclick = (e) => { const f = document.getElementById('frame'); f.classList.toggle('max-w-sm'); e.target.textContent = f.classList.contains('max-w-sm') ? 'Ver como iPad' : 'Ver como teléfono'; };
+lucide.createIcons();
+</script>
+</body>
+</html>

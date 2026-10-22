@@ -1,6 +1,6 @@
 # Pendientes (resumen)
 
-**Actualizado:** 2026-10-21 (QA de producción, escritorio y teléfono e iPad: un solo issue, LTR-277, 10 secciones; LTR-278–292 duplicados); antes 2026-10-21 (limpieza de Linear: los cerrados se borraron de Linear y su copia está en [`archive/LINEAR_CERRADOS_2026-10-21.md`](archive/LINEAR_CERRADOS_2026-10-21.md); LTR-194 hecho, LTR-73 duplicado de LTR-255, LTR-46, LTR-54 y LTR-52 cancelados; suman LTR-267 a LTR-270); antes 2026-10-21 (LTR-274 hecho: nada bajo 12px, token `--brand-navy`; botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-275 hecho: "this device" / "este dispositivo"); antes 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
+**Actualizado:** 2026-10-22 (D56 áreas en paralelo: Epic LTR-299 con AP-1 a AP-7, LTR-300–306; P39–P42 abiertas); antes 2026-10-21 (QA de producción, escritorio y teléfono e iPad: un solo issue, LTR-277, 10 secciones; LTR-278–292 duplicados); antes 2026-10-21 (limpieza de Linear: los cerrados se borraron de Linear y su copia está en [`archive/LINEAR_CERRADOS_2026-10-21.md`](archive/LINEAR_CERRADOS_2026-10-21.md); LTR-194 hecho, LTR-73 duplicado de LTR-255, LTR-46, LTR-54 y LTR-52 cancelados; suman LTR-267 a LTR-270); antes 2026-10-21 (LTR-274 hecho: nada bajo 12px, token `--brand-navy`; botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-275 hecho: "this device" / "este dispositivo"); antes 2026-10-21 (LTR-266 hecho y fuera de la lista; LTR-274 nuevo: textos de menos de 12px; LTR-275 nuevo: "this phone" en la tablet; LTR-273 alinea los docs); antes 2026-10-21 (LTR-261 hecho: el Dashboard avisa la llegada sin Work Order); antes 2026-10-21 (huecos del recorrido completo del camión: LTR-260, LTR-261, LTR-262; G11–G14 en `USER_FLOWS.md` §9); antes 2026-10-19
 
 **Lo pendiente vive en Linear** (equipo LTR, un proyecto por módulo; ver
 [`PRD.md`](PRD.md) §4). Esta página es solo un resumen para leer de un vistazo.
@@ -20,6 +20,14 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 
 | Proyecto Linear | Issue | Qué | Clase |
 |---|---|---|---|
+| Work Orders & Jobs | LTR-299 | **Epic D56:** áreas en paralelo, un camión a la vez, Tires en Alignment, tread en el mínimo, card de Tires ([propuesta](proposals/areas-en-paralelo/README.md)) | — |
+| Work Orders & Jobs | LTR-300 | AP-1: un solo orden de áreas; Tires y Flat Repair en Alignment; "next: Tires" | C |
+| Work Orders & Jobs | LTR-301 | AP-2: Work Plan del camión y tabla de Jobs de la WO agrupadas por área (depende de AP-1) | C |
+| Trucks & Inspección | LTR-302 | AP-3: tread en el mínimo crea Job; margen Watch en Setup; números a la vista (**migración → Release safety**) | B |
+| Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué | C |
+| Work Orders & Jobs | LTR-304 | AP-5: docs de D56 repartidos en cada PR | — |
+| Mecánicos | LTR-305 | AP-6: cola de Shop Work para mecánicos generales | — |
+| Work Orders & Jobs | LTR-306 | AP-7: un camión a la vez (`TRUCK_BUSY`), Yard con "Waiting for a mechanic" y quién lo tiene (depende de AP-1) | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
 | Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
@@ -39,7 +47,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics).
+(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics); P38 con D55. **P39–P42** (D56: Detailing tras devolución de Safety, nombre de "Shop Work", override de dos áreas, camión tomado desde ayer) para el dueño y el Shop Manager.
 
 ## Demo congelada (desde 2026-10-16)
 
