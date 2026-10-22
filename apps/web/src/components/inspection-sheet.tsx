@@ -967,7 +967,7 @@ function PreviewJobRow({
       <div className="shrink-0">
         {job.existing ? <Badge variant="secondary">{copy.addsToExisting(job.displayName)}</Badge>
           : canAssign ? (
-            <select className="field !min-h-9 w-full !py-1.5 !text-sm sm:w-44" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
+            <select className="field !min-h-9 w-full !py-1.5 text-base sm:w-44 sm:text-sm" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
               <option value="">{copy.assignLater}</option>
               {alignment?.queue ? <option value={ALIGNMENT_QUEUE}>{copy.alignmentQueue}</option> : null}
               {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}

@@ -469,6 +469,9 @@ export function PurchaseForm({
             <Label htmlFor="purchase-invoice">{messages.pcInvoiceNumber}</Label>
             <Input
               id="purchase-invoice"
+              spellCheck={false}
+              autoCapitalize="characters"
+              autoCorrect="off"
               className="font-mono"
               value={state.invoiceNumber}
               onChange={(event) => { set('invoiceNumber', event.target.value); setDuplicate(null); }}

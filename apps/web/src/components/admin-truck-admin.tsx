@@ -197,6 +197,8 @@ export function TruckFormDialog({
                   value={form[key]}
                   inputMode={key === 'year' ? 'numeric' : undefined}
                   className={key === 'vin' ? 'font-mono uppercase' : undefined}
+                // LTR-293 §12: codes are typed as they are, without the phone's autocorrect or capitals of its own.
+                {...(key === 'vin' || key === 'licensePlate' ? { spellCheck: false, autoCapitalize: 'characters', autoCorrect: 'off' } : {})}
                   autoComplete="off"
                   disabled={busy}
                   required={key === 'truckNumber'}
