@@ -3,12 +3,12 @@ import { normalizeMakeModel } from './vehicle';
 
 describe('normalizeMakeModel (LTR-113)', () => {
   it('puts swapped fields back (277: CASCADIA / Freightliner)', () => {
-    expect(normalizeMakeModel('CASCADIA', 'Freightliner')).toEqual({ make: 'Freightliner', model: 'CASCADIA' });
+    expect(normalizeMakeModel('CASCADIA', 'Freightliner')).toEqual({ make: 'Freightliner', model: 'Cascadia' });
   });
 
   it('splits a Make that holds make and model (600/601: Mack Anthem)', () => {
     expect(normalizeMakeModel('Mack Anthem', null)).toEqual({ make: 'Mack', model: 'Anthem' });
-    expect(normalizeMakeModel('Mack Anthem', 'anthem')).toEqual({ make: 'Mack', model: 'anthem' });
+    expect(normalizeMakeModel('Mack Anthem', 'anthem')).toEqual({ make: 'Mack', model: 'Anthem' });
     expect(normalizeMakeModel('Western Star 49X', '')).toEqual({ make: 'Western Star', model: '49X' });
   });
 
@@ -32,6 +32,15 @@ describe('normalizeMakeModel (LTR-113)', () => {
     expect(normalizeMakeModel('Tesla', 'Semi')).toEqual({ make: 'Tesla', model: 'Semi' });
     expect(normalizeMakeModel(null, null)).toEqual({ make: null, model: null });
     expect(normalizeMakeModel('', '  ')).toEqual({ make: null, model: null });
+  });
+
+  it('LTR-277 §4: a misspelled make is the make it means, and a known model is spelled one way', () => {
+    expect(normalizeMakeModel('Kentworth', 'T680')).toEqual({ make: 'Kenworth', model: 'T680' });
+    expect(normalizeMakeModel('KENTWORTH', 't680')).toEqual({ make: 'Kenworth', model: 'T680' });
+    expect(normalizeMakeModel('Kentworth T680', null)).toEqual({ make: 'Kenworth', model: 'T680' });
+    expect(normalizeMakeModel('Freightliner', 'CASCADIA')).toEqual({ make: 'Freightliner', model: 'Cascadia' });
+    expect(normalizeMakeModel('Freightliner', 'Cascadia 126')).toEqual({ make: 'Freightliner', model: 'Cascadia 126' });
+    expect(normalizeMakeModel('Tesla', 'cascadia')).toEqual({ make: 'Tesla', model: 'Cascadia' });
   });
 
   it('a known make alone in Model moves to Make', () => {
