@@ -24,6 +24,7 @@ const DEMO_START_EMAIL = 'ms@lightning.local';
 import { DEFAULT_DEMO_STATE, writeDemoState } from '@/lib/demo/state';
 import { shopLocaleCookieWrite } from '@/lib/shop-locale';
 import { LoginLoader } from '@/components/login-loader';
+import { useDocumentTitle } from '@/components/admin-breadcrumb';
 
 export default function LoginPage() {
   const { login, loginDev, requestPasswordReset, logout, passwordRecovery, user, token, sessionLoading, profileLoading, sessionError, retrySession } = useAuth();
@@ -37,6 +38,8 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigationStarted = useRef(false);
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.signIn);
 
   useEffect(() => {
     if (passwordRecovery) {

@@ -10,8 +10,11 @@ import { Button, DataTable, PageHeader, Card, CardContent, EmptyState, Input, Lo
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { useAdminCatalogCategories, useAdminCustomJobs } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 export function AdminCatalogList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.catalogTitle);
   const canWrite = useCanShowManagerWrites();
   const { data, error, isLoading, mutate } = useAdminCatalogCategories();
   // LTR-57: Custom Jobs waiting in the review inbox.

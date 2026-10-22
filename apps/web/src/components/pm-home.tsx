@@ -10,6 +10,7 @@ import { intlLocale } from '@/lib/shop-locale';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { PmInProgressNotice } from './pm-in-progress-notice';
 import { Button, CardListSkeleton, CountChip, EmptyState, PriorityBadge } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 type Wo = WorkOrderSummaryDto;
 
@@ -28,6 +29,8 @@ function age(iso: string) {
  */
 export function PmHome({ data, loading }: { data: HomeLists | undefined; loading: boolean }) {
   const { messages } = useShopLocale();
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.navMyWork);
   const shortDate = (iso: string) => new Intl.DateTimeFormat(intlLocale(messages.locale), { month: 'short', day: 'numeric' }).format(new Date(iso));
   const running = data?.active[0] ?? null;
   const waiting = data?.created ?? [];
