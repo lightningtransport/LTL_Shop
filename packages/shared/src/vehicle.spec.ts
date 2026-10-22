@@ -38,6 +38,9 @@ describe('normalizeMakeModel (LTR-113)', () => {
     expect(normalizeMakeModel('Kentworth', 'T680')).toEqual({ make: 'Kenworth', model: 'T680' });
     expect(normalizeMakeModel('KENTWORTH', 't680')).toEqual({ make: 'Kenworth', model: 'T680' });
     expect(normalizeMakeModel('Kentworth T680', null)).toEqual({ make: 'Kenworth', model: 'T680' });
+    // Production 965 and 966: the Model repeats the misspelled make.
+    expect(normalizeMakeModel('Kentworth', 'Kentworth W9')).toEqual({ make: 'Kenworth', model: 'W9' });
+    expect(normalizeMakeModel('Kenworth', 'kenworth t680')).toEqual({ make: 'Kenworth', model: 'T680' });
     expect(normalizeMakeModel('Freightliner', 'CASCADIA')).toEqual({ make: 'Freightliner', model: 'Cascadia' });
     expect(normalizeMakeModel('Freightliner', 'Cascadia 126')).toEqual({ make: 'Freightliner', model: 'Cascadia 126' });
     expect(normalizeMakeModel('Tesla', 'cascadia')).toEqual({ make: 'Tesla', model: 'Cascadia' });

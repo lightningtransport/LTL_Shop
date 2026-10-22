@@ -71,8 +71,11 @@ function splitMakePrefix(value: string): { make: string; rest: string } | null {
 /** "PETERBILT 579" with make Peterbilt → "579". A Model that is only the make stays as typed. */
 function withoutMake(model: string | null, make: string): string | null {
   if (!model) return model;
-  const prefix = `${make.toLocaleLowerCase('en-US')} `;
-  if (!model.toLocaleLowerCase('en-US').startsWith(prefix)) return model;
+  const key = model.toLocaleLowerCase('en-US');
+  // LTR-277 §4: also the make's known misspelling ("Kentworth W9" with make Kenworth → "W9").
+  const spellings = [make, ...Object.keys(TRUCK_MAKE_ALIASES).filter((alias) => TRUCK_MAKE_ALIASES[alias] === make)];
+  const prefix = spellings.map((spelled) => `${spelled.toLocaleLowerCase('en-US')} `).find((candidate) => key.startsWith(candidate));
+  if (!prefix) return model;
   return model.slice(prefix.length).trim() || model;
 }
 
