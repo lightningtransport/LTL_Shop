@@ -126,28 +126,24 @@ export function PathScrollReset() {
       };
     }
 
-    // Back to a list: its rows load after the route, so try each frame until the page is tall enough (up to 1.5 s),
-    // and stop as soon as the person scrolls or touches the page themselves.
+    // Back to a list: its rows load after the route and can redraw (a revalidation), so for up to 5 s put the page
+    // back whenever it is not where the person left it. It stops as soon as they scroll, tap, click or type.
     let frame = 0;
     let stopped = false;
     const startedAt = performance.now();
     const stop = () => { stopped = true; };
     const step = () => {
-      if (stopped) return;
-      writeScroll(target);
-      if (Math.abs(readScroll() - target) <= 1 || performance.now() - startedAt > 1500) return;
+      if (stopped || performance.now() - startedAt > 5000) return;
+      if (Math.abs(readScroll() - target) > 1) writeScroll(target);
       frame = window.requestAnimationFrame(step);
     };
     frame = window.requestAnimationFrame(step);
-    window.addEventListener('wheel', stop, { passive: true, once: true });
-    window.addEventListener('touchstart', stop, { passive: true, once: true });
-    window.addEventListener('keydown', stop, { once: true });
+    const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
+    for (const name of events) window.addEventListener(name, stop, { passive: true, once: true, capture: true });
     return () => {
       stopped = true;
       window.cancelAnimationFrame(frame);
-      window.removeEventListener('wheel', stop);
-      window.removeEventListener('touchstart', stop);
-      window.removeEventListener('keydown', stop);
+      for (const name of events) window.removeEventListener(name, stop, { capture: true });
     };
   }, [pathname, routeKey]);
 

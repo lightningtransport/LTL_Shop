@@ -797,10 +797,13 @@ test.describe('Shop Admin Phase 2A', () => {
     const room = await main.evaluate((element) => element.scrollHeight - element.clientHeight);
     expect(room).toBeGreaterThan(150);
     const place = Math.min(400, room);
-    await main.evaluate((element, top) => { element.scrollTop = top; }, place);
-    await expect.poll(scrollTop).toBe(place);
-    // Let the scroll be noted, then open a Work Order without letting Playwright scroll to the link.
-    await page.waitForTimeout(100);
+    // The list can redraw right after it loads (and the browser then clamps the scroll), so scroll until the place holds,
+    // as a person would; then open a Work Order without letting Playwright scroll to the link.
+    await expect(async () => {
+      await main.evaluate((element, top) => { element.scrollTop = top; }, place);
+      await page.waitForTimeout(300);
+      expect(await scrollTop()).toBe(place);
+    }).toPass({ timeout: 10_000 });
     await main.evaluate((element) => (element.querySelector('a[href*="/admin/work-orders/00000000"]') as HTMLAnchorElement).click());
     await expect(page).toHaveURL(/\/admin\/work-orders\/00000000/);
     await expect.poll(scrollTop).toBe(0);
