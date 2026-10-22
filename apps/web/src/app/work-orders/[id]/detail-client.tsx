@@ -55,6 +55,7 @@ import { PmJobDetail } from '@/components/pm-job-detail';
 import { WorkOrderNotesThread } from '@/components/work-order-notes-thread';
 import { jobCategoriesLine, vehicleLine } from '@/lib/work-order-identity';
 import { optimisticCompleteJob } from '@/lib/optimistic-complete-job';
+import { useDocumentTitle } from '@/components/admin-breadcrumb';
 
 
 export default function WorkOrderDetailPage() {
@@ -71,6 +72,8 @@ export default function WorkOrderDetailPage() {
     error: loadError,
     mutate: mutateWorkOrder,
   } = useWorkOrder(id, !!token);
+  // LTR-293 §10: the tab says which truck ("Truck 609 · WO-017"), so several open ones differ.
+  useDocumentTitle(wo ? `${messages.truckTitle(wo.truckNumber)} · ${wo.displayId}` : null);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

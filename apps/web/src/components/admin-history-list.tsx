@@ -9,8 +9,11 @@ import { useAdminHistory } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { workOrderStatusLabel } from '@/lib/status-chips';
 import { adminListFromPath, adminWorkOrderHref } from '@/lib/admin-truck-origin';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 export function AdminHistoryList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.historyTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();

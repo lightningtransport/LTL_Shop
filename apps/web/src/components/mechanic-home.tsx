@@ -14,6 +14,7 @@ import { intlLocale } from '@/lib/shop-locale';
 import { cn } from '@/lib/utils';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { Badge, Button, CountChip, EmptyState, PriorityBadge } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 type Wo = WorkOrderSummaryDto;
 
@@ -49,6 +50,8 @@ export function StandardHome({
   StartAction: (props: { wo: Wo; className?: string; label?: string; variant?: 'default' | 'outline' }) => React.ReactNode;
 }) {
   const { messages } = useShopLocale();
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.navMyWork);
   const clockId = data.myClock?.workOrderId ?? null;
   // LTR-277 §3: the same Jobs the Completed screen lists (open Work Orders too), not the closed Work Orders.
   const completedJobs = myCompletedJobsCount(data, userId);

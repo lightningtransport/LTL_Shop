@@ -31,6 +31,7 @@ import {
   type DashboardCounter,
   type DashboardGroup,
 } from '@/lib/dashboard-queue';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: LucideIcon; tone: string }> = {
   blocked: { label: 'dashboardGroupBlocked', Icon: OctagonPause, tone: 'text-warning-foreground dark:text-warning' },
@@ -51,6 +52,8 @@ const GROUP_META: Record<DashboardGroup, { label: keyof AdminMessages; Icon: Luc
  * shop, and the mechanics' work requests. History counts are one quiet line of links.
  */
 export function AdminDashboard({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.title);
   const { user } = useAuth();
   const { data, error, isLoading, mutate } = useAdminDashboard();
   const { data: dispatch, mutate: mutateDispatch } = useAdminYardDataBoundary();

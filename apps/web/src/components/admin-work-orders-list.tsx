@@ -24,8 +24,11 @@ import {
   readAdminWorkOrdersFilters,
   type AdminWorkOrdersFilters,
 } from '@/lib/work-order-search';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 export function AdminWorkOrdersList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.workOrdersTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.toString();

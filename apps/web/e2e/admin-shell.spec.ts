@@ -841,5 +841,17 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Notes (optional)' })).toHaveValue('Driver says it pulls left');
   });
+
+  test('LTR-293 §10: each screen names the browser tab, a Work Order by its number', async ({ page }) => {
+    await devLogin(page, 'manager@lightning.local');
+    await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
+    await expect(page).toHaveTitle('Dashboard — Lightning Shop');
+    await page.goto('/admin/work-orders');
+    await expect(page).toHaveTitle('Work Orders — Lightning Shop');
+    await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
+    await expect(page).toHaveTitle(/^WO-0101 — Lightning Shop$/);
+    await page.goto('/admin/trucks');
+    await expect(page).toHaveTitle('Trucks — Lightning Shop');
+  });
 });
 

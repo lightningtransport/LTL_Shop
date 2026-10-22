@@ -18,6 +18,7 @@ import { fillPlaceholders } from '@/lib/admin-next-step';
 import { formatVehicleYmm } from '@/lib/format';
 import { faultSeverityLabel, faultSeverityVariant, isOpenWorkOrderStatus, isStaleLocation, shortLocation, yardPlaceText } from '@/lib/samsara-view';
 import { cn } from '@/lib/utils';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /**
  * Admin → Trucks. TL-1…TL-8 (OPEN_ISSUES §1z, ux-audit/admin-trucks-list): four columns in the order the Manager reads
@@ -25,6 +26,8 @@ import { cn } from '@/lib/utils';
  * Company and operational status stay on the Truck page: they were the same for almost every truck.
  */
 export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.trucksTitle);
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.toString();

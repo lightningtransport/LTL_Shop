@@ -13,6 +13,7 @@ import { useCanShowManagerWrites, useIsSystemAdmin } from '@/lib/admin-actor';
 import { useAdminMechanics } from '@/lib/admin-data';
 import type { AdminLocale, AdminMessages } from '@/lib/admin-messages';
 import { MechanicMode } from '@ltl-shop/shared';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /** ME5: Standard, PM, Safety — or System Admin for an admin row on the roster. */
 export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | 'capabilities'>, messages: AdminMessages) {
@@ -24,6 +25,8 @@ export function personTypeLabel(person: Pick<AdminMechanicSummaryDto, 'role' | '
 }
 
 export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages: AdminMessages }) {
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.mechanicsTitle);
   // D22: the Shop Manager manages the roster (System Admin too); the Job catalog too (D25).
   const canWrite = useCanShowManagerWrites();
   // LTR-253 / D48: only a System Admin adds Shop Managers and System Admins.

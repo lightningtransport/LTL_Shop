@@ -14,11 +14,14 @@ import { rankTruckResults } from '@/lib/truck-search';
 import { SessionSignInFallback } from './session-sign-in-fallback';
 import { OpenWorkOrderTag } from './open-work-order-tag';
 import { Card, CardListSkeleton, EmptyState, HomeTopBar, Input, Label, LoadFailure, PageHeader } from './ui';
+import { useDocumentTitle } from './admin-breadcrumb';
 
 /** LTR-133: a mechanic finds any Truck and opens its repair history. */
 export function MechanicTrucksPage({ mode }: { mode: MechanicMode }) {
   const { token, sessionLoading } = useAuth();
   const { messages } = useShopLocale();
+  // LTR-293 §10: the browser tab says which screen this is.
+  useDocumentTitle(messages.mechanicTrucksTitle);
   const router = useRouter();
   const [query, setQuery] = useState('');
   const { data: trucks, error, mutate } = useTrucks(!!token);
