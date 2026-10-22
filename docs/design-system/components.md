@@ -17,7 +17,7 @@ All new screens must reuse these exports. Do not copy prototype CSS.
 | `Label` | Programmatically associated labels |
 | `Select` | Native `<select>` with Lucide chevron |
 | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` | Grouped content. Never put a Card (or any bordered box) inside another Card; split it with `SectionBlock` or dividers (LTR-168). `CardDescription` is one line at most, or left out when the title says it |
-| `DataTable` | The Admin list table (LTR-169): a real table from `md`; on phones each row is a card with the `primary` column as its title and the rest as labeled fields. One DOM with explicit ARIA roles. `hideOnMobile` leaves secondary columns out of the card |
+| `DataTable` | The Admin list table (LTR-169): a real table from `md`; on phones each row is a card with the `primary` column as its title and the rest as labeled fields. One DOM with explicit ARIA roles. `hideOnMobile` leaves secondary columns out of the card. `wholeCardOpens` (LTR-293 §7): on a phone the whole card follows the primary cell's link or button; other controls in the card stay on top |
 | `AdminFilterToolbar` | Search + filters for Admin lists (LTR-169); see the composition rules below |
 | `CollapsibleSection` | A folded section with one surface: the title is an `h2` inside the summary, optional one-line description, chevron. Use it for context the user does not act on (summaries, truck data, history, audit, rare actions); it starts closed |
 | `SectionBlock` | One block inside a `Card` or `CollapsibleSection`: `h3.group-title`, optional description, content; blocks are separated by `divide-y` on the parent |

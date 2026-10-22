@@ -96,6 +96,7 @@ export function AdminMechanicsList({ messages }: { locale: AdminLocale; messages
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noMechanicsMatch}</p></EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.mechanicsTitle}
           getKey={(item) => item.id}

@@ -112,6 +112,7 @@ export function AdminTrucksList({ locale, messages }: { locale: AdminLocale; mes
       {!isLoading && !error && items.length === 0 ? <EmptyState><p>{messages.noTrucksMatch}</p></EmptyState> : null}
       {items.length ? (
         <DataTable
+              wholeCardOpens
           items={items}
           caption={messages.trucksTitle}
           getKey={(item) => item.truck.id}

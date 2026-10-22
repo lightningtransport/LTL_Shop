@@ -115,6 +115,7 @@ export function AdminInternalInvoices({ locale, messages }: { locale: AdminLocal
               })}
             </p>
             <DataTable
+              wholeCardOpens
               className="md:rounded-none md:border-0"
               items={items}
               caption={invoiceMonth(periodStart, locale)}
