@@ -693,6 +693,28 @@ createServer(async (request, response) => {
       }));
       return;
     }
+    // LTR-298: a category and a part can be added from the part dialog (also from a purchase line).
+    if (path === '/api/admin/parts-costs/part-categories' && request.method === 'POST') {
+      const body = await readJson(request);
+      const category = { id: `00000000-0000-4000-8000-0000000c${String(partsState.categories.length + 1).padStart(4, '0')}`, name: String(body?.name ?? '').trim(), kind: body?.kind ?? 'repair', parts: [] };
+      partsState.categories.push(category);
+      json(response, 201, { id: category.id });
+      return;
+    }
+    if (path === '/api/admin/parts-costs/parts' && request.method === 'POST') {
+      const body = await readJson(request);
+      const category = partsState.categories.find((item) => item.id === body?.categoryId);
+      if (!category) { json(response, 400, { code: 'CATEGORY_NOT_FOUND' }); return; }
+      const vendor = partsState.vendors.find((item) => item.id === body?.defaultVendorId) ?? null;
+      const part = {
+        id: `00000000-0000-4000-8000-0000000a${String(allParts().length + 1).padStart(4, '0')}`, categoryId: category.id, partNumber: body?.partNumber ?? null, displayName: String(body?.displayName ?? '').trim(),
+        active: true, source: 'app', minStock: body?.minStock ?? null, tireSize: body?.tireSize ?? null, tireType: body?.tireType ?? null, unitCostCents: body?.unitCostCents ?? null,
+        defaultVendor: vendor ? { id: vendor.id, name: vendor.name } : null, fits: body?.fits ?? [], usedInPmCount: 0, lastUsedAt: null, openPms: [], lastPaid: null,
+      };
+      category.parts.push(part);
+      json(response, 201, { id: part.id });
+      return;
+    }
     if (path === '/api/admin/parts-costs/vendors' && request.method === 'POST') {
       const body = await readJson(request);
       const name = String(body?.name ?? '').trim();

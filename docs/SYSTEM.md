@@ -391,8 +391,11 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   escribe** (LTR-298): el campo filtra Parts por nombre o número mientras se
   escribe. **Arriba de la lista, siempre a la vista**, van las salidas:
   **Add a new part to Parts…** (con el texto escrito, si lo hay: abre Agregar
-  parte con ese texto y una categoría de repuestos, y al guardar la línea usa
-  la parte nueva) y usar el texto tal cual solo en esa factura ("Other"). Salir del campo con un texto que no es una parte lo deja como
+  parte con ese texto, una categoría de repuestos y **el proveedor de la
+  compra como habitual**, y al guardar la línea usa la parte nueva) y usar el
+  texto tal cual solo en esa factura ("Other"). Agregar parte tiene **+ Add
+  category…** y **+ Add vendor…** dentro del mismo diálogo, así cargar una
+  factura nunca manda al Manager a otra pantalla. Salir del campo con un texto que no es una parte lo deja como
   "Other"; no se pierde nada escrito.
 - **Las partes del PM son las de tipo PM del mismo catálogo** (no hay un
   catálogo aparte). Admin → Parts & costs → **Parts**

@@ -176,6 +176,38 @@ test('a new purchase that was not saved comes back in the same tab; Discard asks
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+// LTR-298: loading an invoice never sends the Manager to another screen: the part, its category and its vendor
+// are added from the purchase line, and the part starts with the invoice's vendor.
+test('manager adds a part that is not in Parts from the purchase line, with a new category; the invoice vendor comes set', async ({ page }) => {
+  await loginToAdmin(page, 'manager@lightning.local');
+  await page.goto('/admin/parts/purchases');
+  await page.getByRole('button', { name: 'New purchase' }).click();
+  const form = page.getByRole('dialog', { name: 'New purchase' });
+  await form.getByLabel('Vendor').selectOption({ label: 'FleetPride' });
+  const part = form.getByRole('combobox', { name: 'Part' }).first();
+  await part.fill('Brake drum 16.5');
+  await form.getByRole('listbox').getByRole('option', { name: 'Add “Brake drum 16.5” to Parts…' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Add part' });
+  await expect(dialog.getByLabel('Name')).toHaveValue('Brake drum 16.5');
+  await expect(dialog.getByLabel('Usual vendor').locator('option:checked')).toHaveText('FleetPride');
+  await dialog.getByLabel('Category').selectOption({ label: '+ Add category…' });
+  await dialog.getByLabel('Category name').fill('Brakes');
+  await dialog.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByText('Category added')).toBeVisible();
+  await expect(dialog.getByLabel('Category').locator('option:checked')).toHaveText('Brakes · Repair');
+  await dialog.getByLabel('Usual vendor').selectOption({ label: '+ Add vendor…' });
+  await dialog.getByLabel('New vendor name').fill('Brake Supply Co');
+  await dialog.getByRole('button', { name: 'Add vendor' }).click();
+  await expect(page.getByText('Vendor added')).toBeVisible();
+  await expect(dialog.getByLabel('Usual vendor').locator('option:checked')).toHaveText('Brake Supply Co');
+  await dialog.getByRole('button', { name: 'Add part' }).click();
+
+  await expect(page.getByText('Added to the catalog; this line now uses it')).toBeVisible();
+  await expect(part).toHaveValue('Brake drum 16.5');
+  await expect(form.getByTestId('other-hint')).toHaveCount(0);
+});
+
 // LTR-200 / D32 (PC-3): Outside repairs.
 test('manager loads an outside shop invoice from the Job: truck and Job come picked; a purchase invoice number is refused', async ({ page }) => {
   await loginToAdmin(page, 'manager@lightning.local');

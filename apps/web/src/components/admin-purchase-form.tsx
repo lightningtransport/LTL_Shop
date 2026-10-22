@@ -696,7 +696,10 @@ export function PurchaseForm({
           vendors={vendors}
           locale={locale}
           messages={messages}
-          preset={{ displayName: state.lines[cataloging]?.description ?? '' }}
+          // LTR-298: the part starts with this invoice's vendor as its usual vendor; vendor and category can be added there.
+          preset={{ displayName: state.lines[cataloging]?.description ?? '', defaultVendorId: state.vendorId || undefined }}
+          onVendorAdded={onVendorAdded}
+          onCategoryAdded={() => void onCatalogChanged?.()}
           onClose={() => setCataloging(null)}
           onSaved={(partId) => {
             const index = cataloging;
