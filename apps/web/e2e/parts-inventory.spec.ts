@@ -52,7 +52,15 @@ test.describe('D47 Parts is the inventory', () => {
     await visible(page.getByLabel('Counted · Fuel Filter 4 Micron')).fill('5');
     await visible(page.getByLabel('Counted · Fuel Filter Volvo')).fill('2');
     await expect(page.getByTestId('count-summary')).toContainText('1 need a cost');
-    await expect(page.getByTestId('count-save')).toBeDisabled();
+    // LTR-293 §3: Save stays on; without the cost it sends nothing and says "Required" next to that cost.
+    const writes: string[] = [];
+    const onWrite = (request: import('@playwright/test').Request) => { if (request.method() !== 'GET' && request.url().includes('/stock')) writes.push(request.url()); };
+    page.on('request', onWrite);
+    await page.getByTestId('count-save').click();
+    await expect(visible(page.getByLabel('Cost of each one · Fuel Filter Volvo'))).toBeFocused();
+    await expect(visible(page.getByLabel('Cost of each one · Fuel Filter Volvo'))).toHaveAccessibleDescription('Required');
+    page.off('request', onWrite);
+    expect(writes).toEqual([]);
     await visible(page.getByLabel('Cost of each one · Fuel Filter Volvo')).fill('15');
     await expect(page.getByTestId('count-summary')).toContainText('2 changed');
     await page.getByTestId('count-save').click();

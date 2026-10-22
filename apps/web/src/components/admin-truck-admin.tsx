@@ -12,6 +12,7 @@ import {
   type TruckDto,
 } from '@ltl-shop/shared';
 import { useActionToast } from './action-toast';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { Badge, Button, CardListSkeleton, DialogActions, InlineAlert, Input, Label, Modal } from './ui';
 import { ApiError } from '@/lib/api';
 import { apiErrorCode } from '@/lib/api-error-message';
@@ -96,29 +97,44 @@ export function TruckFormDialog({
   const [error, setError] = useState<string | null>(null);
   const [vinOwner, setVinOwner] = useState<{ id: string; truckNumber: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // LTR-293 §4: a missing number or a bad year is said under that field (not in one alert at the bottom), and Save
+  // goes to the first one. Server errors (VIN on another truck, write failed) stay in the alert.
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(formFrom(truck));
       setError(null);
       setVinOwner(null);
+      setShowErrors(false);
     }
   }, [open, truck]);
+
+  const range = truckYearRange();
+  const yearValue = form.year.trim() ? Number(form.year) : null;
+  const fieldErrors: Partial<Record<TextField, string>> = {
+    ...(!form.truckNumber.trim() ? { truckNumber: messages.truckNumberRequired } : {}),
+    ...(yearValue !== null && (!Number.isInteger(yearValue) || yearValue < range.min || yearValue > range.max)
+      ? { year: fillPlaceholders(messages.truckYearInvalid, { min: String(range.min), max: String(range.max) }) }
+      : {}),
+  };
+  const missing: MissingField[] = FORM_FIELDS
+    .filter(({ key }) => fieldErrors[key])
+    .map(({ key, label }) => ({ label: String(messages[label]), fieldId: `truck-form-${key}` }));
 
   const dirty = JSON.stringify(form) !== JSON.stringify(formFrom(truck));
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!form.truckNumber.trim()) {
-      setError(messages.truckNumberRequired);
+    if (busy) return;
+    if (missing.length) {
+      setShowErrors(true);
+      setError(null);
+      setVinOwner(null);
+      focusField(missing[0].fieldId);
       return;
     }
-    const range = truckYearRange();
-    const year = form.year.trim() ? Number(form.year) : null;
-    if (year !== null && (!Number.isInteger(year) || year < range.min || year > range.max)) {
-      setError(fillPlaceholders(messages.truckYearInvalid, { min: String(range.min), max: String(range.max) }));
-      return;
-    }
+    const year = yearValue;
     setBusy(true);
     setError(null);
     setVinOwner(null);
@@ -153,23 +169,30 @@ export function TruckFormDialog({
       closeLabel={messages.closeDialog}
       dismissible={!dirty}
     >
-      <form className="space-y-4" onSubmit={(event) => void onSubmit(event)} data-testid="truck-form">
+      <form className="space-y-4" onSubmit={(event) => void onSubmit(event)} data-testid="truck-form" noValidate>
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         <div className="grid gap-3 sm:grid-cols-2">
-          {FORM_FIELDS.map(({ key, label }) => (
-            <div key={key} className="space-y-1.5">
-              <Label htmlFor={`truck-form-${key}`}>{String(messages[label])}</Label>
-              <Input
-                id={`truck-form-${key}`}
-                value={form[key]}
-                inputMode={key === 'year' ? 'numeric' : undefined}
-                className={key === 'vin' ? 'font-mono uppercase' : undefined}
-                autoComplete="off"
-                disabled={busy}
-                required={key === 'truckNumber'}
-                onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
-              />
-            </div>
-          ))}
+          {FORM_FIELDS.map(({ key, label }) => {
+            const fieldError = showErrors ? fieldErrors[key] : undefined;
+            return (
+              <div key={key} className="space-y-1.5">
+                <Label htmlFor={`truck-form-${key}`}>{String(messages[label])}</Label>
+                <Input
+                  id={`truck-form-${key}`}
+                  value={form[key]}
+                  inputMode={key === 'year' ? 'numeric' : undefined}
+                  className={key === 'vin' ? 'font-mono uppercase' : undefined}
+                  autoComplete="off"
+                  disabled={busy}
+                  required={key === 'truckNumber'}
+                  aria-invalid={fieldError ? true : undefined}
+                  aria-describedby={fieldError ? `truck-form-${key}-error` : undefined}
+                  onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
+                />
+                <RequiredNote show={Boolean(fieldError)} id={`truck-form-${key}-error`} messages={messages} text={fieldError} />
+              </div>
+            );
+          })}
         </div>
         {error ? (
           <InlineAlert>

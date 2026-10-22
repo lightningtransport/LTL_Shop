@@ -39,7 +39,15 @@ test('manager keeps the PM part catalog: cost, usual vendor, a part in an open P
   await expect(dialog.getByRole('checkbox', { name: /Active/ })).toBeDisabled();
   await dialog.getByLabel('Reference cost').fill('12.345');
   await expect(dialog.getByText('Enter an amount like 24.10')).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  // LTR-293 §3: Save stays on; with a bad cost it sends nothing and takes you to the field that says why.
+  const writes: string[] = [];
+  const onWrite = (request: import('@playwright/test').Request) => { if (request.method() !== 'GET' && request.url().includes('/parts')) writes.push(request.url()); };
+  page.on('request', onWrite);
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
+  await expect(dialog.getByLabel('Reference cost')).toBeFocused();
+  await expect(dialog.getByLabel('Reference cost')).toHaveAccessibleDescription('Enter an amount like 24.10');
+  page.off('request', onWrite);
+  expect(writes).toEqual([]);
   await dialog.getByLabel('Reference cost').fill('31.5');
   await dialog.getByLabel('Usual vendor').selectOption({ label: 'FleetPride' });
   await dialog.getByRole('button', { name: 'Save changes' }).click();

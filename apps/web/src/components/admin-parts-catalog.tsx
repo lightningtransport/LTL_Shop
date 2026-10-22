@@ -20,6 +20,7 @@ import {
   Badge, Button, Card, CardContent, DataTable, DialogActions, EmptyState, InlineAlert, Input, Label, LoadFailure, Modal,
   PageHeader, PageSkeleton, SectionCard, Select,
 } from './ui';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { useCanShowManagerWrites } from '@/lib/admin-actor';
 import { createAdminPart, createAdminPartCategory, updateAdminPart, useAdminPartsCatalog, useAdminStock, useAdminVendors } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -275,9 +276,16 @@ function CategoryDialog({ messages, onClose, onSaved }: { messages: AdminMessage
   const [kind, setKind] = useState<'repair' | 'tire'>('repair');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
+  const nameMissing = showErrors && !name.trim();
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!name.trim() || busy) return;
+    if (busy) return;
+    if (!name.trim()) {
+      setShowErrors(true);
+      focusField('category-name');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -292,10 +300,11 @@ function CategoryDialog({ messages, onClose, onSaved }: { messages: AdminMessage
   }
   return (
     <Modal open title={messages.pcAddCategory} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!name.trim()}>
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="category-dialog">
+      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="category-dialog" noValidate>
         <div className="space-y-1.5">
           <Label htmlFor="category-name">{messages.pcCategoryName}</Label>
-          <Input id="category-name" value={name} onChange={(event) => setName(event.target.value)} disabled={busy} autoComplete="off" required />
+          <Input id="category-name" value={name} onChange={(event) => setName(event.target.value)} disabled={busy} autoComplete="off" required aria-invalid={nameMissing || undefined} aria-describedby={nameMissing ? 'category-name-error' : undefined} />
+          <RequiredNote show={nameMissing} id="category-name-error" messages={messages} />
         </div>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">{messages.pcCategoryKind}</legend>
@@ -309,7 +318,8 @@ function CategoryDialog({ messages, onClose, onSaved }: { messages: AdminMessage
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={busy || !name.trim()}>{messages.pcAddCategory}</Button>
+          {/* LTR-293 §3: Save stays on; with no name it says "Required" under the field instead of going grey. */}
+          <Button type="submit" disabled={busy}>{messages.pcAddCategory}</Button>
         </DialogActions>
       </form>
     </Modal>
@@ -490,7 +500,22 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
   const isTire = kind === 'tire';
   const minStockValue = minStock.trim() === '' ? null : /^\d+$/.test(minStock.trim()) ? Number(minStock.trim()) : undefined;
   const tireMissing = isTire && (!tireSize.trim() || !tireType);
+  const [showErrors, setShowErrors] = useState(false);
   const canSave = !busy && displayName.trim() && categoryId && !costInvalid && !fitsMissing && minStockValue !== undefined && !tireMissing;
+  // LTR-293 §3: what stops the save, in form order (same rules as canSave).
+  const missing: MissingField[] = [
+    ...(!categoryId ? [{ label: messages.pcCategory, fieldId: 'part-category' }] : []),
+    ...(!displayName.trim() ? [{ label: messages.pcPartName, fieldId: 'part-name' }] : []),
+    ...(isTire && !tireSize.trim() ? [{ label: messages.pcTireSize, fieldId: 'part-tire-size' }] : []),
+    ...(isTire && !tireType ? [{ label: messages.pcTireType, fieldId: 'part-tire-type' }] : []),
+    ...(fitsMissing ? [{ label: messages.pcFits, fieldId: 'part-fit-make-0' }] : []),
+    ...(costInvalid ? [{ label: messages.pcRefCost, fieldId: 'part-cost' }] : []),
+    ...(minStockValue === undefined ? [{ label: messages.pcMinStock, fieldId: 'part-min-stock' }] : []),
+  ];
+  const nameMissing = showErrors && !displayName.trim();
+  const categoryMissing = showErrors && !categoryId;
+  const tireSizeMissing = showErrors && isTire && !tireSize.trim();
+  const tireTypeMissing = showErrors && isTire && !tireType;
   const dirty = part
     ? displayName !== part.displayName || partNumber !== (part.partNumber ?? '') || cost !== centsToInput(part.unitCostCents) || vendorId !== (part.defaultVendor?.id ?? '') || active !== part.active
       || tireSize !== (part.tireSize ?? '') || tireType !== (part.tireType ?? '') || minStock !== (part.minStock !== null ? String(part.minStock) : '')
@@ -498,7 +523,12 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setBusy(true);
     setError(null);
     const body = {
@@ -523,7 +553,8 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
 
   return (
     <Modal open title={part ? messages.pcEditPart : messages.pcAddPart} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!dirty}>
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="part-dialog">
+      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="part-dialog" noValidate>
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         {part ? (
           <p className="text-xs text-muted-foreground">
             {part.usedInPmCount && part.lastUsedAt
@@ -533,9 +564,10 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
         ) : (
           <div className="space-y-1.5">
             <Label htmlFor="part-category">{messages.pcCategory}</Label>
-            <Select id="part-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={busy}>
+            <Select id="part-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} disabled={busy} aria-invalid={categoryMissing || undefined} aria-describedby={categoryMissing ? 'part-category-error' : undefined}>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.kind === 'pm' ? category.name : `${category.name} · ${kindLabel(category.kind, messages)}`}</option>)}
             </Select>
+            <RequiredNote show={categoryMissing} id="part-category-error" messages={messages} />
           </div>
         )}
         {lockedByPm ? <InlineAlert className="border-warning/40 bg-warning-surface text-warning-foreground">{fillPlaceholders(messages.pcInOpenPmHelp, { truck: part!.openPms.map((pm) => pm.truckNumber).join(', ') })}</InlineAlert> : null}
@@ -546,7 +578,8 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="part-name">{messages.pcPartName}</Label>
-            <Input id="part-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} disabled={busy} autoComplete="off" required />
+            <Input id="part-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} disabled={busy} autoComplete="off" required aria-invalid={nameMissing || undefined} aria-describedby={nameMissing ? 'part-name-error' : undefined} />
+            <RequiredNote show={nameMissing} id="part-name-error" messages={messages} />
           </div>
         </div>
 
@@ -554,19 +587,21 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
           <div className="grid gap-4 sm:grid-cols-2" data-testid="part-tire-fields">
             <div className="space-y-1.5">
               <Label htmlFor="part-tire-size">{messages.pcTireSize}</Label>
-              <Input id="part-tire-size" className="font-mono" value={tireSize} onChange={(event) => setTireSize(event.target.value)} disabled={busy} autoComplete="off" placeholder="11R22.5" aria-describedby="part-tire-size-help" />
+              <Input id="part-tire-size" className="font-mono" value={tireSize} onChange={(event) => setTireSize(event.target.value)} disabled={busy} autoComplete="off" placeholder="11R22.5" aria-invalid={tireSizeMissing || undefined} aria-describedby={tireSizeMissing ? 'part-tire-size-error part-tire-size-help' : 'part-tire-size-help'} />
+              <RequiredNote show={tireSizeMissing} id="part-tire-size-error" messages={messages} />
               <p id="part-tire-size-help" className="text-xs text-muted-foreground">{messages.pcTireSizeHelp}</p>
             </div>
-            <fieldset className="space-y-1.5">
+            <fieldset className="space-y-1.5" aria-describedby={tireTypeMissing ? 'part-tire-type-error' : undefined}>
               <legend className="text-sm font-medium">{messages.pcTireType}</legend>
               <div className="flex gap-4">
-                {(['new', 'recap'] as const).map((value) => (
+                {(['new', 'recap'] as const).map((value, index) => (
                   <label key={value} className="flex min-h-11 items-center gap-2 text-sm">
-                    <input type="radio" name="part-tire-type" checked={tireType === value} onChange={() => setTireType(value)} disabled={busy} />
+                    <input type="radio" id={index === 0 ? 'part-tire-type' : undefined} name="part-tire-type" checked={tireType === value} onChange={() => setTireType(value)} disabled={busy} aria-invalid={tireTypeMissing || undefined} aria-describedby={tireTypeMissing ? 'part-tire-type-error' : undefined} />
                     {value === 'new' ? messages.pcTireNew : messages.pcTireRecap}
                   </label>
                 ))}
               </div>
+              <RequiredNote show={tireTypeMissing} id="part-tire-type-error" messages={messages} />
             </fieldset>
           </div>
         ) : null}
@@ -587,7 +622,7 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
                 <div key={index} className="flex flex-wrap items-end gap-2">
                   <div className="space-y-1">
                     <Label htmlFor={`part-fit-make-${index}`} className="text-xs">{messages.pcFitsMake}</Label>
-                    <Select id={`part-fit-make-${index}`} value={fit.make} disabled={busy} onChange={(event) => setFits(fits.map((row, at) => at === index ? { ...row, make: event.target.value } : row))}>
+                    <Select id={`part-fit-make-${index}`} value={fit.make} disabled={busy} aria-invalid={(fitsMissing && index === 0) || undefined} aria-describedby={fitsMissing && index === 0 ? 'part-fits-error' : undefined} onChange={(event) => setFits(fits.map((row, at) => at === index ? { ...row, make: event.target.value } : row))}>
                       <option value="">—</option>
                       {makeChoices.map((value) => <option key={value} value={value}>{value}</option>)}
                     </Select>
@@ -602,7 +637,7 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
                 </div>
               ))}
               <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setFits([...fits, { make: '', model: '' }])}><Plus aria-hidden="true" />{messages.pcFitsAddRow}</Button>
-              {fitsMissing ? <p className="text-xs text-destructive-text">{messages.pcFitsNeedOne}</p> : null}
+              {fitsMissing ? <p id="part-fits-error" className="text-xs text-destructive-text">{messages.pcFitsNeedOne}</p> : null}
             </div>
           ) : null}
         </fieldset>
@@ -641,7 +676,8 @@ export function PartDialog({ part, categories, truckMakes, vendors, locale, mess
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={!canSave}>{part ? messages.pcSaveChanges : messages.pcAddPart}</Button>
+          {/* LTR-293 §3: Save stays on (only off while saving); a Save with something missing says what, under each field. */}
+          <Button type="submit" disabled={busy}>{part ? messages.pcSaveChanges : messages.pcAddPart}</Button>
         </DialogActions>
       </form>
     </Modal>

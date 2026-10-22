@@ -14,6 +14,7 @@ import {
 import { useActionToast } from './action-toast';
 import { AdminNavLink } from './admin-nav-link';
 import { partsCostsFailure } from './admin-parts-catalog';
+import { MissingSummary, RequiredNote, focusField, type MissingField } from './parts-costs-form-ui';
 import { Badge, Button, DialogActions, InlineAlert, Input, Label, Modal } from './ui';
 import { addAdminStock, removeAdminStock, updateAdminPart, useAdminStockPart } from '@/lib/admin-data';
 import { fillPlaceholders } from '@/lib/admin-next-step';
@@ -77,9 +78,16 @@ export function PartStockPanel({ partId, referenceCents, canWrite, locale, messa
   const minValue = minimum ?? (item?.minStock === null || item?.minStock === undefined ? '' : String(item.minStock));
   const minValid = minValue.trim() === '' || /^\d+$/.test(minValue.trim());
   const minChanged = item ? minValue.trim() !== (item.minStock === null ? '' : String(item.minStock)) : false;
+  const [showMinError, setShowMinError] = useState(false);
+  const minBad = showMinError && !minValid;
 
   async function saveMinimum() {
-    if (!item || !minValid || !minChanged) return;
+    if (!item || !minChanged || busy) return;
+    if (!minValid) {
+      setShowMinError(true);
+      focusField('part-panel-min');
+      return;
+    }
     setBusy(true);
     try {
       await updateAdminPart(item.partId, { minStock: minValue.trim() === '' ? null : Number(minValue.trim()) });
@@ -122,9 +130,11 @@ export function PartStockPanel({ partId, referenceCents, canWrite, locale, messa
               <div className="flex items-end gap-2">
                 <div className="flex-1 space-y-1.5">
                   <Label htmlFor="part-panel-min">{messages.pcMinStock}</Label>
-                  <Input id="part-panel-min" inputMode="numeric" className="tabular-nums" value={minValue} onChange={(event) => setMinimum(event.target.value)} disabled={busy} aria-invalid={!minValid || undefined} />
+                  <Input id="part-panel-min" inputMode="numeric" className="tabular-nums" value={minValue} onChange={(event) => setMinimum(event.target.value)} disabled={busy} aria-invalid={!minValid || undefined} aria-describedby={minBad ? 'part-panel-min-error' : undefined} />
+                  <RequiredNote show={minBad} id="part-panel-min-error" messages={messages} text={messages.pcMinStockHelp} />
                 </div>
-                <Button type="button" variant="outline" disabled={busy || !minValid || !minChanged} onClick={() => void saveMinimum()}>{messages.pcMinSave}</Button>
+                {/* LTR-293 §3: off only while saving or when the minimum did not change; a bad value says why under it. */}
+                <Button type="button" variant="outline" disabled={busy || !minChanged} onClick={() => void saveMinimum()}>{messages.pcMinSave}</Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={() => onAdd(item)}><PackagePlus aria-hidden="true" />{messages.pcAddToStock}</Button>
@@ -181,12 +191,27 @@ export function AddToStockDialog({ item, referenceCents, locale, messages, onClo
   const [error, setError] = useState<string | null>(null);
   const hundredths = parseQuantityToHundredths(quantity);
   const costCents = parseMoneyToCents(cost);
+  const [showErrors, setShowErrors] = useState(false);
   const canSave = !busy && hundredths !== undefined && costCents !== undefined && costCents !== null && cost.trim() !== '';
   const value = canSave ? Math.round((costCents! * hundredths!) / 100) : null;
+  const qtyBad = hundredths === undefined;
+  const costBad = costCents === undefined || costCents === null || cost.trim() === '';
+  // LTR-293 §3: what stops the save, in form order (same rules as canSave).
+  const missing: MissingField[] = [
+    ...(qtyBad ? [{ label: messages.pcAddToStockQty, fieldId: 'stock-add-qty' }] : []),
+    ...(costBad ? [{ label: messages.pcAddToStockCost, fieldId: 'stock-add-cost' }] : []),
+  ];
+  const showQty = showErrors && qtyBad;
+  const showCost = showErrors && costBad;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -202,17 +227,20 @@ export function AddToStockDialog({ item, referenceCents, locale, messages, onClo
 
   return (
     <Modal open title={`${messages.pcAddToStock} · ${item.displayName}`} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!quantity.trim()}>
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="stock-add-dialog">
+      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="stock-add-dialog" noValidate>
         <p className="text-sm text-muted-foreground">{messages.pcAddToStockHelp}</p>
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         <p className="text-sm">{messages.pcInStockCol}: <span className="font-medium tabular-nums">{stockQty(item.onHand)}</span>{item.avgCostCents !== null ? ` · ${formatCents(item.avgCostCents, locale)}` : ''}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="stock-add-qty">{messages.pcAddToStockQty}</Label>
-            <Input id="stock-add-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" required />
+            <Input id="stock-add-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" required aria-invalid={showQty || undefined} aria-describedby={showQty ? 'stock-add-qty-error' : undefined} />
+            <RequiredNote show={showQty} id="stock-add-qty-error" messages={messages} text={quantity.trim() ? messages.pcQtyInvalid : undefined} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="stock-add-cost">{messages.pcAddToStockCost}</Label>
-            <Input id="stock-add-cost" inputMode="decimal" className="tabular-nums" placeholder="0.00" value={cost} onChange={(event) => setCost(event.target.value)} disabled={busy} autoComplete="off" aria-describedby="stock-add-cost-help" required />
+            <Input id="stock-add-cost" inputMode="decimal" className="tabular-nums" placeholder="0.00" value={cost} onChange={(event) => setCost(event.target.value)} disabled={busy} autoComplete="off" aria-describedby={showCost ? 'stock-add-cost-error stock-add-cost-help' : 'stock-add-cost-help'} required aria-invalid={showCost || undefined} />
+            <RequiredNote show={showCost} id="stock-add-cost-error" messages={messages} text={costCents === undefined ? messages.pcCostInvalid : undefined} />
             <p id="stock-add-cost-help" className="text-xs text-muted-foreground">{messages.pcAddToStockCostHint}</p>
           </div>
         </div>
@@ -223,7 +251,8 @@ export function AddToStockDialog({ item, referenceCents, locale, messages, onClo
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={!canSave}>
+          {/* LTR-293 §3: Save stays on (only off while saving); a Save with something missing says what, under each field. */}
+          <Button type="submit" disabled={busy}>
             {value === null ? messages.pcAddToStock : fillPlaceholders(messages.pcAddToStockSubmit, { qty: stockQty(hundredths! / 100), value: formatCents(value, locale) })}
           </Button>
         </DialogActions>
@@ -250,13 +279,26 @@ export function RemoveFromStockDialog({ item, locale, messages, onClose, onSaved
   const hundredths = parseQuantityToHundredths(quantity);
   const tooMany = hundredths !== undefined && hundredths > onHand;
   const needsNote = reason === 'other' && !note.trim();
+  const [showErrors, setShowErrors] = useState(false);
   const canSave = !busy && hundredths !== undefined && !tooMany && !needsNote;
   const unit = item.avgCostCents ?? 0;
   const labels = { damaged: messages.pcRemoveDamaged, lost: messages.pcRemoveLost, other: messages.pcRemoveOther };
+  // LTR-293 §3: what stops the save, in form order (same rules as canSave).
+  const missing: MissingField[] = [
+    ...(hundredths === undefined || tooMany ? [{ label: messages.pcRemoveQty, fieldId: 'stock-remove-qty' }] : []),
+    ...(needsNote ? [{ label: messages.pcRemoveNoteOther, fieldId: 'stock-remove-note' }] : []),
+  ];
+  const qtyBad = showErrors && hundredths === undefined;
+  const noteMissing = showErrors && needsNote;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!canSave) return;
+    if (busy) return;
+    if (!canSave) {
+      setShowErrors(true);
+      if (missing[0]) focusField(missing[0].fieldId);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -272,8 +314,9 @@ export function RemoveFromStockDialog({ item, locale, messages, onClose, onSaved
 
   return (
     <Modal open title={fillPlaceholders(messages.pcRemoveTitle, { part: item.displayName })} onClose={onClose} closeLabel={messages.closeDialog} dismissible={!quantity.trim()}>
-      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="stock-remove-dialog">
+      <form className="space-y-4" onSubmit={(event) => void submit(event)} data-testid="stock-remove-dialog" noValidate>
         <p className="text-sm text-muted-foreground">{messages.pcInStockCol}: <span className="tabular-nums">{stockQty(item.onHand)}</span>{item.avgCostCents !== null ? ` · ${formatCents(item.avgCostCents, locale)}` : ''}</p>
+        {showErrors && missing.length > 1 ? <MissingSummary missing={missing} messages={messages} /> : null}
         <fieldset>
           <legend className="text-sm font-medium">{messages.pcRemoveWhy}</legend>
           <div className="mt-1 grid grid-cols-3 gap-2 text-sm">
@@ -287,12 +330,14 @@ export function RemoveFromStockDialog({ item, locale, messages, onClose, onSaved
         </fieldset>
         <div className="space-y-1.5">
           <Label htmlFor="stock-remove-qty">{messages.pcRemoveQty}</Label>
-          <Input id="stock-remove-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={tooMany || undefined} required />
-          {tooMany ? <p className="text-xs text-destructive-text">{fillPlaceholders(messages.pcStockNotEnough, { qty: stockQty(item.onHand) })}</p> : null}
+          <Input id="stock-remove-qty" inputMode="decimal" className="tabular-nums" value={quantity} onChange={(event) => setQuantity(event.target.value)} disabled={busy} autoComplete="off" aria-invalid={tooMany || qtyBad || undefined} aria-describedby={tooMany || qtyBad ? 'stock-remove-qty-error' : undefined} required />
+          {tooMany ? <p id="stock-remove-qty-error" className="text-xs text-destructive-text">{fillPlaceholders(messages.pcStockNotEnough, { qty: stockQty(item.onHand) })}</p> : null}
+          <RequiredNote show={qtyBad} id="stock-remove-qty-error" messages={messages} text={quantity.trim() ? messages.pcQtyInvalid : undefined} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="stock-remove-note">{reason === 'other' ? messages.pcRemoveNoteOther : messages.pcStockNote}</Label>
-          <Input id="stock-remove-note" value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} autoComplete="off" required={reason === 'other'} />
+          <Input id="stock-remove-note" value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} autoComplete="off" required={reason === 'other'} aria-invalid={noteMissing || undefined} aria-describedby={noteMissing ? 'stock-remove-note-error' : undefined} />
+          <RequiredNote show={noteMissing} id="stock-remove-note-error" messages={messages} />
         </div>
         {hundredths !== undefined && !tooMany ? (
           <p className="rounded-lg bg-muted p-2 text-sm tabular-nums" data-testid="stock-remove-preview">
@@ -308,7 +353,8 @@ export function RemoveFromStockDialog({ item, locale, messages, onClose, onSaved
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         <DialogActions>
           <Button type="button" variant="outline" onClick={onClose} disabled={busy}>{messages.cancel}</Button>
-          <Button type="submit" disabled={!canSave}>{hundredths === undefined ? messages.pcRemoveFromStock : fillPlaceholders(messages.pcRemoveSubmit, { qty: stockQty(hundredths / 100) })}</Button>
+          {/* LTR-293 §3: Save stays on (only off while saving); a Save with something missing says what, under each field. */}
+          <Button type="submit" disabled={busy}>{hundredths === undefined ? messages.pcRemoveFromStock : fillPlaceholders(messages.pcRemoveSubmit, { qty: stockQty(hundredths / 100) })}</Button>
         </DialogActions>
       </form>
     </Modal>
