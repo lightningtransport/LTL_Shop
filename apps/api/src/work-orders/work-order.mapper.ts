@@ -6,7 +6,7 @@ import {
   type WorkOrderNoteKind,
   type WorkOrderStatus,
 } from '@prisma/client';
-import { isPmCategory, jobWorkStatus, tireFindingReason, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
+import { isPmCategory, isQualityCheckJob, jobWorkStatus, tireFindingReason, truckBusyFor, type BlockerReason, type JobExternalKind } from '@ltl-shop/shared';
 import { toTruckDto } from '../trucks/trucks.service';
 import { computeTotals } from './work-order.timing';
 import { workOrderTeam } from './work-order-team';
@@ -197,6 +197,7 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
     startedAt: wo.startedAt?.toISOString() ?? null,
     ...(viewerId ? { resolvedBlockerAwaitingContinue: resolvedBlockerAwaitingContinue(wo, viewerId) } : {}),
     ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
+    ...(viewerId ? { truckBusy: truckBusyForViewer(wo, viewerId) } : {}),
   };
 }
 
@@ -205,6 +206,27 @@ export function toWorkOrderSummary(wo: WorkOrderWithRelations, viewerId?: string
  * another Truck — and I still have workable Jobs here, so the card and the detail say "tap Continue".
  * `clockElsewhere` is where my clock runs now; when the caller did not look it up it is left out.
  */
+/**
+ * D57 §3 (LTR-306): another mechanic has this truck — the viewer's Start answers TRUCK_BUSY until they finish,
+ * report a blocker or it goes out. Null when the truck is free for the viewer (or it is theirs).
+ */
+export function truckBusyForViewer(wo: WorkOrderWithRelations, viewerId: string) {
+  if (wo.primaryCategory.name === 'PM') return null;
+  const busy = truckBusyFor(viewerId, wo.jobs.map((job) => ({
+    id: job.id,
+    status: job.status,
+    assignedMechanicId: job.assignedMechanicId ?? null,
+    startedAt: job.startedAt ?? null,
+    blocked: Boolean(activeBlockerForJob(wo.pauseEvents, job.id)),
+    external: Boolean(job.externalSince),
+    helperOfJobId: job.helperOfJobId,
+    isQualityCheck: isQualityCheckJob(job.category.name, job.displayName),
+    holder: job.assignedMechanic ?? null,
+    displayName: job.displayName,
+  })));
+  return busy?.holder ? { holder: { id: busy.holder.id, name: busy.holder.name }, jobName: busy.displayName } : null;
+}
+
 export function myClockStopped(wo: WorkOrderWithRelations, viewerId: string, clockElsewhere?: ClockElsewhere) {
   if (wo.status !== 'in_progress') return null;
   const sessions = wo.sessions ?? [];
@@ -368,6 +390,7 @@ export function toWorkOrderDetail(wo: WorkOrderWithRelations, viewerId?: string,
       .map((pause) => toPauseEventDto(pause, wo.activityLogs)),
     ...(viewerId ? { resolvedBlocker: resolvedBlockerOrNull(wo, viewerId) } : {}),
     ...(viewerId ? { myClockStopped: myClockStopped(wo, viewerId, options.clockElsewhere) } : {}),
+    ...(viewerId ? { truckBusy: truckBusyForViewer(wo, viewerId) } : {}),
     // LTR-164 (#6): "Start work" until I have worked here once, then "Continue".
     ...(viewerId ? { myLaborStarted: sessions.some((session) => !session.userId || session.userId === viewerId) } : {}),
     // Stage MG-1 (MG5): the viewer's own time here, every day of this Work Order (D-MG2). The total stays for the Manager.

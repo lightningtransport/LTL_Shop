@@ -127,6 +127,8 @@ const summaryWorkOrderInclude = {
     },
     orderBy: { addedAt: 'asc' as const },
   },
+  // D57 §3 (LTR-306): an open clock tells who has the truck, with the Jobs' own start.
+  sessions: { where: { endedAt: null }, select: { endedAt: true, userId: true } },
   mechanics: {
     where: { removedAt: null },
     include: { mechanic: { select: { id: true, name: true } } },
@@ -788,6 +790,7 @@ export class YardOperationsService {
       activeWorkOrder,
       readyReason: workPlan.readyReason,
       shopWorkRemainingCount: workPlan.shopWorkRemainingCount,
+      holder: workPlan.holder,
       nextStep,
       // LTR-188 / D24: a pending Job sent the whole truck to an external shop. Phase and counters stay as they are.
       outOfShop: workPlan.jobs.some((job) => job.external?.kind === JobExternalKind.TRUCK),
@@ -1063,6 +1066,11 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           customDescription: job.customDescription,
           category: job.category,
           status: job.status as never,
+          assignedMechanic: (job as { assignedMechanic?: { id: string; name: string } | null }).assignedMechanic ?? null,
+          startedAt: job.startedAt,
+          // D57 §3: a blocked Job does not hold the truck.
+          blocked: ((workOrder as { pauseEvents?: Array<{ isOfficialPause?: boolean | null; resolvedAt?: Date | null; job?: { id: string } | null }> }).pauseEvents ?? [])
+            .some((pause) => pause.isOfficialPause === false && !pause.resolvedAt && pause.job?.id === job.id),
           helperOfJobId: job.helperOfJobId,
           externalSince: job.externalSince,
           externalKind: job.externalKind,
@@ -1071,6 +1079,7 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           systemKey: job.systemKey,
           catalogSeedKey: job.catalogJob?.seedKey ?? null,
         })),
+    sessions: (workOrder as { sessions?: Array<{ endedAt: Date | null; userId: string | null }> } | null)?.sessions,
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
   };
 }

@@ -274,14 +274,27 @@ describe('YardOperationsService', () => {
     const page = await service.list({ limit: 25 });
     expect(page.items).toHaveLength(1);
     expect(page.workPlanBoardCutover).toBe(true);
-    expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
+    // D57 §3: nobody has started the Alignment Job, so the truck waits for a mechanic.
+    expect(page.items[0].phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
     expect(page.items[0].phase).toBe(expected.phase);
+    expect(page.items[0].holder).toBeNull();
 
-    const filtered = await service.list({ phase: 'alignment' });
-    expect(filtered.items).toHaveLength(1);
+    const alignmentOnly = await service.list({ phase: 'alignment' });
+    expect(alignmentOnly.items).toHaveLength(0);
 
     const shopOnly = await service.list({ phase: 'shop_work' });
     expect(shopOnly.items).toHaveLength(0);
+
+    // Once the Alignment mechanic starts the Job, the board shows Alignment and who has the truck.
+    const started = workPlanWorkOrderRow();
+    started.jobs = started.jobs.map((item) => (item.displayName === 'Alignment'
+      ? { ...item, assignedMechanic: { id: 'mech-al', name: 'Alex' }, startedAt: new Date('2026-09-16T14:00:00.000Z') }
+      : item)) as never;
+    row.workOrders = [started];
+    const held = await service.list({ limit: 25 });
+    expect(held.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(held.items[0].holder).toMatchObject({ mechanic: { id: 'mech-al', name: 'Alex' }, jobName: 'Alignment' });
+    expect((await service.list({ phase: 'alignment' })).items).toHaveLength(1);
   });
 
   it('completing Alignment + Detailing with the WO still open yields ready_to_close (LTR-90)', async () => {
@@ -522,7 +535,8 @@ describe('YardOperationsService', () => {
     const page = await service.list({ limit: 25 });
 
     expect(page.items.map((item) => item.truck.truckNumber)).toEqual(['277']);
-    expect(page.items[0].phase).toBe(WorkPlanPhase.ALIGNMENT);
+    // D57 §3: nobody has started the Alignment Job yet.
+    expect(page.items[0].phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
     expect(page.counts.underReview).toBe(1);
     expect(page.counts.readyToGo).toBe(0);
     // LTR-92 / D5: open work alone is not Blocked; only an official pause is.

@@ -1440,7 +1440,8 @@ describe('AdminService', () => {
     })).resolves.toMatchObject({ version: 2, jobs: [expect.objectContaining({ assignedMechanic: { id: mechanicId, name: 'Alejandro 1' } })] });
     expect(tx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: jobId },
-      data: { assignedMechanicId: mechanicId },
+      // D57 §3: the new owner has not started yet.
+      data: { assignedMechanicId: mechanicId, startedAt: null },
     }));
     expect(tx.mechanicAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
       data: { workOrderId: wo.id, mechanicId, addedById: manager.id },
@@ -1472,7 +1473,7 @@ describe('AdminService', () => {
       idempotencyKey: '00000000-0000-4000-8000-000000000803',
     })).resolves.toMatchObject({ version: 2 });
     expect(unassignTx.workOrderJob.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: { assignedMechanicId: null },
+      data: { assignedMechanicId: null, startedAt: null },
     }));
     // Still owns another Job here: stays on the derived team.
     expect(unassignTx.mechanicAssignment.updateMany).not.toHaveBeenCalled();

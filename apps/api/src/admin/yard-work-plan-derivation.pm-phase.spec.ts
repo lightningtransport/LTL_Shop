@@ -33,34 +33,51 @@ describe('Work Plan PM phase (LTR-144)', () => {
     expect(classifyWorkPlanLane('PM', 'PM B Service')).toBe(WorkPlanJobLane.PM);
   });
 
-  it('paints PM before Shop Work and Alignment (D57: no order between areas, fixed painting order)', () => {
-    const shop = deriveWorkPlan({
+  // D57 §3 (LTR-306): the column is where the truck is — the area of the mechanic who started — so the area order
+  // shows only when a Job is started and owned.
+  const started = (item: ReturnType<typeof job>) => ({
+    ...item, assignedMechanic: { id: 'mech-1', name: 'MG' }, startedAt: new Date('2026-10-22T14:00:00Z'),
+  });
+
+  it('with nobody holding the truck and work left, it waits for a mechanic (D57 §3)', () => {
+    const waiting = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('s1', 'Brake Repair', 'Air & Brake'), ...fullPlan()],
     });
-    expect(shop.phase).toBe(WorkPlanPhase.PM);
-    expect(shop.shopWorkRemainingCount).toBe(1);
-    expect(shop.remainingJobCount).toBe(5);
+    expect(waiting.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+    expect(waiting.holder).toBeNull();
+    expect(waiting.shopWorkRemainingCount).toBe(1);
+    expect(waiting.remainingJobCount).toBe(5);
+    expect(waiting.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
 
-    const shopDone = deriveWorkPlan({
+    const alignmentLeft = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('s1', 'Brake Repair', 'Air & Brake', done), ...fullPlan({ pm: done })],
     });
-    expect(shopDone.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(alignmentLeft.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+  });
 
-    const pm = deriveWorkPlan({
+  it('paints the area of the mechanic who has the truck: PM, Shop Work, Alignment', () => {
+    const pmHeld = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,
-      jobs: [job('s1', 'Brake Repair', 'Air & Brake', done), ...fullPlan()],
+      jobs: [job('s1', 'Brake Repair', 'Air & Brake'), started(job('pm', 'PM A Service', 'PM')), ...fullPlan().slice(1)],
     });
-    expect(pm.phase).toBe(WorkPlanPhase.PM);
-    expect(pm.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
-    expect(pm.mandatory.pm).toMatchObject({ required: true, status: WorkPlanMandatoryStatus.IN_PROGRESS });
+    expect(pmHeld.phase).toBe(WorkPlanPhase.PM);
+    expect(pmHeld.holder?.area).toBe(WorkPlanJobLane.PM);
 
-    const alignment = deriveWorkPlan({
+    const shopHeld = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,
-      jobs: fullPlan({ pm: done }),
+      jobs: [started(job('s1', 'Brake Repair', 'Air & Brake')), ...fullPlan()],
     });
-    expect(alignment.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(shopHeld.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(shopHeld.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
+    expect(shopHeld.mandatory.pm).toMatchObject({ required: true, status: WorkPlanMandatoryStatus.IN_PROGRESS });
+
+    const alignmentHeld = deriveWorkPlan({
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
+      jobs: [started(job('al', 'Alignment', 'Suspension & Steering')), ...fullPlan({ pm: done }).filter((item) => item.id !== 'al')],
+    });
+    expect(alignmentHeld.phase).toBe(WorkPlanPhase.ALIGNMENT);
   });
 
   it('requires PM even when it was never added, and QC always', () => {

@@ -26,6 +26,7 @@ import { clockStoppedLine } from '@/lib/clock-stopped';
 import { formatShopDateTime, pauseLabel, statusLabel } from '@/lib/format';
 import { TruckInformationFields } from '@/components/truck-information-fields';
 import { MechanicClockStrip } from '@/components/mechanic-clock-strip';
+import { TruckBusyBadge } from '@/components/truck-busy-badge';
 import { MechanicAvatar, MechanicAvatarStack } from '@/components/mechanic-avatar';
 import { intlLocale } from '@/lib/shop-locale';
 import { jobDisplayName } from '@/lib/job-display-name';
@@ -305,7 +306,16 @@ export default function WorkOrderDetailPage() {
                 {stoppedLine}
               </p>
             ) : null}
-            {needsStart ? (
+            {needsStart && wo.truckBusy ? (
+              // D57 §3 (LTR-306): another mechanic has the truck; Start waits for them.
+              <div className="mt-3 space-y-2">
+                <TruckBusyBadge busy={wo.truckBusy} />
+                <Button disabled className="w-full" data-testid="start-when-free">
+                  <Play aria-hidden="true" />
+                  {messages.startWhenFree}
+                </Button>
+              </div>
+            ) : needsStart ? (
               <Button loading={busy} className="mt-3 w-full" onClick={() => void startOrContinue()}>
                 <Play aria-hidden="true" />
                 {startedHereBefore ? messages.continueWork : messages.startWork}

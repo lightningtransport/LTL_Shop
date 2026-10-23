@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 208 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 209 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -182,6 +182,7 @@ PASA 208 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A162 | Steer a 4/32 y drive a 2/32 (justo el mínimo) crean Tires; steer 5/32 y drive 3/32 quedan en Watch; 7/32 es OK | PASA |
 | A163 | El Manager cambia el margen en Setup: vale para la hoja nueva y la inspección guardada no se reclasifica | PASA |
 | A170 | Una reparación de la inspección sin elegir a nadie nace en la cola del taller; cualquier mecánico Standard la ve y la toma (gana el primero), el de PM y Safety no; soltarla la devuelve; "Assign later" la deja fuera de la cola | PASA |
+| A171 | El de Alignment toca Start y se lleva el camión: el general no puede empezar (TRUCK_BUSY), lo ve "con él" y el Yard dice quién lo tiene; al completar lo suelta; un bloqueo también; el PM espera; el cierre del día no lo suelta | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

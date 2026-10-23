@@ -10,6 +10,7 @@ import { SessionSignInFallback } from '@/components/session-sign-in-fallback';
 import { PmInProgressNotice } from '@/components/pm-in-progress-notice';
 import { useActionToast } from '@/components/action-toast';
 import { StandardHome } from '@/components/mechanic-home';
+import { TruckBusyBadge } from '@/components/truck-busy-badge';
 import { PmHome } from '@/components/pm-home';
 import { TeamQueueCard } from '@/components/team-queue-card';
 import { InspectionQueueCard } from '@/components/inspection-queue-card';
@@ -231,6 +232,7 @@ function WorkOrderCard({
         </div>
         <div className="flex flex-col items-end gap-1">
           {!isPm ? <PriorityBadge priority={wo.priority}>{messages.priority[wo.priority] ?? wo.priority}</PriorityBadge> : null}
+          {wo.truckBusy ? <TruckBusyBadge busy={wo.truckBusy} /> : null}
           {/* LTR-158 / D18: the Manager resolved my blocker; my time waits for Continue. */}
           {wo.resolvedBlockerAwaitingContinue ? (
             <span className="rounded-full bg-shop-accent/15 px-2 py-0.5 text-xs font-semibold text-shop-accent" data-testid="resolved-tap-continue">
@@ -351,17 +353,20 @@ function StartWorkAction({
     }
   }
 
+  // D57 §3 (LTR-306): another mechanic has the truck; Start waits (the API would answer TRUCK_BUSY).
+  const truckBusy = Boolean(wo.truckBusy);
   return (
     <div className={className}>
       {error ? <InlineAlert className="mb-2">{error}</InlineAlert> : null}
       <Button
         loading={busy}
+        disabled={truckBusy}
         className="w-full"
         variant={variant}
-        aria-label={messages.workOrderAction(label ?? messages.startWork, wo.displayId, wo.truckNumber)}
+        aria-label={messages.workOrderAction(truckBusy ? messages.startWhenFree : label ?? messages.startWork, wo.displayId, wo.truckNumber)}
         onClick={() => void startLabor()}
       >
-        {label ?? messages.startWork}
+        {truckBusy ? messages.startWhenFree : label ?? messages.startWork}
       </Button>
     </div>
   );

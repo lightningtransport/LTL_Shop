@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { vehicleLine } from '@/lib/work-order-identity';
 import { Badge, Button, CountChip, EmptyState, PriorityBadge } from './ui';
 import { useDocumentTitle } from './admin-breadcrumb';
+import { TruckBusyBadge } from './truck-busy-badge';
 
 type Wo = WorkOrderSummaryDto;
 
@@ -231,6 +232,8 @@ function WorkCard({
           ) : null}
         </div>
         <p className="text-xs text-muted-foreground">{[vehicle, wo.displayId].filter(Boolean).join(' · ')}</p>
+        {/* D57 §3 (LTR-306): another mechanic has the truck; Start below waits for them. */}
+        {wo.truckBusy ? <TruckBusyBadge busy={wo.truckBusy} /> : null}
         {notice ? (
           <p
             className="flex items-start gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium"

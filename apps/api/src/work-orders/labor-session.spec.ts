@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AppCapability } from '@ltl-shop/shared';
 import type { AuthUser } from '../auth/auth.guard';
@@ -194,7 +195,7 @@ function serviceFor(wo: ReturnType<typeof standardWorkOrder>) {
     },
     workSession: { create: vi.fn() },
     jobCategory: { findUnique: vi.fn().mockResolvedValue({ name: wo.primaryCategory.name }) },
-    workOrderJob: { findFirst: vi.fn().mockResolvedValue(wo.jobs[0]), update: vi.fn() },
+    workOrderJob: { findFirst: vi.fn().mockResolvedValue(wo.jobs[0]), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
   const activity = { log: vi.fn() };
   const service = new WorkOrdersService({
@@ -216,15 +217,59 @@ describe('mechanic Start work / Continue (LTR-124, LTR-154 / D18)', () => {
     });
   });
 
-  it("opens the mechanic's own session while another mechanic keeps working", async () => {
+  // D57 §3 (LTR-306): another mechanic's started Job holds the truck.
+  const otherJob = (overrides: Record<string, unknown> = {}) => ({
+    ...standardWorkOrder().jobs[0],
+    id: 'job-b',
+    displayName: 'Alignment',
+    assignedMechanicId: 'mech-2',
+    assignedMechanic: { id: 'mech-2', name: 'Jamie' },
+    startedAt,
+    ...overrides,
+  });
+  const otherSession = { id: 'session-b', startedAt, endedAt: null, userId: 'mech-2' };
+
+  it("answers TRUCK_BUSY while another mechanic's Job holds the truck (D57 §3)", async () => {
+    const wo = standardWorkOrder();
+    const { service, tx } = serviceFor(standardWorkOrder({ jobs: [...wo.jobs, otherJob()], sessions: [otherSession] }));
+
+    await expect(service.start(mechanic, 'wo-1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.start(mechanic, 'wo-1')).rejects.toMatchObject({
+      response: { code: 'TRUCK_BUSY', jobName: 'Alignment', holder: { id: 'mech-2', name: 'Jamie' } },
+      status: 409,
+    });
+    expect(tx.workSession.create).not.toHaveBeenCalled();
+    expect(tx.workOrderJob.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("opens the mechanic's own session when the other mechanic's Job is blocked (D57 §3)", async () => {
+    const wo = standardWorkOrder();
     const { service, tx } = serviceFor(standardWorkOrder({
-      sessions: [{ id: 'session-b', startedAt, endedAt: null, userId: 'mech-2' }],
+      jobs: [...wo.jobs, otherJob()],
+      sessions: [otherSession],
+      pauseEvents: [{ id: 'pause-1', jobId: 'job-b', isOfficialPause: false, resolvedAt: null, endedAt: null, startedAt, reason: 'waiting_parts', blockerReason: 'waiting_parts' }],
     }));
 
     await expect(service.start(mechanic, 'wo-1')).resolves.toMatchObject({ laborRunning: true });
     expect(tx.workSession.create).toHaveBeenCalledWith({
       data: { workOrderId: 'wo-1', startedAt: expect.any(Date), userId: 'mech-1' },
     });
+    // Start takes the truck: my pending Job is marked started.
+    expect(tx.workOrderJob.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['job-new'] } },
+      data: { startedAt: expect.any(Date) },
+    });
+  });
+
+  it("opens the mechanic's own session when the starter helps the other mechanic's Job (D23)", async () => {
+    const wo = standardWorkOrder();
+    const { service, tx } = serviceFor(standardWorkOrder({
+      jobs: [{ ...wo.jobs[0], helperOfJobId: 'job-b' }, otherJob()],
+      sessions: [otherSession],
+    }));
+
+    await expect(service.start(mechanic, 'wo-1')).resolves.toMatchObject({ laborRunning: true });
+    expect(tx.workSession.create).toHaveBeenCalled();
   });
 
   it('rejects Start work while the mechanic already has a session open', async () => {

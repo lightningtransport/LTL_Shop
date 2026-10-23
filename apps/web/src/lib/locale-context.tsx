@@ -107,6 +107,9 @@ type Copy = {
   finishedYourPart: (truckNumber: string) => string;
   finishedYourPartHint: string;
   continueWork: string;
+  /** D57 §3 (LTR-306): another mechanic has the truck. */
+  truckBusyBadge: (name: string, jobName: string) => string;
+  startWhenFree: string;
   yourJobsCount: (count: number) => string;
   nextJob: string;
   resolvedTapContinue: string;
@@ -635,6 +638,8 @@ const copy: Record<ShopLocale, Copy> = {
     finishedYourPart: (truckNumber) => `You finished your part on Truck ${truckNumber}.`,
     finishedYourPartHint: 'Your time stopped. If the Manager gives you another Job here, tap Continue.',
     continueWork: 'Continue',
+    truckBusyBadge: (name, jobName) => `With ${name} · ${jobName} · wait`,
+    startWhenFree: 'Start when the truck is free',
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job' : 'Jobs'} for you`,
     nextJob: 'Next',
     resolvedTapContinue: 'Resolved · tap Continue',
@@ -1150,6 +1155,8 @@ const copy: Record<ShopLocale, Copy> = {
     finishedYourPart: (truckNumber) => `Terminaste tu parte en la unidad ${truckNumber}.`,
     finishedYourPartHint: 'Tu tiempo se detuvo. Si el Manager te da otro Job aquí, toca Continuar.',
     continueWork: 'Continuar',
+    truckBusyBadge: (name, jobName) => `Con ${name} · ${jobName} · espera`,
+    startWhenFree: 'Empieza cuando se libere',
     yourJobsCount: (count) => `${count} ${count === 1 ? 'Job tuyo' : 'Jobs tuyos'}`,
     nextJob: 'Siguiente',
     resolvedTapContinue: 'Resuelto · toca Continuar',

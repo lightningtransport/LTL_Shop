@@ -32,7 +32,7 @@ import { SideSheet } from './side-sheet';
 import { STEP_TONE, TruckStepIcon, truckStepLabel } from './truck-stepper';
 import { MechanicAvatar } from './mechanic-avatar';
 import { useActionToast } from './action-toast';
-import { Button } from './ui';
+import { Badge, Button } from './ui';
 
 type PlanJob = TruckWorkPlanDto['jobs'][number];
 
@@ -363,6 +363,7 @@ export function AdminTruckWorkPlan({
     const head = (
       <>
         <span className="group-title">{label}</span>
+        {plan.holder && plan.holder.area === step.key ? <Badge variant="default" className="self-center" data-testid="truck-holder-badge">{fillPlaceholders(messages.truckHolderHere, { name: plan.holder.mechanic.name })}</Badge> : null}
         <span className="text-xs text-muted-foreground sm:text-sm"><span className="hidden sm:inline">· </span>{meta}</span>
         {collapsible ? <ChevronDown aria-hidden="true" className={`ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
       </>

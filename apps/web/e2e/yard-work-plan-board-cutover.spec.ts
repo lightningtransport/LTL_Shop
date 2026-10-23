@@ -154,7 +154,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
-    for (const phase of ['Inspection', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
+    for (const phase of ['Inspection', 'Waiting for a mechanic', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByRole('heading', { name: 'Needs evaluation', exact: true })).toHaveCount(0);
@@ -168,6 +168,28 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByRole('heading', { name: 'Work Plan' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start assessment' })).toHaveCount(0);
     await expect(page.getByText('Required Work')).toHaveCount(0);
+  });
+
+  test('D57 §3 (LTR-306): a card in an area column says who has the truck; a Waiting card does not', async ({ page }) => {
+    await mockSession(page);
+    const base = yardPage();
+    const holder = { mechanic: { id: 'mech-1', name: 'Alex Mechanic' }, jobId: 'job-1', jobName: 'Brake Inspection', area: 'shop_work' };
+    const second = { ...base.items[0], truck: { ...base.items[0].truck, id: '00000000-0000-4000-8000-00000000bbb2', truckNumber: 'Y-WP3' }, phase: 'waiting_for_mechanic', holder: null };
+    await page.route('**/api/admin/yard-operations**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...base, items: [{ ...base.items[0], holder }, second] }) });
+    });
+    await page.setViewportSize({ width: 1440, height: 1024 });
+    await page.goto('/admin/yard-operations');
+    const shop = page.locator('[data-phase="shop_work"]');
+    await expect(shop.getByTestId('yard-card-holder')).toHaveText('Alex Mechanic · Brake Inspection');
+    const waiting = page.locator('[data-phase="waiting_for_mechanic"]');
+    await expect(waiting.getByRole('link', { name: 'Y-WP3', exact: true })).toBeVisible();
+    await expect(waiting.getByTestId('yard-card-holder')).toHaveCount(0);
+    const inspection = await page.locator('[data-phase="inspection"]').boundingBox();
+    const waitingBox = await waiting.boundingBox();
+    const pm = await page.locator('[data-phase="pm"]').boundingBox();
+    expect(waitingBox!.x).toBeGreaterThan(inspection!.x);
+    expect(pm!.x).toBeGreaterThan(waitingBox!.x);
   });
 
   test('LTR-148 / LTR-159 / D57: the board has the PM column, QC always, and a card shows the areas left', async ({ page }) => {
@@ -191,7 +213,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
 
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
-    const headings = ['Inspection', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go'];
+    const headings = ['Inspection', 'Waiting for a mechanic', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go'];
     for (const phase of headings) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }

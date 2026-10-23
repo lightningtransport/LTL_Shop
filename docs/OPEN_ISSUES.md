@@ -27,7 +27,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué (**construido, PR en revisión**) | C |
 | Work Orders & Jobs | LTR-304 | AP-5: docs de D57 repartidos en cada PR | — |
 | Mecánicos | LTR-305 | AP-6: cola de Shop Work para mecánicos generales (en PR) | — |
-| Work Orders & Jobs | LTR-306 | AP-7: un camión a la vez (`TRUCK_BUSY`), Yard con "Waiting for a mechanic" y quién lo tiene (depende de AP-1) | — |
+| Work Orders & Jobs | LTR-306 | AP-7: un camión a la vez (`TRUCK_BUSY`), Yard con "Waiting for a mechanic" y quién lo tiene (en PR) | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
 | Yard | LTR-262 | Incoming Trucks todavía no coincide con Ninox: camiones de más y el 943 (G13, sigue a LTR-254) | C |
