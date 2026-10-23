@@ -6,6 +6,7 @@ import {
   AppCapability,
   JobStatus,
   WorkPlanInspectionOutcome,
+  SHOP_AREAS,
   jobArea,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
@@ -317,6 +318,66 @@ export function AdminTruckWorkPlan({
     ? messages.stepMetaPending
     : fillPlaceholders(plan.inspection.outcome === WorkPlanInspectionOutcome.ISSUES_FOUND ? messages.stepMetaIssues : messages.stepMetaNoIssues, { date: formatShortDateTime(plan.inspection.recordedAt, locale) });
 
+  const areaSteps = steps.filter((step) => (SHOP_AREAS as readonly string[]).includes(step.key));
+
+  /** D57 (LTR-301): Inspection, Quality Check and Close keep their own row; the four shop areas are `renderArea`. */
+  function renderStep(step: TruckStep | undefined) {
+    if (!step) return null;
+    const jobs = jobsFor(step.key);
+    // Inspection and Close never fold; a step folds only when it has Jobs.
+    const collapsible = step.key !== 'inspection' && step.key !== 'close' && jobs.length > 0;
+    const open = collapsible && isStepOpen(step);
+    const state = step.key === 'inspection' ? (recorded ? 'done' : 'pending') : step.state;
+    const meta = step.key === 'inspection' ? inspectionMeta : stepMeta(step);
+    return (
+      <li key={step.key} id={`truck-step-${step.key}`} className="scroll-mt-24" data-state={step.state}>
+        <StepHead
+          step={step}
+          state={state}
+          meta={meta}
+          collapsible={collapsible}
+          open={open}
+          messages={messages}
+          onToggle={() => onToggleStep(step.key, !open)}
+        />
+        {step.key === 'inspection' ? (
+          <InspectionControl
+            plan={plan}
+            truckId={truckId}
+            messages={messages}
+            canInspect={canInspect && canAddWork && !inspectionInNextStep}
+          />
+        ) : null}
+        {open ? renderJobs(step.key) : null}
+      </li>
+    );
+  }
+
+  /** D57: an area is a group with no number (they have no order): its name, "N pending" or "Done", and its Jobs. */
+  function renderArea(step: TruckStep) {
+    const jobs = jobsFor(step.key);
+    const collapsible = jobs.length > 0;
+    const open = collapsible && isStepOpen(step);
+    const label = truckStepLabel(step.key, messages);
+    const meta = step.state === 'done' ? messages.truckStepDone : stepMeta(step);
+    const head = (
+      <>
+        <span className="group-title">{label}</span>
+        <span className="text-xs text-muted-foreground sm:text-sm"><span className="hidden sm:inline">· </span>{meta}</span>
+        {collapsible ? <ChevronDown aria-hidden="true" className={`ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} /> : null}
+      </>
+    );
+    const headClass = 'flex min-h-11 w-full flex-wrap items-baseline gap-x-1.5 px-4 py-2.5 text-left';
+    return (
+      <li key={step.key} id={`truck-step-${step.key}`} className="scroll-mt-24 bg-card" data-state={step.state}>
+        {collapsible ? (
+          <button type="button" className={`${headClass} hover:bg-accent/50`} aria-expanded={open} aria-controls={`truck-step-${step.key}-content`} onClick={() => onToggleStep(step.key, !open)}>{head}</button>
+        ) : <div className={headClass}>{head}</div>}
+        {open ? renderJobs(step.key) : null}
+      </li>
+    );
+  }
+
   return (
     <section aria-labelledby="truck-work-plan-title" className="overflow-hidden rounded-xl border bg-card text-card-foreground">
       <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -324,36 +385,15 @@ export function AdminTruckWorkPlan({
         <span className="text-xs text-muted-foreground">{plan.workOrder ? fillPlaceholders(messages.workPlanJobsOn, { workOrder: plan.workOrder.displayId }) : messages.workPlanNoWorkOrderYet}</span>
       </div>
       <ul className="divide-y" aria-label={messages.jobsInPlan}>
-        {steps.map((step) => {
-          const jobs = jobsFor(step.key);
-          // Inspection and Close never fold; a step folds only when it has Jobs.
-          const collapsible = step.key !== 'inspection' && step.key !== 'close' && jobs.length > 0;
-          const open = collapsible && isStepOpen(step);
-          const state = step.key === 'inspection' ? (recorded ? 'done' : 'pending') : step.state;
-          const meta = step.key === 'inspection' ? inspectionMeta : stepMeta(step);
-          return (
-            <li key={step.key} id={`truck-step-${step.key}`} className="scroll-mt-24" data-state={step.state}>
-              <StepHead
-                step={step}
-                state={state}
-                meta={meta}
-                collapsible={collapsible}
-                open={open}
-                messages={messages}
-                onToggle={() => onToggleStep(step.key, !open)}
-              />
-              {step.key === 'inspection' ? (
-                <InspectionControl
-                  plan={plan}
-                  truckId={truckId}
-                  messages={messages}
-                  canInspect={canInspect && canAddWork && !inspectionInNextStep}
-                />
-              ) : null}
-              {open ? renderJobs(step.key) : null}
-            </li>
-          );
-        })}
+        {renderStep(steps.find((step) => step.key === 'inspection'))}
+        {areaSteps.length ? (
+          <li className="bg-sunken/50" data-testid="truck-shop-areas">
+            <p className="group-title border-b bg-sunken px-4 py-2">{messages.workPlanShopAreas}</p>
+            <ul className="divide-y">{areaSteps.map(renderArea)}</ul>
+          </li>
+        ) : null}
+        {renderStep(steps.find((step) => step.key === 'quality_check'))}
+        {renderStep(steps.find((step) => step.key === 'close'))}
       </ul>
       {!canAddWork && !canInspect ? (
         <p className="flex items-center gap-2 border-t bg-sunken px-4 py-3 text-muted-foreground"><Lock aria-hidden="true" className="size-3.5 shrink-0" />{messages.permissionReadOnly}</p>

@@ -61,6 +61,8 @@ describe('Inspección con la hoja y las llantas (D41)', () => {
     same('Flat Repair por la llanta a 72 PSI', jobsNamed(wo, 'Flat Repair').length, 1);
     same('la llanta en "watch" no crea Job', jobsNamed(wo, 'Tires').length, 0);
     same('Detailing no se repite', jobsNamed(wo, 'Detailing').length, 1);
+    // D57 (LTR-301): la WO del Admin dice en qué área se pinta cada Job (Flat Repair es de Alignment).
+    same('áreas de la WO', [jobsNamed(wo, 'Flat Repair')[0].area, jobsNamed(wo, 'Detailing')[0].area, jobsNamed(wo, 'Lights')[0].area], ['alignment', 'detailing', 'shop_work']);
 
     const report = saved.inspection;
     truthy('Issues found', report.issuesFound);

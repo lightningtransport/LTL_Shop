@@ -943,7 +943,7 @@ Inspection → [ PM · Alignment · Shop Work · Detailing ] → Quality Check �
   que agregar el trabajo). La fase solo elige la columna; no dice qué se hace
   primero. El motivo de "no listo" (`readyReason`) y el requisito que bloquea en el
   Yard siguen el mismo orden: con el PM y reparaciones pendientes dicen PM.
-- El orden **se muestra, no se obliga**: los mecánicos trabajan en paralelo.
+- El orden **se muestra, no se obliga**: los mecánicos trabajan en paralelo. El Work Plan del camión y la tabla de Jobs de la WO pintan las áreas así (sin numerar las cuatro del taller; ver Work Order detail).
 - **Ready to Go** = todos los pasos resueltos **y** el WO `completed` (D1).
   Si el WO sigue abierto, la fase es **Ready to close**.
 - Código: `apps/api/src/admin/yard-work-plan-derivation.ts`.
@@ -1037,9 +1037,13 @@ principal y una lateral de 340 px, en el teléfono una sola en el mismo orden):
   complete" con borde; New Work Order es un diálogo. Después de "Issues
   found" sin WO, primero **Add work**. `external` lleva a la fila del Job en
   el WO. Sin permiso, el aviso dice por qué.
-- **Work Plan:** una tarjeta ("Jobs on WO-004"); una fila por paso con su
-  icono de color y resumen ("1 pendiente", "Issues found · Oct 4, 9:12 AM");
-  Inspección y Close nunca se pliegan; los terminados empiezan plegados. Sus
+- **Work Plan:** una tarjeta ("Jobs on WO-004"). **Inspection** arriba (fila
+  con icono y resumen "Issues found · Oct 4, 9:12 AM"); en medio un bloque
+  **"Shop areas · any order"** con PM, Alignment, Shop Work y Detailing como
+  grupos **sin número** (nombre, "N pending" o "Done", sus Jobs; D57, LTR-301);
+  **Quality Check** y **Close Work Order** abajo. Los ids `truck-step-<área>`
+  siguen. Inspección y Close nunca se pliegan; los grupos terminados empiezan
+  plegados. Sus
   Jobs son de **solo lectura**: nombre, dueño con avatar (QC: Safety; taller
   externo: Part out / Truck out), estado con icono y **↗** (abre el WO en esa
   fila, resaltada). Solo un Job **sin dueño** tiene **Assign** con borde
@@ -1079,8 +1083,14 @@ lateral de 340 px en computadora, una columna en el teléfono):
   Confirm completion aparece solo al pasar el aviso con el scroll.
 - **Jobs** (tarjeta con su cuenta y "+ Add work in Work Plan"): columnas
   `Job · Mecánico · Estado · Acción` (200, 130 y 150 px; dos líneas en el
-  teléfono); primero los abiertos, el bloqueado arriba y teñido, los de taller
-  externo después y QC al final; un ayudante bajo su Job ("Ayuda a …"). El
+  teléfono); primero los abiertos, **agrupados por área** (D57, LTR-301): una
+  fila de encabezado por área en el orden PM · Alignment · Shop Work ·
+  Detailing · Quality Check (`.group-title`, fondo `sunken`, con su cuenta; un
+  área sin Jobs abiertos no pinta encabezado; el área sale de `area` del
+  Job, Tires y Flat Repair bajo Alignment). Dentro de cada área el
+  bloqueado arriba y teñido, luego por `addedAt` (desempate por `id` en el
+  API) y los de taller externo al final del área; un ayudante bajo su Job
+  ("Ayuda a …"). Hechos y cancelados aparte. El
   mecánico es un botón con avatar que abre el selector con búsqueda (sin
   dueño: "Asignar" punteado; QC: Safety; externo: Part out / Truck out y la
   nota). Estado con icono (Por hacer, Blocked, At external shop, Done hora,
