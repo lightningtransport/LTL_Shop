@@ -98,3 +98,16 @@ and "Under review" (the readiness filter reads "In the Shop" / "En el Shop").
 
 Keep these terms in aria-labels and EmptyState copy so EN/ES users hear the
 same domain objects.
+
+## Tire states on the Truck (D57 / AP-4, LTR-303)
+
+The Tires card, the inspection sheet and the Job row use the same three states.
+
+| State | EN | ES | Notes |
+|---|---|---|---|
+| In range | OK | OK | Green, Check icon |
+| To watch | Watch (no Job) | Vigilar (sin Job) | Amber, Eye icon; no Job is created |
+| Makes a Job | Fix (creates a Job) · group "Job" | Arreglar (crea un Job) · grupo "Job" | Red, OctagonAlert icon |
+| Reason: tread | `LF · tread 3/32 (min 4) · worn` | `LF · tread 3/32 (mín. 4) · gastada` | Tread at or under the minimum |
+| Reason: pressure | `RRI · 158 PSI (should be 95) · high pressure` | `RRI · 158 PSI (debe ser 95) · presión alta` | `low` / `baja` when under |
+| Count | `7/10 OK` | `7/10 OK` | The readings there are, not a fixed 10 |

@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-23 (D57 / LTR-302: el tread en el mínimo crea Tires, margen Watch editable en Setup, números Job / Watch / OK a la vista); antes 2026-10-22 (LTR-295: siguiente paso `cancel_work_order` cuando todo se canceló; el "Mark complete" del QC apagado hasta que se puede usar); antes 2026-10-22 (D55, LTR-294: reglas que una Work Order no se salta al cerrar, §5); antes 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-23 (D57 / LTR-303: la card Tires del camión con PSI, tread, leyenda y motivo; la fila del Job de llantas dice qué llanta y por qué); antes 2026-10-23 (D57 / LTR-302: el tread en el mínimo crea Tires, margen Watch editable en Setup, números Job / Watch / OK a la vista); antes 2026-10-22 (LTR-295: siguiente paso `cancel_work_order` cuando todo se canceló; el "Mark complete" del QC apagado hasta que se puede usar); antes 2026-10-22 (D55, LTR-294: reglas que una Work Order no se salta al cerrar, §5); antes 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -540,6 +540,25 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   - El mecánico ve en su Job "RF · New 11R22.5" (y "esperando la llanta" si
     falta), nunca el costo. La tarjeta **Tires** del camión dice qué tiene montado
     cada posición (tipo, medida, fecha, WO).
+  - **La tarjeta Tires del camión (D57 / AP-4, LTR-303; HU-M16).** Cada llanta es
+    un `Badge` de 44 px con PSI **y** tread (`100 · 3/32`; apilado en el teléfono),
+    verde ✓ OK, ámbar ojo Watch o rojo ⚠ Job; el nombre accesible dice
+    "LF: 100 PSI, 3/32, Fix (creates a Job)". Bajo el diagrama, la leyenda OK ·
+    Watch (no Job) · Fix (creates a Job) con las mismas palabras de la hoja; los
+    números por eje están en la hoja y en Setup (AP-3). El encabezado cuenta con
+    las lecturas que hay ("7/10 OK", "3/4 OK"), no con 10 fijo. Debajo, la lista
+    va en **Job** (con el motivo: "LF 100 PSI · 3/32 (min 4) · worn", "RRI 158 PSI
+    (should be 95) · high pressure", de `tireFindingReason`) y **Watch**
+    ("RFI 111 PSI · 4/32"), cada línea con el cambio de PSI desde la lectura
+    anterior. El pie ("Checked … by …") y el bloque Mounted no cambiaron. Safety
+    en `/qc` no usa esta tarjeta: su hoja lista las llantas fuera de rango como
+    siempre.
+  - **La fila del Job en la WO del Admin** (Tires / Flat Repair) dice una línea
+    por llanta con el motivo, de `tireFindings` (la API del Admin ahora lo manda
+    como la del mecánico): "LF · tread 3/32 (min 4) · worn", "RRI · 158 PSI
+    (should be 95) · high pressure". El pill "Tires · 3 to confirm" cuenta las
+    llantas **propuestas del stock** por confirmar (no cuántas están mal) y su
+    `title` lo dice: "3 tires proposed from stock · confirm in Parts…".
 - **El PM descuenta del stock y cobra el aceite** (D45 / ST-5, LTR-225; P29): igual
   que la mano de obra (D34), se escribe **cuando el Manager completa la Work Order**
   y se deshace al reabrirla o cancelarla (`syncWorkOrderPmCharges`,
