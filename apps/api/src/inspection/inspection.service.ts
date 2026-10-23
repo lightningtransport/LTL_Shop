@@ -12,6 +12,7 @@ import {
   DEFAULT_INSPECTION_TIRE_LIMITS,
   InspectionItemResult,
   OPEN_WORK_ORDER_STATUSES,
+  SHOP_WORK_QUEUE_KEY,
   ShopWorkflowStepKey,
   TIRE_POSITIONS,
   TireReadingStatus,
@@ -445,6 +446,10 @@ export class InspectionService {
       if (ownerId && !owner) throw new BadRequestException('One or more selected mechanics cannot perform standard work');
       // D54 / D28: with several on the Alignment team, the tire Job waits in its queue.
       const toAlignmentQueue = !ownerOf.has(item.catalogJobId) && tireJobIds.has(item.catalogJobId) && alignment?.mode === 'queue';
+      // D57 §5 (LTR-305): any other repair nobody was picked for waits in the Shop Work queue; "Assign later" (an
+      // explicit null) still leaves it with no owner on purpose.
+      const toShopQueue = !ownerOf.has(item.catalogJobId) && !tireJobIds.has(item.catalogJobId)
+        && classifyWorkPlanLane(catalogJob.category.name, catalogJob.displayName, catalogJob.systemKey) === WorkPlanJobLane.SHOP_WORK;
       const job = await tx.workOrderJob.create({
         data: {
           workOrderId: wo.id,
@@ -455,7 +460,7 @@ export class InspectionService {
           isCustom: false,
           addedById: user.id,
           assignedMechanicId: owner?.id,
-          workflowStepKey: toAlignmentQueue ? ShopWorkflowStepKey.ALIGNMENT : null,
+          workflowStepKey: toAlignmentQueue ? ShopWorkflowStepKey.ALIGNMENT : toShopQueue ? SHOP_WORK_QUEUE_KEY : null,
           status: 'to_do',
         },
       });

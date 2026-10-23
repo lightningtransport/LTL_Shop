@@ -251,8 +251,9 @@ function SheetFlow({
   // D54: Flat Repair and Tires start on the Alignment team (its mechanic, or its queue); the Manager can change it.
   const tireJobIds = new Set([state.tireJobs?.flatRepair.id, state.tireJobs?.tires.id].filter((id): id is string => Boolean(id)));
   const goTo = state.tireJobsGoTo ?? null;
+  // D57 §5 (LTR-305): every other new repair starts in the Shop Work queue, for any general mechanic to take.
   const ownerOf = (catalogJobId: string) => owners[catalogJobId]
-    ?? (tireJobIds.has(catalogJobId) && goTo ? goTo.mechanic?.id ?? ALIGNMENT_QUEUE : '');
+    ?? (tireJobIds.has(catalogJobId) ? (goTo ? goTo.mechanic?.id ?? ALIGNMENT_QUEUE : '') : SHOP_QUEUE);
   const assignable = goTo?.mechanic && !standardMechanics.some((mechanic) => mechanic.id === goTo.mechanic!.id)
     ? [...standardMechanics, goTo.mechanic]
     : standardMechanics;
@@ -297,12 +298,13 @@ function SheetFlow({
     setPending(true);
     setFailure(null);
     idempotencyKey.current ??= crypto.randomUUID();
-    // Left as it came, a tire Job goes to Alignment on the server; "Assign later" on one is sent as null.
+    // Left as it came, a tire Job goes to Alignment and any other repair to the Shop Work queue on the server;
+    // "Assign later" is sent as null so it stays with no owner on purpose.
     const assignments = state.canAssign
       ? preview.newJobs.flatMap((job): Array<{ catalogJobId: string; assignedMechanicId: string | null }> => {
           const picked = owners[job.catalogJobId];
-          if (picked === undefined || picked === ALIGNMENT_QUEUE) return [];
-          if (!picked) return tireJobIds.has(job.catalogJobId) && goTo ? [{ catalogJobId: job.catalogJobId, assignedMechanicId: null }] : [];
+          if (picked === undefined || picked === ALIGNMENT_QUEUE || picked === SHOP_QUEUE) return [];
+          if (!picked) return [{ catalogJobId: job.catalogJobId, assignedMechanicId: null }];
           return [{ catalogJobId: job.catalogJobId, assignedMechanicId: picked }];
         })
       : undefined;
@@ -962,6 +964,7 @@ function ResultCallout({ copy, issues, jobs, notes, watch, sub }: { copy: Inspec
 
 /** D54: the select value for "leave it in the Alignment queue" (never sent to the server). */
 const ALIGNMENT_QUEUE = '__alignment_queue';
+const SHOP_QUEUE = '__shop_queue';
 
 function PreviewJobRow({
   job,
@@ -1000,10 +1003,11 @@ function PreviewJobRow({
             <select className="field !min-h-9 w-full !py-1.5 text-base sm:w-44 sm:text-sm" value={owner} onChange={(event) => onOwner(event.target.value)} aria-label={job.displayName}>
               <option value="">{copy.assignLater}</option>
               {alignment?.queue ? <option value={ALIGNMENT_QUEUE}>{copy.alignmentQueue}</option> : null}
+              {alignment ? null : <option value={SHOP_QUEUE}>{copy.shopQueue}</option>}
               {mechanics.map((mechanic) => <option key={mechanic.id} value={mechanic.id}>{mechanic.name}</option>)}
             </select>
           ) : alignment ? <span className="text-xs text-muted-foreground" data-testid="inspection-goes-to-alignment">{copy.goesToAlignment(alignment.mechanic?.name ?? null)}</span>
-            : <span className="text-xs text-muted-foreground">{copy.managerAssigns}</span>}
+            : <span className="text-xs text-muted-foreground" data-testid="inspection-goes-to-shop-queue">{copy.goesToShopQueue}</span>}
       </div>
     </li>
   );

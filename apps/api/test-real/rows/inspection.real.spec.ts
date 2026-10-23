@@ -315,7 +315,9 @@ describe('Las llantas de la inspección van a Alignment y dicen qué llanta y po
       const wo = await adminWo(workOrderId);
       const flat = jobsNamed(wo, 'Flat Repair')[0];
       same('Flat Repair sin dueño, en la cola de Alignment', [flat?.assignedMechanic ?? null, flat?.workflowStepKey], [null, 'alignment']);
-      same('Brake Inspection sigue naciendo sin dueño', jobsNamed(wo, 'Brake Inspection')[0]?.assignedMechanic ?? null, null);
+      const brake = jobsNamed(wo, 'Brake Inspection')[0];
+      // D57 §5 (LTR-305): sin dueño, y en la cola del taller.
+      same('Brake Inspection nace sin dueño, en la cola del taller', [brake?.assignedMechanic ?? null, brake?.workflowStepKey], [null, 'shop_work']);
       const queue = ok('la cola del otro de Alignment', await as(USERS.spare).get('/team-queue'));
       truthy('Flat Repair está en su cola', JSON.stringify(queue).includes('Flat Repair'));
     } finally {
@@ -366,5 +368,45 @@ describe('Tread en el mínimo crea el Job Tires; el margen de Watch se edita en 
     const sheet2 = await state(other.truck.id);
     const next = ok('guardar otra con steer a 6/32', await manager.post(`/admin/trucks/${other.truck.id}/inspection`, sheet(sheet2, {}, { LF: [110, 6], RF: [110, 5] })));
     same('con margen 1: 6/32 OK y 5/32 Watch', next.inspection.tires.filter((tire: Json) => tire.status !== 'ok').map((tire: Json) => `${tire.position}:${tire.status}`), ['RF:watch']);
+  });
+});
+
+describe('Cola de Shop Work: el mecánico general toma solo las reparaciones sin dueño (D57 §5)', () => {
+  beforeEach(resetDb);
+
+  it('A170 | Una reparación de la inspección sin elegir a nadie nace en la cola del taller; cualquier mecánico Standard la ve y la toma (gana el primero), el de PM y Safety no; soltarla la devuelve; "Assign later" la deja fuera de la cola', async () => {
+    const { truck: row, workOrderId } = await createWo('931');
+    const before = await state(row.id);
+    ok('el Manager guarda con frenos, sin elegir mecánico', await manager.post(`/admin/trucks/${row.id}/inspection`, sheet(before, { Brakes: 'Pastillas gastadas.' })));
+    const brake = jobsNamed(await adminWo(workOrderId), 'Brake Inspection')[0];
+    same('nace sin dueño, en la cola del taller', [brake?.assignedMechanic ?? null, brake?.workflowStepKey], [null, 'shop_work']);
+
+    const queueOf = async (email: string) => (ok(`cola de ${email}`, await as(email).get('/team-queue')) as Json[]).filter((item) => item.jobId === brake.id);
+    same('un mecánico general la ve en "Available in the shop"', (await queueOf(USERS.general)).map((item) => item.stepKey), ['shop_work']);
+    same('el de Alignment (Standard) también', (await queueOf(USERS.alignment)).length, 1);
+    same('el mecánico de PM no', (await queueOf(USERS.pm)).length, 0);
+    same('Safety no', (await queueOf(USERS.safety)).length, 0);
+    // In a queue it is not "unassigned": the next step does not ask the Manager to assign it.
+    const wo = await adminWo(workOrderId);
+    truthy('el siguiente paso no pide asignar Brake Inspection', !(wo.nextStep?.kind === 'assign' && wo.nextStep?.jobName === 'Brake Inspection'));
+    const plan = ok('el Work Plan', await manager.get(`/admin/trucks/${row.id}/work-plan`));
+    same('sigue en el área Shop Work', plan.jobs.find((job: Json) => job.id === brake.id)?.area, 'shop_work');
+
+    refused('el de PM no la puede tomar', await as(USERS.pm).post(`/team-queue/${brake.id}/take`), 403, 'NOT_ON_STEP_TEAM');
+    ok('Alejandro la toma', await as(USERS.general).post(`/team-queue/${brake.id}/take`));
+    refused('John llega tarde', await as(USERS.spare).post(`/team-queue/${brake.id}/take`), 409, 'JOB_ALREADY_TAKEN');
+    same('es de Alejandro', jobsNamed(await adminWo(workOrderId), 'Brake Inspection')[0]?.assignedMechanic?.id, await userId(USERS.general));
+    same('ya no está en la cola de John', (await queueOf(USERS.spare)).length, 0);
+    ok('Alejandro la suelta', await as(USERS.general).post(`/team-queue/${brake.id}/release`));
+    same('vuelve a la cola sin dueño', (await queueOf(USERS.spare)).length, 1);
+
+    const other = await createWo('968');
+    const sheet2 = await state(other.truck.id);
+    const brakeJobId = brake.catalogJobId as string;
+    ok('guardar con "Assign later" en los frenos', await manager.post(`/admin/trucks/${other.truck.id}/inspection`, sheet(sheet2, { Brakes: 'Pastillas gastadas.' }, {}, {
+      assignments: [{ catalogJobId: brakeJobId, assignedMechanicId: null }],
+    })));
+    const later = jobsNamed(await adminWo(other.workOrderId), 'Brake Inspection')[0];
+    same('"Assign later": sin dueño y fuera de la cola', [later?.assignedMechanic ?? null, later?.workflowStepKey ?? null], [null, null]);
   });
 });

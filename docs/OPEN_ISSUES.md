@@ -26,7 +26,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Trucks & Inspección | LTR-302 | AP-3: tread en el mínimo crea Job; margen Watch en Setup; números a la vista (**migración → Release safety**). **Construido en la rama `claude/ap3-tread-minimo`; PR pendiente de merge** (A162–A163) | B |
 | Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué (**construido, PR en revisión**) | C |
 | Work Orders & Jobs | LTR-304 | AP-5: docs de D57 repartidos en cada PR | — |
-| Mecánicos | LTR-305 | AP-6: cola de Shop Work para mecánicos generales | — |
+| Mecánicos | LTR-305 | AP-6: cola de Shop Work para mecánicos generales (en PR) | — |
 | Work Orders & Jobs | LTR-306 | AP-7: un camión a la vez (`TRUCK_BUSY`), Yard con "Waiting for a mechanic" y quién lo tiene (depende de AP-1) | — |
 | Yard | LTR-255 | Upcoming Departures solo trae las salidas de hoy (faltan las planeadas en Supabase) | — |
 | Yard | LTR-256 | 26 camiones en "301 Yard" según Dispatch, sin Work Order en el shop (pregunta al owner) | — |
@@ -47,7 +47,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics); P38 con D55. **P39–P43** (D57: Detailing tras devolución de Safety, nombre de "Shop Work", override de dos áreas, camión tomado desde ayer, Tire Mounting y Rotation en Alignment) para el dueño y el Shop Manager.
+(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics); P38 con D55. **P39–P44** (D57: Detailing tras devolución de Safety, nombre de "Shop Work", override de dos áreas, camión tomado desde ayer, Tire Mounting y Rotation en Alignment, quién ve la cola del taller) para el dueño y el Shop Manager.
 
 ## Demo congelada (desde 2026-10-16)
 

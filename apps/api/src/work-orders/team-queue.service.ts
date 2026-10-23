@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityEventType, OPEN_WORK_ORDER_STATUSES, ShopWorkflowStepKey, type TeamQueueItemDto } from '@ltl-shop/shared';
+import { ActivityEventType, AppCapability, OPEN_WORK_ORDER_STATUSES, SHOP_WORK_QUEUE_KEY, ShopWorkflowStepKey, type TeamQueueItemDto } from '@ltl-shop/shared';
 import type { WorkOrderStatus } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
@@ -12,7 +12,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 /**
  * LTR-197 / D28: a mandatory step with two or more people shares a queue. Its Jobs are born with no owner and
  * `workflow_step_key`; anyone eligible on that step's team takes one (first wins) and can let it go back.
- * Quality Check's queue stays on the Safety screen (`/qc`).
+ * Quality Check's queue stays on the Safety screen (`/qc`). D57 §5 (LTR-305): the Shop Work queue is every active
+ * Standard mechanic's, with no team to set up.
  */
 @Injectable()
 export class TeamQueueService {
@@ -21,8 +22,9 @@ export class TeamQueueService {
     private readonly activity: ActivityLogService,
   ) {}
 
-  /** The steps (other than QC) whose team this person is on and can work right now. */
+  /** The queues (other than QC) this person can take from: their steps' teams, and Shop Work for a Standard mechanic. */
   private async myStepKeys(user: AuthUser): Promise<string[]> {
+    const shopWork = user.active && user.capabilities.includes(AppCapability.MECHANIC_STANDARD) ? [SHOP_WORK_QUEUE_KEY] : [];
     const memberships = await this.prisma.shopWorkflowStepMember.findMany({
       where: { userId: user.id, step: { active: true, stepKey: { not: ShopWorkflowStepKey.QUALITY_CHECK } } },
       select: {
@@ -30,7 +32,7 @@ export class TeamQueueService {
         user: { select: { id: true, active: true, role: true, capabilities: { select: { capability: true } } } },
       },
     });
-    return memberships.filter((membership) => eligibleTeamMember(membership.step.stepKey, membership.user)).map((membership) => membership.step.stepKey);
+    return [...memberships.filter((membership) => eligibleTeamMember(membership.step.stepKey, membership.user)).map((membership) => membership.step.stepKey), ...shopWork];
   }
 
   async list(user: AuthUser): Promise<TeamQueueItemDto[]> {
@@ -73,6 +75,7 @@ export class TeamQueueService {
       jobId: job.id,
       displayName: job.displayName,
       stepKey: job.workflowStepKey!,
+      // The Shop Work queue has no team, so no size (its hint does not show one).
       teamSize: sizeByKey.get(job.workflowStepKey!) ?? 0,
       addedAt: job.addedAt.toISOString(),
       workOrderId: job.workOrder.id,
@@ -89,7 +92,10 @@ export class TeamQueueService {
     await this.prisma.$transaction(async (tx) => {
       const job = await this.queuedJob(tx, jobId);
       if (!job.workflowStepKey || !stepKeys.includes(job.workflowStepKey)) {
-        throw new ForbiddenException({ code: 'NOT_ON_STEP_TEAM', message: 'Only someone on this step\'s team can take it.' });
+        throw new ForbiddenException({
+          code: 'NOT_ON_STEP_TEAM',
+          message: job.workflowStepKey === SHOP_WORK_QUEUE_KEY ? 'Only a general mechanic can take it.' : 'Only someone on this step\'s team can take it.',
+        });
       }
       // Conditional on "still nobody's" so two people tapping Take at once cannot both win.
       const taken = await tx.workOrderJob.updateMany({
