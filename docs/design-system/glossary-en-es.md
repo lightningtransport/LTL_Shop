@@ -1,7 +1,7 @@
 # Glossary (EN / ES)
 
 **Classification:** CURRENT STATE
-**Updated:** 2026-10-21 (LTR-273: menu names, Samsara place words D49–D52, Dispatch and Full screen); before 2026-09-29 (LTR-170; retired readiness terms removed)
+**Updated:** 2026-10-23 (D57 / LTR-304: areas, one truck at a time, the shop queue); before 2026-10-21 (LTR-273: menu names, Samsara place words D49–D52, Dispatch and Full screen); before 2026-09-29 (LTR-170; retired readiness terms removed)
 
 Domain words stay in English in much of the Admin ES catalog (Work Order,
 Truck, Job, Jobs, Incoming Trucks, PM). Mechanic ES copy sometimes uses
@@ -30,6 +30,12 @@ API error codes have one EN/ES sentence each in `apps/web/src/lib/api-error-copy
 | Mechanic | Mecánico | Assigned technician |
 | Manager | Manager / Shop Manager | Plans Standard work; `work_orders.manage` |
 | Yard Operations | Patio | `/admin/yard-operations`. Tabs: **Shop** / Taller (the board by phase) and **Dispatch** / Dispatch (plan the week, D51); **Full screen** / Pantalla completa opens the board for the TV (D53) |
+| Area (Shop areas · any order) | Área (Áreas del taller · en cualquier orden) | D57: PM, Alignment, Shop Work and Detailing, between the inspection and the QC, with no order between them. A Job's area (`area`) can differ from its step (`lane`): Tires and Flat Repair are Alignment's |
+| Waiting for a mechanic | Esperando mecánico | D57 §3: Yard column and phase (`waiting_for_mechanic`) — work is left in the shop areas and nobody has the truck |
+| {name} is here · {name} · {Job} | {name} lo tiene · {name} · {Job} | D57 §3: who has the truck now, on the Work Plan area and the Yard card |
+| With {name} · {Job} · wait / Start when the truck is free | Con {name} · {Job} · espera / Empieza cuando se libere | D57 §3: the mechanic's card when another mechanic has the truck (`TRUCK_BUSY`) |
+| Available in the shop | Disponibles en el taller | D57 §5: the shop queue on the mechanic's home — repairs nobody took yet; any Standard mechanic takes one |
+| Shop queue (any mechanic) | Cola del taller (cualquier mecánico) | D57 §5: the inspection sheet's default owner for a repair; "Assign later" keeps it out of the queue |
 | In yard | En la yard | Samsara sees the truck inside one of our yard geofences (D49), with "since {time}" |
 | In shop | En el shop | In yard **and** with an open Work Order (D49) |
 | In yard without a Work Order | En la yard sin Work Order | Shop board counter and Trucks filter (D51) |
