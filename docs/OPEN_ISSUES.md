@@ -22,7 +22,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 |---|---|---|---|
 | Work Orders & Jobs | LTR-299 | **Epic D57:** áreas en paralelo, un camión a la vez, Tires en Alignment, tread en el mínimo, card de Tires ([propuesta](proposals/areas-en-paralelo/README.md)) | — |
 | Work Orders & Jobs | LTR-300 | AP-1: un solo orden de áreas; Tires y Flat Repair en Alignment; "next: Tires" | C |
-| Work Orders & Jobs | LTR-301 | AP-2: Work Plan del camión y tabla de Jobs de la WO agrupadas por área (depende de AP-1) | C |
+| Work Orders & Jobs | LTR-301 | AP-2: Work Plan del camión y tabla de Jobs de la WO agrupadas por área (depende de AP-1). **Construido en la rama `claude/ap2-areas-ui` (rebasada sobre el PR 429)** | C |
 | Trucks & Inspección | LTR-302 | AP-3: tread en el mínimo crea Job; margen Watch en Setup; números a la vista (**migración → Release safety**). **Construido en la rama `claude/ap3-tread-minimo`; PR pendiente de merge** (A162–A163) | B |
 | Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué (**construido, PR en revisión**) | C |
 | Work Orders & Jobs | LTR-304 | AP-5: docs de D57 repartidos en cada PR | — |

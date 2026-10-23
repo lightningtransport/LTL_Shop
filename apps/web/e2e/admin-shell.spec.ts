@@ -730,6 +730,10 @@ test.describe('Shop Admin Phase 2A', () => {
     await page.goto('/admin/work-orders/00000000-0000-4000-8000-000000000101');
     await expect(page.getByRole('heading', { name: 'T-101' })).toBeVisible();
 
+    // D57 (LTR-301): the open Jobs sit under their area's header, with the count.
+    const shopWork = page.getByTestId('admin-wo-job-area').filter({ has: page.getByRole('heading', { name: /^Shop Work/ }) });
+    await expect(shopWork.getByTestId('admin-wo-job-row').first()).toContainText('Inspect brake chamber');
+
     // G2: on a pending Job the completion action is a bordered "Mark complete" button, never a check that reads as a status.
     const pendingRow = page.getByTestId('admin-wo-job-row').first();
     await expect(pendingRow.getByRole('button', { name: 'Mark complete: Inspect brake chamber' })).toHaveText('Mark complete');

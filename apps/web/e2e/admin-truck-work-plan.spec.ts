@@ -425,6 +425,13 @@ test.describe('LTR-33 Truck Detail Work Plan', () => {
     await page.getByTestId('mechanic-picker').getByRole('option', { name: /Alex Mechanic/ }).click();
     await expect(page.getByText('Job assigned.').first()).toBeVisible();
     await expect(planList.getByText('Assigned to: Alex Mechanic')).toBeVisible();
+
+    // D57 (LTR-301): the four shop areas are one block in any order; Quality Check and Close stay below it.
+    const areas = page.getByTestId('truck-shop-areas');
+    await expect(areas.getByText('Shop areas · any order')).toBeVisible();
+    for (const area of ['pm', 'alignment', 'shop_work', 'detailing']) await expect(areas.locator(`#truck-step-${area}`)).toBeVisible();
+    await expect(areas.locator('#truck-step-quality_check')).toHaveCount(0);
+    await expect(page.locator('#truck-step-quality_check')).toBeVisible();
   });
 
   test('Manager chooses who does each Job while adding Hallazgos to an open Work Order (D14)', async ({ page }) => {

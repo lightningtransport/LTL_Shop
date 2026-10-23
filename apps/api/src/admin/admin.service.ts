@@ -228,6 +228,8 @@ const detailInclude = {
   jobs: {
     include: {
       category: { select: { name: true } },
+      // D57 (LTR-301): the catalog Job's key keeps a renamed Tires / Flat Repair Job in Alignment.
+      catalogJob: { select: { seedKey: true } },
       assignedMechanic: { select: { id: true, name: true } },
       completedBy: { select: { id: true, name: true } },
       // LTR-200 / PC-3: outside shop invoices tied to the Job (the controller hides them from non-Managers).
@@ -257,7 +259,7 @@ const detailInclude = {
         orderBy: { createdAt: 'asc' as const },
       },
     },
-    orderBy: { addedAt: 'asc' as const },
+    orderBy: [{ addedAt: 'asc' as const }, { id: 'asc' as const }],
   },
   sessions: {
     // LTR-184 / D18: the Admin sees whose clock each session is.
@@ -2650,6 +2652,14 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
     external: toJobExternalDto(job),
     // LTR-197 / D28: an unowned Job born in a team queue reads "In team queue", not "Unassigned".
     workflowStepKey: job.workflowStepKey ?? null,
+    // D57 (LTR-301): the area the Job is painted in (Tires and Flat Repair are Alignment's).
+    area: workAreaOf({
+      lane: classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey),
+      categoryName: job.category.name,
+      displayName: job.displayName,
+      workflowStepKey: job.workflowStepKey,
+      catalogSeedKey: job.catalogJob?.seedKey ?? null,
+    }),
     outsideInvoices: (job.outsideRepairs ?? []).map((repair) => ({ id: repair.id, amountCents: repair.amountCents, vendorName: repair.vendor.name })),
     parts: (job.purchaseLines ?? []).map((line) => ({
       purchaseId: line.purchaseId,

@@ -40,7 +40,9 @@ import { MechanicAvatar } from './mechanic-avatar';
 import { MechanicPicker } from './mechanic-picker';
 import { ResponsiveMenu, type MenuItem } from './responsive-menu';
 import { orderJobs } from '@/lib/work-order-jobs';
-import { Button, CompactEmpty, DialogActions, Modal, Select, Textarea } from './ui';
+import type { TruckStepKey } from '@/lib/truck-stepper';
+import { truckStepLabel } from './truck-stepper';
+import { Button, CompactEmpty, CountChip, DialogActions, Modal, Select, Textarea } from './ui';
 
 type Job = AdminWorkOrderDetailDto['jobs'][number];
 type Mechanic = { id: string; name: string };
@@ -139,7 +141,7 @@ export function AdminJobTable({
   const number = new Intl.NumberFormat(intlLocale(locale));
   // LTR-200 / D-PC7: outside shop invoices are money — the Shop Manager and the System Admin only.
   const canSeeCosts = useCanShowManagerWrites();
-  const { open, closed } = useMemo(() => orderJobs(data.jobs, blockedJobIds), [data.jobs, blockedJobIds]);
+  const { open, groups, closed } = useMemo(() => orderJobs(data.jobs, blockedJobIds), [data.jobs, blockedJobIds]);
 
   if (!data.jobs.length) return <p className="px-4 py-6 text-center text-muted-foreground">{messages.jobsEmpty}</p>;
 
@@ -485,7 +487,15 @@ export function AdminJobTable({
         <span>{messages.jobTableStatus}</span>
         <span className="text-right">{messages.jobTableAction}</span>
       </div>
-      {open.length ? <ul className="divide-y" aria-label={messages.jobs}>{open.map(openRow)}</ul> : null}
+      {groups.map((group, index) => (
+        <section key={group.area} aria-labelledby={`admin-wo-area-${group.area}`} data-testid="admin-wo-job-area" data-area={group.area}>
+          <h3 id={`admin-wo-area-${group.area}`} className={cn('group-title flex min-h-11 items-center gap-2 border-b bg-sunken px-4 py-2', index > 0 && 'border-t')}>
+            {truckStepLabel(group.area as TruckStepKey, messages)}
+            <CountChip>{group.jobs.length}</CountChip>
+          </h3>
+          <ul className="divide-y" aria-label={truckStepLabel(group.area as TruckStepKey, messages)}>{group.jobs.map(openRow)}</ul>
+        </section>
+      ))}
       {closed.length ? (
         <>
           <button

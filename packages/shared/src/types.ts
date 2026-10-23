@@ -501,6 +501,8 @@ export interface AdminWorkOrderJobDto {
   external?: JobExternalDto | null;
   /** LTR-197 / D28: the step whose team queue the Job came from (it can be let go back there). */
   workflowStepKey?: string | null;
+  /** D57 (LTR-301): the area the Job is painted in (`workAreaOf`): Tires and Flat Repair are Alignment's. Optional for deploy skew. */
+  area?: WorkPlanJobLane;
   /** LTR-200 / PC-3: outside shop invoices tied to this Job (Manager and System Admin only; others get none). */
   outsideInvoices?: Array<{ id: string; amountCents: number; vendorName: string }>;
   /** D45 / ST-1: parts bought for this Job on a purchase; `lineTotalCents` only for Manager and System Admin. */
