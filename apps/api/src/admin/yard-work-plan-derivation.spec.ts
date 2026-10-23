@@ -10,6 +10,7 @@ import {
   WorkPlanNotReadyReason,
   WorkPlanPhase,
   WorkPlanReadiness,
+  deriveTruckNextStep,
 } from '@ltl-shop/shared';
 import {
   classifyWorkPlanLane,
@@ -78,7 +79,7 @@ describe('work plan derivation', () => {
     expect(result.mandatory.qualityCheck.status).toBe(WorkPlanMandatoryStatus.PENDING);
   });
 
-  it('uses Shop Work as the phase while repair jobs remain', () => {
+  it('paints PM first (mandatory, not yet done) while repair jobs remain (D57)', () => {
     const result = deriveWorkPlan({
       workOrder: {
         id: 'wo-1',
@@ -93,10 +94,10 @@ describe('work plan derivation', () => {
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.REQUIRED,
     });
-    expect(result.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(result.phase).toBe(WorkPlanPhase.PM);
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
     expect(result.remainingJobCount).toBe(2);
-    expect(result.readyReason).toBe(WorkPlanNotReadyReason.JOBS_REMAINING);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
     expect(result.jobs[0].uiStatus).toBe(WorkPlanJobUiStatus.IN_PROGRESS);
     expect(result.jobs[0].lane).toBe(WorkPlanJobLane.SHOP_WORK);
   });
@@ -264,7 +265,7 @@ describe('Inspection Category Jobs (LTR-89)', () => {
     expect(result.remainingJobCount).toBe(3);
   });
 
-  it('moves to Shop Work once the Inspection Job is done and repairs remain', () => {
+  it('moves on once the Inspection Job is done and repairs remain: PM is painted before Shop Work (D57)', () => {
     const result = deriveWorkPlan({
       workOrder: { ...inProgress, status: WorkOrderStatus.IN_PROGRESS },
       jobs: [
@@ -273,8 +274,8 @@ describe('Inspection Category Jobs (LTR-89)', () => {
       ],
     });
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
-    expect(result.phase).toBe(WorkPlanPhase.SHOP_WORK);
-    expect(result.readyReason).toBe(WorkPlanNotReadyReason.JOBS_REMAINING);
+    expect(result.phase).toBe(WorkPlanPhase.PM);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
   });
 
   it('treats a completed Inspection Job with no repairs as No issues found', () => {
@@ -331,5 +332,67 @@ describe('Ready to Go needs a completed Work Order (LTR-90 / D1)', () => {
   it('still reports the missing step on a completed Work Order without Detailing', () => {
     const result = deriveWorkPlan({ workOrder: wo(WorkOrderStatus.COMPLETED), jobs: planDone.filter((item) => item.id !== 'j3') });
     expect(result.phase).toBe(WorkPlanPhase.DETAILING);
+  });
+});
+
+describe('work areas (D57, LTR-300): the 911 case', () => {
+  const wo = { id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.IN_PROGRESS, version: 2, primaryCategoryName: 'Inspection' };
+  const insp = ReadinessRequirementOutcome.REQUIRED;
+  const plan = (alignmentStatus: JobStatus = JobStatus.TO_DO) => [
+    job('pm', 'PM A Service', 'PM', JobStatus.COMPLETED),
+    job('al', 'Alignment', 'Suspension & Steering', alignmentStatus),
+    job('t', 'Tires', 'Tires & Wheels'),
+    job('f', 'Flat Repair', 'Tires & Wheels'),
+    job('m', 'Mirrors', 'Cab, Body & Glass'),
+    job('de', 'Detailing', 'Detailing'),
+    job('qc', 'Quality Check', 'Quality Check'),
+  ];
+
+  it('Tires and Flat Repair keep lane shop_work but are area alignment; Alignment counts them', () => {
+    const result = deriveWorkPlan({ workOrder: wo, jobs: plan(), inspectionRequirementOutcome: insp });
+    for (const id of ['t', 'f']) {
+      const item = result.jobs.find((entry) => entry.id === id)!;
+      expect(item.lane).toBe(WorkPlanJobLane.SHOP_WORK);
+      expect(item.area).toBe(WorkPlanJobLane.ALIGNMENT);
+    }
+    expect(result.jobs.find((entry) => entry.id === 'm')!.area).toBe(WorkPlanJobLane.SHOP_WORK);
+    expect(result.mandatory.alignment.remainingCount).toBe(3);
+    expect(result.shopWorkRemainingCount).toBe(1);
+    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+  });
+
+  it('Alignment is not complete while only the Alignment Job is done and tires are left', () => {
+    const result = deriveWorkPlan({ workOrder: wo, jobs: plan(JobStatus.COMPLETED), inspectionRequirementOutcome: insp });
+    expect(result.mandatory.alignment.status).not.toBe(WorkPlanMandatoryStatus.COMPLETE);
+    expect(result.mandatory.alignment.remainingCount).toBe(2);
+    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.ALIGNMENT_PENDING);
+  });
+
+  it('the inspection outcome stays Issues found when the only repairs are Tires (lane-based)', () => {
+    const result = deriveWorkPlan({
+      workOrder: wo, inspectionRequirementOutcome: insp,
+      jobs: [job('i', 'General Inspection', 'Inspection', JobStatus.COMPLETED), job('t', 'Tires', 'Tires & Wheels')],
+    });
+    expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
+  });
+
+  it('a Work Order with Tires but no Alignment Job still reports add_missing_steps with alignment (lane-based)', () => {
+    const result = deriveWorkPlan({
+      workOrder: wo, inspectionRequirementOutcome: insp,
+      jobs: [
+        job('pm', 'PM A Service', 'PM'), job('t', 'Tires', 'Tires & Wheels'),
+        job('de', 'Detailing', 'Detailing'), job('qc', 'Quality Check', 'Quality Check'),
+      ],
+    });
+    const next = deriveTruckNextStep({
+      workOrder: { id: 'wo-1', status: 'in_progress' },
+      inspectionOutcome: result.inspection.outcome,
+      jobs: result.jobs.map((item) => ({ id: item.id, displayName: item.displayName, status: item.status, lane: item.lane, area: item.area, assignedMechanic: { id: 'a', name: 'A' } })),
+      activeBlocker: null,
+      currentPause: null,
+    });
+    expect(next).toMatchObject({ kind: 'add_missing_steps' });
+    expect(next?.missingLanes).toEqual([WorkPlanJobLane.ALIGNMENT]);
   });
 });

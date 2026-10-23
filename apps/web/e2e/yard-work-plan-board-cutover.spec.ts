@@ -154,7 +154,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
     await expect(page.getByRole('heading', { name: 'Yard Operations', exact: true })).toBeVisible();
-    for (const phase of ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
+    for (const phase of ['Inspection', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
     await expect(page.getByRole('heading', { name: 'Needs evaluation', exact: true })).toHaveCount(0);
@@ -170,7 +170,7 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
     await expect(page.getByText('Required Work')).toHaveCount(0);
   });
 
-  test('LTR-148 / LTR-159: the board has the PM column, QC always, and a card shows the one Next step', async ({ page }) => {
+  test('LTR-148 / LTR-159 / D57: the board has the PM column, QC always, and a card shows the areas left', async ({ page }) => {
     await mockSession(page);
     const base = yardPage();
     const pmPage = {
@@ -178,7 +178,11 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
       items: [{
         ...base.items[0], phase: 'pm', readyReason: 'pm_pending',
         activeWorkOrder: { ...base.items[0].activeWorkOrder, jobsCompleted: 1, jobsTotal: 5, createdAt: new Date().toISOString() },
-        nextStep: { kind: 'work', jobName: 'PM A Service', remaining: 4 },
+        nextStep: {
+          kind: 'work', jobName: 'PM A Service', remaining: 4,
+          // D57 (LTR-300): the areas left, not a "next" Job.
+          areasLeft: [{ area: 'pm', remaining: 1 }, { area: 'alignment', remaining: 1 }, { area: 'shop_work', remaining: 1 }, { area: 'detailing', remaining: 1 }],
+        },
       }],
     };
     await page.route('**/api/admin/yard-operations**', async (route) => {
@@ -187,10 +191,10 @@ test.describe('Yard Work Plan board cutover (LTR-40)', () => {
 
     await page.setViewportSize({ width: 1440, height: 1024 });
     await page.goto('/admin/yard-operations');
-    const headings = ['Inspection', 'Shop Work', 'PM', 'Alignment', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go'];
+    const headings = ['Inspection', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go'];
     for (const phase of headings) {
       await expect(page.getByRole('heading', { name: phase, exact: true })).toBeVisible();
     }
-    await expect(page.getByTestId('yard-card-next-step').first()).toHaveText('4 Jobs left · next: PM A Service');
+    await expect(page.getByTestId('yard-card-next-step').first()).toHaveText('4 Jobs left · PM, Alignment, 1 repair, Detailing');
   });
 });

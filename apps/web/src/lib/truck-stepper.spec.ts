@@ -34,14 +34,14 @@ describe('Truck readiness steps (stage 4 / UX-4-001)', () => {
     const steps = truckSteps(plan({ jobs: [job('shop_work', 'blocked'), job('shop_work', 'completed', 'completed'), job('alignment', 'external')] }));
     expect(steps.map((step) => [step.key, step.state, step.remaining])).toEqual([
       ['inspection', 'done', 0],
-      ['shop_work', 'blocked', 1],
       ['pm', 'done', 0],
       ['alignment', 'external', 1],
+      ['shop_work', 'blocked', 1],
       ['detailing', 'missing', 0],
       ['quality_check', 'not_applicable', 0],
       ['close', 'waiting', 0],
     ]);
-    expect(steps.filter(truckStepStartsOpen).map((step) => step.key)).toEqual(['shop_work', 'alignment', 'detailing']);
+    expect(steps.filter(truckStepStartsOpen).map((step) => step.key)).toEqual(['alignment', 'shop_work', 'detailing']);
   });
 
   it('Shop Work with no Jobs does not apply; close is ready when only the Work Order is open', () => {

@@ -53,7 +53,7 @@ function openWorkOrder(overrides: Record<string, unknown> = {}) {
 }
 
 describe('YardWorkPlanService', () => {
-  it('reads the open Work Order jobs and reports Shop Work as Not Ready', async () => {
+  it('reads the open Work Order jobs and reports the Work Order as Not Ready (PM pending is painted before Shop Work, D57)', async () => {
     const prisma = {
       truck: { findUnique: vi.fn().mockResolvedValue({ id: truckId }) },
       workOrder: { findFirst: vi.fn().mockResolvedValue(openWorkOrder()) },
@@ -63,9 +63,9 @@ describe('YardWorkPlanService', () => {
     const plan = await service.get(manager, truckId);
     expect(plan.workOrder?.id).toBe(workOrderId);
     expect(plan.jobs).toHaveLength(1);
-    expect(plan.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(plan.phase).toBe(WorkPlanPhase.PM);
     expect(plan.remainingJobCount).toBe(1);
-    expect(plan.readyReason).toBe(WorkPlanNotReadyReason.JOBS_REMAINING);
+    expect(plan.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
     expect(plan.phase1.gatesRemainDefault).toBe(true);
     expect(plan.capabilities.canAddWork).toBe(true);
   });

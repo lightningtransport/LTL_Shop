@@ -13,6 +13,8 @@ import {
   isQualityCheckJob,
   laneForSystemKey,
   jobWorkStatus,
+  jobArea,
+  workAreaOf,
   type JobExternalDto,
   type JobExternalKind,
   type WorkPlanJobDto,
@@ -41,6 +43,8 @@ export type WorkPlanDerivationJob = {
   workflowStepKey?: string | null;
   /** LTR-198 / SW5: the System Job's key; the lane follows it, not the name. */
   systemKey?: string | null;
+  /** D57: the catalog Job's seed key, so Tires and Flat Repair stay Alignment's after a rename (D30). */
+  catalogSeedKey?: string | null;
 };
 
 /** LTR-188 / D24: the Job's external-shop state as the DTOs carry it (null when it is in the shop). */
@@ -171,6 +175,7 @@ export function toWorkPlanJobDto(
       }, sessions)]
     : toWorkPlanJobUiStatus(job.status, workOrderStatus);
   const external = toJobExternalDto(job);
+  const lane = classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey);
   return {
     id: job.id,
     catalogJobId: job.catalogJobId,
@@ -180,7 +185,9 @@ export function toWorkPlanJobDto(
     status: job.status as JobStatus,
     // LTR-188 / D24: a Job at an external shop reads "At external shop", not Pending.
     uiStatus: external ? WorkPlanJobUiStatus.EXTERNAL : uiStatus,
-    lane: classifyWorkPlanLane(job.category.name, job.displayName, job.systemKey),
+    lane,
+    // D57 (LTR-300): where the Job is shown and worked from — Tires and Flat Repair are Alignment's (D54).
+    area: workAreaOf({ lane, categoryName: job.category.name, displayName: job.displayName, workflowStepKey: job.workflowStepKey, catalogSeedKey: job.catalogSeedKey }),
     ...(job.assignedMechanic !== undefined ? { assignedMechanic: job.assignedMechanic } : {}),
     helperOfJobId: job.helperOfJobId ?? null,
     external,
@@ -276,28 +283,36 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
   const jobs = input.jobs.map((job) => toWorkPlanJobDto(job, input.workOrder?.status ?? null, input.sessions));
   const inspectionOutcome = deriveInspectionOutcome(jobs, input.inspectionRequirementOutcome);
   const byLane = (lane: WorkPlanJobLane) => jobs.filter((job) => job.lane === lane);
+  // D57 (LTR-300): an area is done when every Job worked from it is — Alignment waits for its tires too.
+  const byArea = (area: WorkPlanJobLane) => jobs.filter((job) => jobArea(job) === area);
   const stepOptions = { cancelledMeansNotApplicable: true };
-  const pm = mandatoryPhase(byLane(WorkPlanJobLane.PM), true, stepOptions);
-  const alignment = mandatoryPhase(byLane(WorkPlanJobLane.ALIGNMENT), true, stepOptions);
-  const detailing = mandatoryPhase(byLane(WorkPlanJobLane.DETAILING), true, stepOptions);
+  const pm = mandatoryPhase(byArea(WorkPlanJobLane.PM), true, stepOptions);
+  const alignment = mandatoryPhase(byArea(WorkPlanJobLane.ALIGNMENT), true, stepOptions);
+  const detailing = mandatoryPhase(byArea(WorkPlanJobLane.DETAILING), true, stepOptions);
   const qualityJobs = byLane(WorkPlanJobLane.QUALITY_CHECK);
   // LTR-144: QC is always required (Cristian, 2026-09-25).
   const qualityCheck = mandatoryPhase(qualityJobs, true, stepOptions);
   const remainingJobs = jobs.filter((job) => job.status === JobStatus.TO_DO);
   const remainingJobCount = remainingJobs.length;
-  const shopRemaining = remainingJobs.filter((job) => job.lane === WorkPlanJobLane.SHOP_WORK).length;
+  const shopRemaining = remainingJobs.filter((job) => jobArea(job) === WorkPlanJobLane.SHOP_WORK).length;
+  // Repairs found (any area): the inspection's "Issues found" needs at least one.
   const shopPresent = byLane(WorkPlanJobLane.SHOP_WORK).some((job) => job.status !== JobStatus.CANCELLED);
   const needsAddWork = inspectionOutcome === WorkPlanInspectionOutcome.ISSUES_FOUND && !shopPresent;
 
+  // D57 (LTR-300): the first area not done, in WORK_AREA_ORDER (Inspection · PM · Alignment · Shop Work · Detailing ·
+  // QC). The areas have no order between them; this only picks the Yard column. "Issues found" with no repair yet
+  // comes first: the Manager has to add the work.
   let readyReason = WorkPlanNotReadyReason.PLAN_COMPLETE;
   if (inspectionOutcome === WorkPlanInspectionOutcome.NOT_STARTED) {
     readyReason = WorkPlanNotReadyReason.INSPECTION_PENDING;
-  } else if (needsAddWork || shopRemaining > 0) {
+  } else if (needsAddWork) {
     readyReason = WorkPlanNotReadyReason.JOBS_REMAINING;
   } else if (unresolved(pm)) {
     readyReason = WorkPlanNotReadyReason.PM_PENDING;
   } else if (unresolved(alignment)) {
     readyReason = WorkPlanNotReadyReason.ALIGNMENT_PENDING;
+  } else if (shopRemaining > 0) {
+    readyReason = WorkPlanNotReadyReason.JOBS_REMAINING;
   } else if (unresolved(detailing)) {
     readyReason = WorkPlanNotReadyReason.DETAILING_PENDING;
   } else if (unresolved(qualityCheck)) {
@@ -314,12 +329,14 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
   let phase = WorkPlanPhase.READY_TO_GO;
   if (inspectionOutcome === WorkPlanInspectionOutcome.NOT_STARTED) {
     phase = WorkPlanPhase.INSPECTION;
-  } else if (needsAddWork || shopRemaining > 0) {
+  } else if (needsAddWork) {
     phase = WorkPlanPhase.SHOP_WORK;
   } else if (unresolved(pm)) {
     phase = WorkPlanPhase.PM;
   } else if (unresolved(alignment)) {
     phase = WorkPlanPhase.ALIGNMENT;
+  } else if (shopRemaining > 0) {
+    phase = WorkPlanPhase.SHOP_WORK;
   } else if (unresolved(detailing)) {
     phase = WorkPlanPhase.DETAILING;
   } else if (unresolved(qualityCheck)) {
@@ -332,7 +349,7 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     inspection: { outcome: inspectionOutcome },
     jobs,
     remainingJobCount,
-    /** Shop Work Jobs still to do (the Yard card's "N Jobs pending" — not PM/Alignment/Detailing/QC). */
+    /** Shop Work area Jobs still to do (the Yard card's "N Jobs pending" — not PM/Alignment, tires included, Detailing/QC). */
     shopWorkRemainingCount: shopRemaining,
     readiness,
     readyReason,

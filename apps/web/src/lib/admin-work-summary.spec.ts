@@ -46,7 +46,7 @@ describe('workOrderListNextText (DM1, LTR-204)', () => {
 
   it('words the other steps the same way and keeps the Jobs line without a step', () => {
     expect(workOrderListNextText({ ...base, jobsCompleted: 1, nextJobName: 'Lights', nextStep: { kind: 'work', workOrderId: 'wo', jobName: 'Lights', remaining: 3 } }, getAdminMessages('en')))
-      .toBe('3 Jobs left · next: Lights');
+      .toBe('3 Jobs left · Lights');
     expect(workOrderListNextText({ ...base, nextStep: null }, getAdminMessages('en'))).toBe('4 Jobs · all done');
     expect(workOrderListNextText(base, getAdminMessages('en'))).toBe('4 Jobs · all done');
   });

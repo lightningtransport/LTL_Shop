@@ -33,14 +33,20 @@ describe('Work Plan PM phase (LTR-144)', () => {
     expect(classifyWorkPlanLane('PM', 'PM B Service')).toBe(WorkPlanJobLane.PM);
   });
 
-  it('puts PM between Shop Work and Alignment', () => {
+  it('paints PM before Shop Work and Alignment (D57: no order between areas, fixed painting order)', () => {
     const shop = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,
       jobs: [job('s1', 'Brake Repair', 'Air & Brake'), ...fullPlan()],
     });
-    expect(shop.phase).toBe(WorkPlanPhase.SHOP_WORK);
+    expect(shop.phase).toBe(WorkPlanPhase.PM);
     expect(shop.shopWorkRemainingCount).toBe(1);
     expect(shop.remainingJobCount).toBe(5);
+
+    const shopDone = deriveWorkPlan({
+      workOrder: workOrder(), inspectionRequirementOutcome: inspected,
+      jobs: [job('s1', 'Brake Repair', 'Air & Brake', done), ...fullPlan({ pm: done })],
+    });
+    expect(shopDone.phase).toBe(WorkPlanPhase.ALIGNMENT);
 
     const pm = deriveWorkPlan({
       workOrder: workOrder(), inspectionRequirementOutcome: inspected,

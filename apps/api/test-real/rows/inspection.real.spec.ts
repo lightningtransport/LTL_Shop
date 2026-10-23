@@ -267,6 +267,20 @@ describe('Las llantas de la inspección van a Alignment y dicen qué llanta y po
     same('Flat Repair va a Alignment', ownerOf(jobsNamed(wo, 'Flat Repair')[0]), alignment);
     same('Tires va a Alignment', ownerOf(jobsNamed(wo, 'Tires')[0]), alignment);
 
+    // D57 (LTR-300): el Work Plan las muestra en el área Alignment, y Alignment no termina hasta que se hacen.
+    const plan = ok('el Work Plan del camión', await manager.get(`/admin/trucks/${row.id}/work-plan`));
+    const areaOf = (name: string) => plan.jobs.filter((job: Json) => job.displayName === name).map((job: Json) => `${job.lane}/${job.area}`);
+    same('Flat Repair: paso Shop Work, área Alignment', areaOf('Flat Repair'), ['shop_work/alignment']);
+    same('Tires: paso Shop Work, área Alignment', areaOf('Tires'), ['shop_work/alignment']);
+    same('Alignment cuenta sus llantas', plan.mandatory.alignment.remainingCount, 3);
+    same('en el área Shop Work no queda nada', plan.jobs.filter((job: Json) => job.area === 'shop_work' && job.status === 'to_do').length, 0);
+    // Un cambio de nombre no la saca de Alignment: se reconoce por la clave del catálogo (D30).
+    const tireJob = jobsNamed(wo, 'Tires')[0];
+    await prisma.workOrderJob.update({ where: { id: tireJob.id }, data: { displayName: 'Llantas nuevas' } });
+    const renamed = ok('el Work Plan después de renombrar', await manager.get(`/admin/trucks/${row.id}/work-plan`));
+    same('renombrada, sigue en Alignment', renamed.jobs.find((job: Json) => job.id === tireJob.id)?.area, 'alignment');
+    await prisma.workOrderJob.update({ where: { id: tireJob.id }, data: { displayName: 'Tires' } });
+
     const mine = ok('el mecánico de Alignment abre el camión', await as(USERS.alignment).get(`/work-orders/${workOrderId}`));
     const flat = mine.jobs.find((job: Json) => job.displayName === 'Flat Repair');
     same('ve qué llanta y por qué (presión)', flat.tireFindings, [{ position: 'LFO', psi: 72, targetPsi: 95, tread: 8, minTread: 2, reason: 'low_pressure' }]);

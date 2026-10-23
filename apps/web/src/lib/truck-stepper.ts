@@ -1,19 +1,21 @@
-import type { TruckOperationalStatus, TruckWorkPlanDto, WorkPlanMandatoryPhaseDto } from '@ltl-shop/shared';
+import { jobArea, type TruckOperationalStatus, type TruckWorkPlanDto, type WorkPlanMandatoryPhaseDto } from '@ltl-shop/shared';
 
 /**
  * Stage 4 (UX-4-001, T9): the Truck's readiness as one row of steps under the header. It only lays
  * out what the Work Plan DTO already carries (the API derives readiness, D1); nothing new is decided
  * here. Each step's section on the Work Plan has the id `truck-step-<key>`.
  */
-export const TRUCK_STEPS = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check', 'close'] as const;
+/** D57 (LTR-300): WORK_AREA_ORDER plus Close. PM, Alignment, Shop Work and Detailing have no order between them. */
+export const TRUCK_STEPS = ['inspection', 'pm', 'alignment', 'shop_work', 'detailing', 'quality_check', 'close'] as const;
 export type TruckStepKey = (typeof TRUCK_STEPS)[number];
 export type TruckStepState = 'done' | 'pending' | 'blocked' | 'external' | 'missing' | 'not_applicable' | 'ready' | 'waiting';
 export type TruckStep = { key: TruckStepKey; state: TruckStepState; remaining: number };
 
 type Jobs = TruckWorkPlanDto['jobs'];
 
-function liveJobs(jobs: Jobs, lane: string) {
-  return jobs.filter((job) => job.lane === lane && job.status !== 'cancelled');
+/** The live Jobs worked from an area (D57: Tires and Flat Repair are Alignment's). */
+function liveJobs(jobs: Jobs, area: string) {
+  return jobs.filter((job) => jobArea(job) === area && job.status !== 'cancelled');
 }
 
 /** A blocked or external Job wins over "pending": that is what holds the step. */
@@ -53,9 +55,9 @@ export function truckSteps(plan: TruckWorkPlanDto): TruckStep[] {
 
   return [
     inspection,
-    shopWork,
     mandatoryStep('pm', plan.mandatory.pm, plan.jobs),
     mandatoryStep('alignment', plan.mandatory.alignment, plan.jobs),
+    shopWork,
     mandatoryStep('detailing', plan.mandatory.detailing, plan.jobs),
     mandatoryStep('quality_check', plan.mandatory.qualityCheck, plan.jobs),
     close,

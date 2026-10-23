@@ -122,6 +122,8 @@ const summaryWorkOrderInclude = {
       category: { select: { id: true, name: true } },
       // LTR-159: the Next step needs each Job's owner.
       assignedMechanic: { select: { id: true, name: true } },
+      // D57: Tires and Flat Repair are Alignment's by their seed key, which a rename keeps.
+      catalogJob: { select: { seedKey: true } },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -188,7 +190,7 @@ type ShopStatus = {
 const readyToGoCountWorkOrderInclude = {
   primaryCategory: true,
   jobs: {
-    include: { category: { select: { id: true, name: true } } },
+    include: { category: { select: { id: true, name: true } }, catalogJob: { select: { seedKey: true } } },
     orderBy: { addedAt: 'asc' as const },
   },
 } as const;
@@ -1067,6 +1069,7 @@ function workPlanInputFromYardRow(row: YardTruckRow): WorkPlanDerivationInput {
           externalNote: job.externalNote,
           workflowStepKey: job.workflowStepKey,
           systemKey: job.systemKey,
+          catalogSeedKey: job.catalogJob?.seedKey ?? null,
         })),
     inspectionRequirementOutcome: (inspectionRequirement?.outcome as ReadinessRequirementOutcome | undefined) ?? null,
   };

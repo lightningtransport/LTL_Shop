@@ -68,8 +68,42 @@ describe('deriveTruckNextStep (LTR-158 / D14)', () => {
     expect(deriveTruckNextStep(base({ jobs }))).toEqual({ kind: 'assign', workOrderId: 'wo-1', jobId: 'Alignment', jobName: 'Alignment' });
   });
 
-  it('work while mechanics still have Jobs, naming the next one', () => {
-    expect(deriveTruckNextStep(base())).toEqual({ kind: 'work', workOrderId: 'wo-1', jobId: 'Brakes', jobName: 'Brakes', remaining: 5 });
+  it('work while mechanics still have Jobs, listing the areas left in WORK_AREA_ORDER (D57)', () => {
+    expect(deriveTruckNextStep(base())).toEqual({
+      kind: 'work', workOrderId: 'wo-1', jobId: 'PM A Service', jobName: 'PM A Service', remaining: 5,
+      areasLeft: [
+        { area: WorkPlanJobLane.PM, remaining: 1 },
+        { area: WorkPlanJobLane.ALIGNMENT, remaining: 1 },
+        { area: WorkPlanJobLane.SHOP_WORK, remaining: 1 },
+        { area: WorkPlanJobLane.DETAILING, remaining: 1 },
+      ],
+    });
+  });
+
+  it('areasLeft counts per area, excludes QC and external Jobs (D57)', () => {
+    const jobs = [
+      job('Brakes', WorkPlanJobLane.SHOP_WORK),
+      { ...job('Tires', WorkPlanJobLane.SHOP_WORK), area: WorkPlanJobLane.ALIGNMENT },
+      { ...job('Flat Repair', WorkPlanJobLane.SHOP_WORK), area: WorkPlanJobLane.ALIGNMENT },
+      job('Alignment', WorkPlanJobLane.ALIGNMENT),
+      { ...job('Welding', WorkPlanJobLane.SHOP_WORK, 'to_do', null), external: { kind: 'part' as const } },
+      job('Quality Check', WorkPlanJobLane.QUALITY_CHECK, 'to_do', null),
+      job('PM A Service', WorkPlanJobLane.PM, 'completed'),
+      job('Detailing', WorkPlanJobLane.DETAILING, 'completed'),
+    ];
+    const result = deriveTruckNextStep(base({ jobs }));
+    expect(result?.kind).toBe('work');
+    expect(result?.areasLeft).toEqual([
+      { area: WorkPlanJobLane.ALIGNMENT, remaining: 3 },
+      { area: WorkPlanJobLane.SHOP_WORK, remaining: 1 },
+    ]);
+  });
+
+  it('without area, areasLeft falls back to the lane', () => {
+    const result = deriveTruckNextStep(base());
+    expect(result?.areasLeft?.map((item) => item.area)).toEqual([
+      WorkPlanJobLane.PM, WorkPlanJobLane.ALIGNMENT, WorkPlanJobLane.SHOP_WORK, WorkPlanJobLane.DETAILING,
+    ]);
   });
 
   it('qc when only Quality Check is left', () => {
