@@ -30,7 +30,7 @@ import {
 } from '@/lib/admin-data';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { fillPlaceholders } from '@/lib/admin-next-step';
-import { truckNextStepText } from '@/lib/truck-next-step';
+import { nextStepAreasText, truckNextStepText } from '@/lib/truck-next-step';
 import { useActionToast } from './action-toast';
 import { CloseWorkOrderDialog } from './close-work-order-dialog';
 import { NextStepAction } from './next-step-action';
@@ -298,7 +298,7 @@ export function AdminTruckNextStep({
         icon: Wrench,
         eyebrow: messages.calloutNextStep,
         title: messages.calloutWorkingTitle,
-        sub: fillPlaceholders(messages.calloutWorkingSub, { count: String(step.remaining ?? 0), job: step.jobName ?? '' }),
+        sub: fillPlaceholders(messages.calloutWorkingSub, { count: String(step.remaining ?? 0), areas: nextStepAreasText(step, messages) }),
       });
     case 'create_work_order': {
       // Owner decision (2026-10-05): New Work Order is a dialog here. After "Issues found", adding the

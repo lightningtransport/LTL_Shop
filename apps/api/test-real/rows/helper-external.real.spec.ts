@@ -156,7 +156,8 @@ describe('Ayudante y taller externo (HU-M10, HU-M11 — D23, D24)', () => {
     const airLeak = namedJob(await adminWo(second.workOrderId), 'Air Leak');
     ok('Enviar a taller externo: sale el camión', await sendOut(second.workOrderId, airLeak.id, 'truck'));
     const card = await yardCard(second.truck.id);
-    same('el Yard: "Fuera del taller", la fase no cambia', [card.outOfShop, card.phase], [true, 'shop_work']);
+    // D57 (LTR-300): el PM sigue pendiente, así que la columna es PM; la pieza afuera no la cambia.
+    same('el Yard: "Fuera del taller", la fase no cambia', [card.outOfShop, card.phase], [true, 'pm']);
     ok('Regresó → completar', await returned(second.workOrderId, airLeak.id, 'complete'));
     const back = namedJob(await adminWo(second.workOrderId), 'Air Leak');
     same('completado por el Manager', [back.status, back.completedBy?.id, back.external], ['completed', await userId(USERS.manager), null]);

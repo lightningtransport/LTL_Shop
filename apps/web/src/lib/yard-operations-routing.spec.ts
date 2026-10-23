@@ -52,12 +52,12 @@ describe('Yard quick filters (stage 6)', () => {
 });
 
 describe('WORK_PLAN_YARD_PHASES', () => {
-  it('LTR-144: shows PM after Shop Work and QC always (LTR-150: the only board)', () => {
+  it('D57 (LTR-300): fixed painting order inspection, PM, Alignment, Shop Work, Detailing, QC always (LTR-150: the only board)', () => {
     expect([...WORK_PLAN_YARD_PHASES]).toEqual([
       WorkPlanPhase.INSPECTION,
-      WorkPlanPhase.SHOP_WORK,
       WorkPlanPhase.PM,
       WorkPlanPhase.ALIGNMENT,
+      WorkPlanPhase.SHOP_WORK,
       WorkPlanPhase.DETAILING,
       WorkPlanPhase.QUALITY_CHECK,
       WorkPlanPhase.READY_TO_CLOSE,

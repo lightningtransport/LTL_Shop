@@ -8,6 +8,7 @@ export * from './quality-check';
 export * from './enums';
 export * from './job-work-status';
 export * from './truck-next-step';
+export * from './work-areas';
 export * from './pm-mileage';
 export * from './schemas';
 export * from './types';

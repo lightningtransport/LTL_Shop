@@ -789,7 +789,10 @@ export interface WorkPlanJobDto {
   category: JobCategoryReferenceDto;
   status: JobStatus;
   uiStatus: WorkPlanJobUiStatus;
+  /** The kind of step (`classifyWorkPlanLane`); the step rules read it. */
   lane: WorkPlanJobLane;
+  /** D57 (LTR-300): the area the Job shows in and is worked from (`workAreaOf`): Tires and Flat Repair are Alignment's. */
+  area?: WorkPlanJobLane;
   /** LTR-154 / D11: the Job's owner on the Truck Work Plan (null = unassigned). */
   assignedMechanic?: { id: string; name: string } | null;
   /** LTR-188 / D23: the Job this one helps (a helper Job). */

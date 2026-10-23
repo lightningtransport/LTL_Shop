@@ -94,7 +94,8 @@ describe('Tablero, Yard, notas y tiempos', () => {
     const phase = (truckId: string) => (yard.items as Json[]).find((item) => item.truck.id === truckId)?.phase ?? null;
     same('solo los Trucks con trabajo están en el tablero', (yard.items as Json[]).length, 4);
     same('recién llegado', phase(fresh.truck.id), 'inspection');
-    same('con hallazgos', phase(working.truck.id), 'shop_work');
+    // D57 (LTR-300): con el PM y las reparaciones pendientes, la columna es PM (orden de pintado: PM · Alignment · Shop Work · Detailing).
+    same('con hallazgos', phase(working.truck.id), 'pm');
     same('cerrado', phase(ready.truck.id), 'ready_to_go');
     const { presenceUnknown, matching, total, quick, byPhase, ...buckets } = yard.counts;
     same('Inspection + In the Shop + Ready to Go suman el tablero; Blocked es un subconjunto', buckets, { notStarted: 1, underReview: 2, readyToGo: 1, blocked: 1 });
@@ -103,7 +104,7 @@ describe('Tablero, Yard, notas y tiempos', () => {
     same('filtros rápidos', quick, { all: 4, blocked: 1, highPriority: 0, outOfShop: 0, leavingSoon: 0 });
     // Etapa 8: el número de cada carril cuenta todas las páginas.
     // `byPhase` es un mapa (la web lee `counts.byPhase[phase]`); el orden de sus claves sigue al tablero y no es contrato (PF9 c).
-    same('camiones por paso', Object.fromEntries(Object.entries(byPhase as Record<string, number>).sort()), { inspection: 1, ready_to_go: 1, shop_work: 2 });
+    same('camiones por paso', Object.fromEntries(Object.entries(byPhase as Record<string, number>).sort()), { inspection: 1, pm: 2, ready_to_go: 1 });
     // Etapa 8: "Leaving soon" con los números que la web toma de Dispatch (solo camiones con WO abierta).
     const soon = ok('Yard sale pronto', await manager.get(`/admin/yard-operations?limit=100&soonTrucks=922,944&soon=true`));
     same('sale pronto: solo el abierto (el Ready to Go no cuenta)', (soon.items as Json[]).map((item) => item.truck.id), [working.truck.id]);

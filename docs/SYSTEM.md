@@ -882,14 +882,34 @@ de mecánicos para Jobs no la ofrece.
 
 ## 5. Work Plan y "Siguiente paso"
 
-**Work Plan** (fase del Truck, calculada, nunca guardada):
+**Work Plan** (fase del Truck, calculada, nunca guardada). D57 (LTR-300): la
+inspección va primero y el Quality Check al final; en el medio hay cuatro
+**áreas sin orden entre sí**. El orden de abajo es solo el de pintar (Work Plan,
+columnas del Yard), escrito una vez en `WORK_AREA_ORDER`
+(`packages/shared/src/work-areas.ts`):
 
 ```
-Inspection → Shop Work → PM → Alignment → Detailing → Quality Check → Ready to close → Ready to Go
+Inspection → [ PM · Alignment · Shop Work · Detailing ] → Quality Check → Ready to close → Ready to Go
 ```
 
 - PM, Alignment, Detailing y QC siempre son obligatorios. Un paso con todos
   sus Jobs cancelados cuenta como "no aplica".
+- **Paso y área.** Cada Job tiene su **paso** (`lane`, qué clase de trabajo
+  es; de él salen las reglas: si falta un Job obligatorio, si la inspección
+  encontró algo, cuál es el QC) y su **área** (`area`, dónde se ve y quién lo
+  trabaja). Son iguales salvo en dos casos de Shop Work: **Tires** y **Flat
+  Repair** (categoría Tires & Wheels) son del área **Alignment** (D54: la
+  máquina de llantas está ahí), y un Job que espera en la cola de un equipo
+  (D28) es del área de ese equipo. El resto de Tires & Wheels (Rims, Hubs,
+  Wheel Seals, Tire Rotation, Tire Mounting) sigue en Shop Work.
+- Un área está **completa** cuando están hechos todos sus Jobs: Alignment no
+  termina mientras falten las llantas.
+- **Fase del Yard:** la primera área sin terminar en ese orden (Inspection,
+  PM, Alignment, Shop Work, Detailing, QC). Va primero, antes del PM, el caso
+  "Issues found" sin ninguna reparación agregada (Shop Work: el Manager tiene
+  que agregar el trabajo). La fase solo elige la columna; no dice qué se hace
+  primero. El motivo de "no listo" (`readyReason`) y el requisito que bloquea en el
+  Yard siguen el mismo orden: con el PM y reparaciones pendientes dicen PM.
 - El orden **se muestra, no se obliga**: los mecánicos trabajan en paralelo.
 - **Ready to Go** = todos los pasos resueltos **y** el WO `completed` (D1).
   Si el WO sigue abierto, la fase es **Ready to close**.
@@ -933,7 +953,7 @@ aplique:
 | 8 | `close` | Close Work Order |
 | — | `cancel_work_order` | (D55 R15, LTR-295) todos los Jobs fuera del Quality Check se cancelaron: no hay nada que cerrar y se ofrece **Cancel Work Order** (en la Work Order abre su diálogo con motivo; en el Dashboard, el Truck y las listas lleva a la Work Order). Va antes de la inspección y del QC. En el Dashboard es el grupo "Nothing done · cancel", que ningún contador cuenta. Una Work Order de PM no llega aquí |
 | 9 | `return_to_service` | Return to Service. Con `yardMove` (D52): `left_yard` = Samsara lo vio fuera de la yard después del cierre ("Left the yard · Confirm Return to Service"); `back_in_yard` = salió y volvió a entrar sin Return to Service |
-| 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan) |
+| 10 | `work` | (los mecánicos están trabajando; los Jobs afuera no cuentan). D57 (LTR-300): dice **qué áreas faltan**, no un "siguiente" Job: "7 Jobs left · PM, Alignment, 1 repair, Detailing" (`areasLeft`; Shop Work se lee como sus reparaciones; el QC no cuenta). Antes decía "next: Tires" |
 | — | `create_work_order` | Truck sin WO abierto |
 
 Un test de contrato verifica que todas las pantallas devuelven el mismo paso,

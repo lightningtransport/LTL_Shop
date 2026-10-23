@@ -441,7 +441,7 @@ test.describe('Shop Admin Phase 2A', () => {
     // An open Work Order with a Job left names that Job, like the Truck does.
     await page.goto('/admin/work-orders?status=in_progress');
     const open = page.locator('table tbody tr', { has: page.getByRole('link', { name: 'WO-0106', exact: true }) });
-    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Job left · next: Inspect brake chamber');
+    await expect(open.getByTestId('work-order-row-next-step')).toHaveText('1 Job left · Inspect brake chamber');
   });
 
   test('work order filters stay collapsed on mobile and compact on desktop', async ({ page }) => {

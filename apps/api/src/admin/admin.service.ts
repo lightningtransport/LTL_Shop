@@ -9,6 +9,8 @@ import {
   type TruckFaultSeverity,
 } from '@prisma/client';
 import {
+  workAreaOf,
+  workAreaRank,
   isPmCategory,
   WorkPlanJobLane,
   adminChangePmServiceSchema,
@@ -2590,12 +2592,16 @@ export function countUnassignedJobs(
     && classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '', job.systemKey) !== WorkPlanJobLane.QUALITY_CHECK).length;
 }
 
-// LTR-157: flow order for "Next: <Job>" on lists and cards.
-const LANE_FLOW_ORDER = ['inspection', 'shop_work', 'pm', 'alignment', 'detailing', 'quality_check'];
-
-function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string }; externalSince?: Date | null; systemKey?: string | null }>): string | null {
+// LTR-157: "Next: <Job>" on lists and cards. D57 (LTR-300): in WORK_AREA_ORDER, the one order written once.
+function nextJobInFlow(jobs: Array<{ status: string; displayName?: string; category?: { name: string }; externalSince?: Date | null; systemKey?: string | null; workflowStepKey?: string | null }>): string | null {
+  const areaRank = (job: (typeof jobs)[number]) => {
+    const categoryName = job.category?.name ?? '';
+    const displayName = job.displayName ?? '';
+    const lane = classifyWorkPlanLane(categoryName, displayName, job.systemKey);
+    return workAreaRank(workAreaOf({ lane, categoryName, displayName, workflowStepKey: job.workflowStepKey }));
+  };
   const pending = jobs
-    .map((job, index) => ({ job, index, rank: LANE_FLOW_ORDER.indexOf(classifyWorkPlanLane(job.category?.name ?? '', job.displayName ?? '', job.systemKey)) }))
+    .map((job, index) => ({ job, index, rank: areaRank(job) }))
     // LTR-188 / D24: a Job at an external shop is not the next thing done here.
     .filter(({ job }) => job.status === 'to_do' && !job.externalSince)
     .sort((left, right) => left.rank - right.rank || left.index - right.index);

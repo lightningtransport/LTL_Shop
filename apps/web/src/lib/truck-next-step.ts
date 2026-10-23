@@ -11,6 +11,24 @@ const LANE_NAME: Partial<Record<WorkPlanJobLane, string>> = {
 };
 
 /**
+ * D57 (LTR-300): the areas with work left, in WORK_AREA_ORDER — "PM, Alignment, 2 repairs, Detailing". Shop Work
+ * reads as its count of repairs. No area is "next": the shop does them in any order. Falls back to the Job's name
+ * while an older API sends no `areasLeft`.
+ */
+export function nextStepAreasText(step: TruckNextStepDto, messages: AdminMessages): string {
+  const areas = step.areasLeft ?? [];
+  if (!areas.length) return step.jobName ?? '';
+  const names: Partial<Record<WorkPlanJobLane, string>> = {
+    [WorkPlanJobLane.PM]: messages.pm,
+    [WorkPlanJobLane.ALIGNMENT]: messages.alignment,
+    [WorkPlanJobLane.DETAILING]: messages.detailing,
+  };
+  return areas
+    .map(({ area, remaining }) => names[area] ?? fillPlaceholders(messages.nextStepRepairs, { count: String(remaining) }))
+    .join(', ');
+}
+
+/**
  * LTR-159: the one sentence for a Truck's Next step on every Admin surface
  * (Dashboard, Work Order list and detail, Yard card, Truck list, Truck Detail).
  * The rule is the API's `nextStep`; this only words it.
@@ -52,7 +70,7 @@ export function truckNextStepText(step: TruckNextStepDto | null | undefined, mes
       return fillPlaceholders(move.kind === 'left_yard' ? messages.truckNextStepLeftYard : messages.truckNextStepBackInYard, { time });
     }
     case 'work':
-      return fillPlaceholders(messages.truckNextStepWork, { count: String(step.remaining ?? 0), job: step.jobName ?? '' });
+      return fillPlaceholders(messages.truckNextStepWork, { count: String(step.remaining ?? 0), areas: nextStepAreasText(step, messages) });
     case 'create_work_order':
       return messages.truckNextStepCreate;
     default:

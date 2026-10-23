@@ -6,6 +6,7 @@ import {
   AppCapability,
   JobStatus,
   WorkPlanInspectionOutcome,
+  jobArea,
   type TruckWorkPlanDto,
 } from '@ltl-shop/shared';
 import { Building2, Check, ChevronDown, ClipboardCheck, CircleSlash, CornerDownRight, Lock, OctagonPause, Package, ShieldCheck, SquareArrowOutUpRight, Truck, UserPlus } from 'lucide-react';
@@ -173,8 +174,9 @@ export function AdminTruckWorkPlan({
   }
 
   function jobsFor(key: TruckStepKey) {
-    const lanes = STEP_LANES[key];
-    const own = plan.jobs.filter((job) => lanes.includes(job.lane));
+    const areas = STEP_LANES[key];
+    // D57 (LTR-300): a Job sits under the area it is worked from (Tires and Flat Repair under Alignment).
+    const own = plan.jobs.filter((job) => areas.includes(jobArea(job)));
     // D23: a helper Job sits right under the Job it helps.
     const parents = own.filter((job) => !job.helperOfJobId || !own.some((other) => other.id === job.helperOfJobId));
     return parents.flatMap((job) => [job, ...own.filter((other) => other.helperOfJobId === job.id)]);

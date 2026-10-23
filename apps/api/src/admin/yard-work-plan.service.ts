@@ -39,6 +39,8 @@ const openWorkOrderInclude = {
     include: {
       category: { select: { id: true, name: true } },
       assignedMechanic: { select: { id: true, name: true } },
+      // D57: Tires and Flat Repair are Alignment's by their seed key, which a rename keeps.
+      catalogJob: { select: { seedKey: true } },
     },
     orderBy: { addedAt: 'asc' as const },
   },
@@ -71,6 +73,7 @@ type OpenWorkOrderRow = {
     externalNote: string | null;
     workflowStepKey?: string | null;
     systemKey?: string | null;
+    catalogJob?: { seedKey: string | null } | null;
   }>;
   sessions: Array<{ endedAt: Date | null; userId: string | null }>;
   pauseEvents: Array<{ jobId: string | null }>;
@@ -135,6 +138,7 @@ export class YardWorkPlanService {
             externalNote: job.externalNote,
             workflowStepKey: job.workflowStepKey,
             systemKey: job.systemKey,
+            catalogSeedKey: job.catalogJob?.seedKey ?? null,
           })),
       sessions: workOrder?.sessions ?? [],
       inspectionRequirementOutcome: inspectionRequirement?.outcome ?? null,

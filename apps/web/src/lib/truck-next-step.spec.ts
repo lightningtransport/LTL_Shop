@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WorkPlanJobLane } from '@ltl-shop/shared';
 import { getAdminMessages } from './admin-messages-catalog';
-import { truckNextStepActionLabel, truckNextStepText } from './truck-next-step';
+import { nextStepAreasText, truckNextStepActionLabel, truckNextStepText } from './truck-next-step';
 
 const en = getAdminMessages('en');
 const es = getAdminMessages('es');
@@ -11,9 +11,27 @@ describe('truckNextStepText (LTR-159)', () => {
     expect(truckNextStepText({ kind: 'resolve_blocker', jobName: 'Detailing', reason: 'waiting_for_parts' }, en)).toBe('Blocked · Detailing: Waiting for Parts');
     expect(truckNextStepText({ kind: 'add_missing_steps', missingLanes: [WorkPlanJobLane.PM, WorkPlanJobLane.QUALITY_CHECK] }, en)).toBe('This Work Order is missing: PM, Quality Check.');
     expect(truckNextStepText({ kind: 'assign', jobName: 'Alignment' }, es)).toBe('Nadie asignado a Alignment.');
-    expect(truckNextStepText({ kind: 'work', jobName: 'PM A Service', remaining: 3 }, en)).toBe('3 Jobs left · next: PM A Service');
+    expect(truckNextStepText({ kind: 'work', jobName: 'PM A Service', remaining: 3 }, en)).toBe('3 Jobs left · PM A Service');
     expect(truckNextStepText({ kind: 'close' }, es)).toContain('Cierra el Work Order');
     expect(truckNextStepText(null, en)).toBeNull();
+  });
+
+  it('D57 (LTR-300): lists the areas left in painting order, repairs as a count, no "next"', () => {
+    const areasLeft = [
+      { area: WorkPlanJobLane.PM, remaining: 1 },
+      { area: WorkPlanJobLane.ALIGNMENT, remaining: 1 },
+      { area: WorkPlanJobLane.SHOP_WORK, remaining: 1 },
+      { area: WorkPlanJobLane.DETAILING, remaining: 1 },
+    ];
+    expect(nextStepAreasText({ kind: 'work', jobName: 'PM A Service', areasLeft }, en)).toBe('PM, Alignment, 1 repair, Detailing');
+    expect(nextStepAreasText({ kind: 'work', jobName: 'PM A Service', areasLeft }, es)).toBe('PM, Alineación, 1 reparación, Detallado');
+    expect(nextStepAreasText({ kind: 'work', areasLeft: [{ area: WorkPlanJobLane.SHOP_WORK, remaining: 2 }] }, en)).toBe('2 repairs');
+    expect(truckNextStepText({ kind: 'work', jobName: 'PM A Service', remaining: 4, areasLeft }, en)).toBe('4 Jobs left · PM, Alignment, 1 repair, Detailing');
+  });
+
+  it('D57: falls back to the Job name while an older API sends no areasLeft', () => {
+    expect(nextStepAreasText({ kind: 'work', jobName: 'Brakes' }, en)).toBe('Brakes');
+    expect(nextStepAreasText({ kind: 'work', jobName: 'Brakes', areasLeft: [] }, es)).toBe('Brakes');
   });
 
   it('D52 (LTR-260): says when Samsara saw a Ready to Go truck leave the yard or come back', () => {

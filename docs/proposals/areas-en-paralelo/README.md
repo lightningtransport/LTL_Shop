@@ -51,12 +51,12 @@ Lo leen el Work Plan del camión, la tabla de la WO, el Siguiente paso, el table
 
 ### 3.2 El área de un Job
 
-`classifyWorkPlanLane` suma dos reglas antes de caer en Shop Work:
+**Construido en AP-1 (LTR-300).** El **paso** (`lane`, `classifyWorkPlanLane`) no cambia: de él salen las reglas (si falta el Job obligatorio de un paso, si la inspección encontró algo, cuál es el QC). Al lado, cada Job tiene su **área** (`area`, `workAreaOf` en `packages/shared/src/work-areas.ts`), que decide dónde se ve y cuándo un área está completa. Solo difieren dos casos de Shop Work:
 
 1. Un Job con `workflowStepKey` (cola de un equipo, D28) está en **esa** área.
-2. Un Job de la categoría **Tires & Wheels** está en **Alignment** (D54 §3).
+2. **Tires** y **Flat Repair** de la categoría Tires & Wheels están en **Alignment** (D54 §3). El resto de la categoría (Rims, Hubs, Wheel Seals, Tire Rotation, Tire Mounting) sigue en Shop Work: D57 nombra solo esos dos (pregunta **P43**).
 
-Lo demás sigue igual: PM por categoría, Detailing por nombre, QC por clave. Los Jobs ya creados cambian de área al instante (el área se calcula, no se guarda).
+Alignment no está completo mientras falten sus llantas. Los Jobs ya creados cambian de área al instante (el área se calcula, no se guarda).
 
 ### 3.3 Quién tiene el camión
 
@@ -167,6 +167,7 @@ Para no malgastar tokens y cerrar cada etapa en un loop hasta verde:
 - **P39** Si Safety devuelve el camión y vuelve al shop después del Detailing, ¿la app ofrece reabrir Detailing? Hoy el dueño lo pidió como duda; en v1 el Manager agrega un Detailing nuevo con Add work.
 - **P40** ¿El área "Shop Work" se llama **"Repairs"** para el Manager? Hoy mezcla defectos de la inspección, hallazgos de Safety y pedidos.
 - **P41** ¿El Manager puede dejar que dos áreas trabajen el mismo camión a la vez (override con motivo)? **v1: nunca.**
+- **P43** Tire Mounting y Tire Rotation (Tires & Wheels), ¿también son del área Alignment? **v1: no**, solo Tires y Flat Repair como dice D57.
 - **P42** Un camión que alguien tiene desde ayer y no ha vuelto a tocar Continue, ¿sigue tomado? **v1: sí**, hasta completar o bloquear; el Manager lo ve en la columna del área con "since yesterday" en ámbar y puede bloquear el Job para soltarlo.
 
 ## 8. Qué no cambia

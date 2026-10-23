@@ -52,14 +52,14 @@ export function countActiveYardOperationsFilters(filters: YardOperationsFilters)
 }
 
 /**
- * Work Plan board columns (LTR-39 / LTR-144): Inspection → Shop Work → PM →
- * Alignment → Detailing → QC → Ready to close → Ready to Go.
+ * Work Plan board columns (LTR-39 / LTR-144; D57 / LTR-300 WORK_AREA_ORDER): Inspection → PM → Alignment →
+ * Shop Work → Detailing → QC → Ready to close → Ready to Go. The four areas in the middle have no order between them.
  */
 export const WORK_PLAN_YARD_PHASES = [
   WorkPlanPhase.INSPECTION,
-  WorkPlanPhase.SHOP_WORK,
   WorkPlanPhase.PM,
   WorkPlanPhase.ALIGNMENT,
+  WorkPlanPhase.SHOP_WORK,
   WorkPlanPhase.DETAILING,
   WorkPlanPhase.QUALITY_CHECK,
   WorkPlanPhase.READY_TO_CLOSE,
