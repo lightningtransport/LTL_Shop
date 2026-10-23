@@ -140,7 +140,6 @@ export type InspectionCopy = {
   addsToExisting: (job: string) => string;
   newJob: string;
   assignLater: string;
-  managerAssigns: string;
   alignmentQueue: string;
   /** D57 §5: the Shop Work queue any general mechanic takes from. */
   shopQueue: string;
@@ -350,7 +349,6 @@ const en: InspectionCopy = {
   addsToExisting: (job) => `Adds to ${job} on the Work Order`,
   newJob: 'New Job',
   assignLater: 'Assign later',
-  managerAssigns: 'Manager assigns',
   alignmentQueue: 'Alignment queue',
   shopQueue: 'Shop queue (any mechanic)',
   goesToShopQueue: 'Goes to the shop queue',
@@ -549,7 +547,6 @@ const es: InspectionCopy = {
   addsToExisting: (job) => `Se suma a ${job} en la Work Order`,
   newJob: 'Job nuevo',
   assignLater: 'Asignar después',
-  managerAssigns: 'Lo asigna el Manager',
   alignmentQueue: 'Cola de Alignment',
   shopQueue: 'Cola del taller (cualquier mecánico)',
   goesToShopQueue: 'Va a la cola del taller',

@@ -315,7 +315,9 @@ describe('Las llantas de la inspección van a Alignment y dicen qué llanta y po
       const wo = await adminWo(workOrderId);
       const flat = jobsNamed(wo, 'Flat Repair')[0];
       same('Flat Repair sin dueño, en la cola de Alignment', [flat?.assignedMechanic ?? null, flat?.workflowStepKey], [null, 'alignment']);
-      same('Brake Inspection sigue naciendo sin dueño', jobsNamed(wo, 'Brake Inspection')[0]?.assignedMechanic ?? null, null);
+      const brake = jobsNamed(wo, 'Brake Inspection')[0];
+      // D57 §5 (LTR-305): sin dueño, y en la cola del taller.
+      same('Brake Inspection nace sin dueño, en la cola del taller', [brake?.assignedMechanic ?? null, brake?.workflowStepKey], [null, 'shop_work']);
       const queue = ok('la cola del otro de Alignment', await as(USERS.spare).get('/team-queue'));
       truthy('Flat Repair está en su cola', JSON.stringify(queue).includes('Flat Repair'));
     } finally {

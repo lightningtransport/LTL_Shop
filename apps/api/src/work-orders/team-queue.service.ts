@@ -38,7 +38,7 @@ export class TeamQueueService {
   async list(user: AuthUser): Promise<TeamQueueItemDto[]> {
     const stepKeys = await this.myStepKeys(user);
     if (!stepKeys.length) return [];
-    const [jobs, teamSizes, steps, shopWorkSize] = await Promise.all([
+    const [jobs, teamSizes, steps] = await Promise.all([
       this.prisma.workOrderJob.findMany({
         where: {
           workflowStepKey: { in: stepKeys },
@@ -69,16 +69,13 @@ export class TeamQueueService {
         _count: { _all: true },
       }),
       this.prisma.shopWorkflowStep.findMany({ where: { stepKey: { in: stepKeys } }, select: { id: true, stepKey: true } }),
-      stepKeys.includes(SHOP_WORK_QUEUE_KEY)
-        ? this.prisma.user.count({ where: { active: true, capabilities: { some: { capability: 'MECHANIC_STANDARD' } } } })
-        : Promise.resolve(0),
     ]);
     const sizeByKey = new Map(steps.map((step) => [step.stepKey, teamSizes.find((row) => row.stepId === step.id)?._count._all ?? 0]));
-    sizeByKey.set(SHOP_WORK_QUEUE_KEY, shopWorkSize);
     return jobs.map((job) => ({
       jobId: job.id,
       displayName: job.displayName,
       stepKey: job.workflowStepKey!,
+      // The Shop Work queue has no team, so no size (its hint does not show one).
       teamSize: sizeByKey.get(job.workflowStepKey!) ?? 0,
       addedAt: job.addedAt.toISOString(),
       workOrderId: job.workOrder.id,
