@@ -429,7 +429,7 @@ function SheetFlow({
           <div className="space-y-6">
             {!adding ? (
               <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.sectionTires}</>}>
-                <MiniTires copy={copy} statusOf={(position) => tireStatusOf(position, draft.tires[position], state.limits)?.status ?? null} psiOf={(position) => draft.tires[position]?.psi ?? null} />
+                <MiniTires copy={copy} statusOf={(position) => tireStatusOf(position, draft.tires[position], state.limits)?.status ?? null} psiOf={(position) => draft.tires[position]?.psi ?? null} treadOf={(position) => draft.tires[position]?.tread ?? null} />
               </SectionCard>
             ) : null}
             <SectionCard title={copy.signature}>
@@ -522,7 +522,7 @@ function SheetFlow({
         <div className="space-y-6 xl:sticky xl:top-20">
           {adding && saved ? (
             <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.sectionTires}</>}>
-              <MiniTires copy={copy} statusOf={(position) => saved.tires.find((tire) => tire.position === position)?.status ?? null} psiOf={(position) => saved.tires.find((tire) => tire.position === position)?.psi ?? null} />
+              <MiniTires copy={copy} statusOf={(position) => saved.tires.find((tire) => tire.position === position)?.status ?? null} psiOf={(position) => saved.tires.find((tire) => tire.position === position)?.psi ?? null} treadOf={(position) => saved.tires.find((tire) => tire.position === position)?.tread ?? null} />
               <p className="border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground">{copy.tiresAsRecorded(formatWhen(saved.inspectedAt, locale))}</p>
             </SectionCard>
           ) : (
@@ -894,21 +894,37 @@ export function MiniTires({
   copy,
   statusOf,
   psiOf,
+  treadOf,
 }: {
   copy: InspectionCopy;
   statusOf: (position: TirePosition) => TireReadingStatus | null;
   psiOf: (position: TirePosition) => number | null;
+  /** AP-4: with it each tire shows `100 · 3/32` (PSI and tread), not only the PSI. */
+  treadOf?: (position: TirePosition) => number | null;
 }) {
   const tile = (position: TirePosition) => {
     const tone = toneOf(statusOf(position));
     const Icon = TIRE_ICON[tone];
-    const label = tireAriaLabel(position, psiOf(position), null, tone, copy);
-    // UX-2-003: icon next to the PSI and the full state in the name, not only the color.
+    const psi = psiOf(position);
+    const tread = treadOf?.(position) ?? null;
+    const label = tireAriaLabel(position, psi, tread, tone, copy);
+    // UX-2-003: icon next to the numbers and the full state in the name, not only the color.
+    // AP-4: a Badge (the only chip), 44 px tall for touch; stacked on a phone so the five tires of an axle row fit.
     return (
-      <span key={position} role="img" aria-label={label} title={label} className={cn('tnum flex h-9 w-10 items-center justify-center gap-0.5 rounded-md border text-xs font-medium', TIRE_TONE[tone], TIRE_TEXT[tone])}>
-        {psiOf(position) ?? '—'}
-        {Icon ? <Icon aria-hidden="true" className="size-2.5 shrink-0" /> : null}
-      </span>
+      <Badge
+        key={position}
+        role="img"
+        aria-label={label}
+        title={label}
+        variant={tone === 'fix' ? 'destructive' : tone === 'watch' ? 'warning' : tone === 'ok' ? 'success' : 'outline'}
+        className={cn('tnum h-11 w-[3.5rem] flex-col items-center justify-center gap-0 rounded-md px-1 py-0 leading-tight sm:w-[5.75rem] sm:flex-row sm:gap-1', tone === 'empty' && 'border-dashed')}
+      >
+        <span className="inline-flex items-center gap-0.5">
+          {Icon ? <Icon aria-hidden="true" className="size-3 shrink-0" /> : null}
+          {psi ?? '—'}
+        </span>
+        {treadOf ? <><span aria-hidden="true" className="hidden sm:inline">·</span><span>{tread !== null ? `${tread}/32` : '—'}</span></> : null}
+      </Badge>
     );
   };
   return (
@@ -920,6 +936,18 @@ export function MiniTires({
           <div className="flex gap-1">{axle.right.map(tile)}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** AP-4: OK · Watch (no Job) · Job under the tire diagram: the sheet's own words, an icon and a dot for each. */
+export function TireStateLegend({ copy, className }: { copy: InspectionCopy; className?: string }) {
+  return (
+    <div className={cn('flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground', className)} data-testid="tire-legend">
+      {(['ok', 'watch', 'fix'] as const).map((tone) => {
+        const Icon = TIRE_ICON[tone]!;
+        return <span key={tone} className="inline-flex items-center gap-1"><span aria-hidden="true" className={cn('size-2 rounded-full', DOT[tone])} /><Icon aria-hidden="true" className={cn('size-3', TIRE_TEXT[tone])} />{tireStateLabel(tone, copy)}</span>;
+      })}
     </div>
   );
 }
@@ -1069,8 +1097,8 @@ function InspectionReport({
           {inspection.notes ? <SectionCard title={copy.sectionNotes}><p className="whitespace-pre-line p-4">{inspection.notes}</p></SectionCard> : null}
         </div>
         <div className="space-y-6">
-          <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.sectionTires}</>} action={<CountChip>{copy.tiresOk(inspection.tires.filter((tire) => tire.status === TireReadingStatus.OK).length)}</CountChip>}>
-            <MiniTires copy={copy} statusOf={(position) => inspection.tires.find((tire) => tire.position === position)?.status ?? null} psiOf={(position) => inspection.tires.find((tire) => tire.position === position)?.psi ?? null} />
+          <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.sectionTires}</>} action={<CountChip>{copy.tiresOk(inspection.tires.filter((tire) => tire.status === TireReadingStatus.OK).length, inspection.tires.length)}</CountChip>}>
+            <MiniTires copy={copy} statusOf={(position) => inspection.tires.find((tire) => tire.position === position)?.status ?? null} psiOf={(position) => inspection.tires.find((tire) => tire.position === position)?.psi ?? null} treadOf={(position) => inspection.tires.find((tire) => tire.position === position)?.tread ?? null} />
           </SectionCard>
           <SectionCard title={copy.checklist}>
             <ul className="divide-y">

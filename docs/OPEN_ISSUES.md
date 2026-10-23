@@ -24,7 +24,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 | Work Orders & Jobs | LTR-300 | AP-1: un solo orden de áreas; Tires y Flat Repair en Alignment; "next: Tires" | C |
 | Work Orders & Jobs | LTR-301 | AP-2: Work Plan del camión y tabla de Jobs de la WO agrupadas por área (depende de AP-1) | C |
 | Trucks & Inspección | LTR-302 | AP-3: tread en el mínimo crea Job; margen Watch en Setup; números a la vista (**migración → Release safety**). **Construido en la rama `claude/ap3-tread-minimo`; PR pendiente de merge** (A162–A163) | B |
-| Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué | C |
+| Trucks & Inspección | LTR-303 | AP-4: card Tires con PSI y tread, leyenda y motivo; la fila del Job dice por qué (**construido, PR en revisión**) | C |
 | Work Orders & Jobs | LTR-304 | AP-5: docs de D57 repartidos en cada PR | — |
 | Mecánicos | LTR-305 | AP-6: cola de Shop Work para mecánicos generales | — |
 | Work Orders & Jobs | LTR-306 | AP-7: un camión a la vez (`TRUCK_BUSY`), Yard con "Waiting for a mechanic" y quién lo tiene (depende de AP-1) | — |

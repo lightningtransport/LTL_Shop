@@ -1,11 +1,11 @@
 'use client';
 
-import { TIRE_POSITIONS, TireReadingStatus, type TirePosition } from '@ltl-shop/shared';
+import { TIRE_POSITIONS, TireReadingStatus, tireFindingReason, type TirePosition } from '@ltl-shop/shared';
 import { ArrowDown, ArrowUp, CircleDot } from 'lucide-react';
 import { inspectionCopy, type InspectionLocale } from '@/lib/inspection-copy';
 import { useTruckInspection } from '@/lib/inspection-data';
 import { cn } from '@/lib/utils';
-import { MiniTires } from './inspection-sheet';
+import { MiniTires, TireStateLegend } from './inspection-sheet';
 import { CountChip, SectionCard } from './ui';
 
 const TEXT: Record<string, string> = {
@@ -26,32 +26,45 @@ export function TruckTiresCard({ truckId, locale }: { truckId: string; locale: I
   const previous = current.length ? new Map(data.previousTires.map((tire) => [tire.position, tire])) : new Map();
   const at = (position: TirePosition) => tires.find((tire) => tire.position === position);
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }); // LTR-293 §13: the shop's day, not the device's
-  const flagged = TIRE_POSITIONS.map(at).filter((tire) => tire && tire.status !== TireReadingStatus.OK);
+  const inOrder = TIRE_POSITIONS.map(at).filter((tire): tire is NonNullable<ReturnType<typeof at>> => Boolean(tire));
+  // AP-4 / D57: what makes a Job first, then what is only to watch, each with the reason the mechanic sees.
+  const groups = [
+    { key: 'job', title: copy.tiresGroupJob, tires: inOrder.filter((tire) => tire.status === TireReadingStatus.FIX) },
+    { key: 'watch', title: copy.tiresGroupWatch, tires: inOrder.filter((tire) => tire.status === TireReadingStatus.WATCH) },
+  ].filter((group) => group.tires.length);
   const ok = tires.filter((tire) => tire.status === TireReadingStatus.OK).length;
   const firstPrevious = data.previousTires[0];
   return (
-    <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.tiresCard}</>} action={tires.length ? <CountChip>{copy.tiresOk(ok)}</CountChip> : null} data-testid="truck-tires">
+    <SectionCard title={<><CircleDot aria-hidden="true" className="size-4" />{copy.tiresCard}</>} action={tires.length ? <CountChip>{copy.tiresOk(ok, tires.length)}</CountChip> : null} data-testid="truck-tires">
       {tires.length ? (
         <>
-          <MiniTires copy={copy} statusOf={(position) => at(position)?.status ?? null} psiOf={(position) => at(position)?.psi ?? null} />
-          {flagged.length ? (
-            <ul className="mx-4 space-y-1.5 border-t pt-3">
-              {flagged.map((tire) => {
-                const before = previous.get(tire!.position);
-                const delta = before ? tire!.psi - before.psi : 0;
-                return (
-                  <li key={tire!.position} className="flex items-center justify-between gap-2">
-                    <span><span className="font-medium">{tire!.position}</span> <span className="text-muted-foreground">{tire!.psi} PSI · {tire!.tread}/32</span></span>
-                    {before && delta ? (
-                      <span className={cn('tnum inline-flex items-center gap-1 text-xs', TEXT[tire!.status])}>
-                        {delta < 0 ? <ArrowDown aria-hidden="true" className="size-3.5" /> : <ArrowUp aria-hidden="true" className="size-3.5" />}
-                        {copy.sinceLast(delta, date(before.readAt))}
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
+          <MiniTires copy={copy} statusOf={(position) => at(position)?.status ?? null} psiOf={(position) => at(position)?.psi ?? null} treadOf={(position) => at(position)?.tread ?? null} />
+          <TireStateLegend copy={copy} className="px-4 pb-3" />
+          {groups.length ? (
+            <div className="mx-4 space-y-3 border-t pt-3" data-testid="truck-tires-findings">
+              {groups.map((group) => (
+                <div key={group.key} data-testid={`truck-tires-${group.key}`}>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">{group.title}</p>
+                  <ul className="space-y-1.5">
+                    {group.tires.map((tire) => {
+                      const before = previous.get(tire.position);
+                      const delta = before ? tire.psi - before.psi : 0;
+                      return (
+                        <li key={tire.position} className="flex flex-wrap items-center justify-between gap-x-2">
+                          <span><span className="font-medium">{tire.position}</span> <span className="tnum text-muted-foreground">{group.key === 'job' ? copy.tireReason({ ...tire, reason: tireFindingReason(tire) }) : `${tire.psi} PSI · ${tire.tread}/32`}</span></span>
+                          {before && delta ? (
+                            <span className={cn('tnum inline-flex items-center gap-1 text-xs', TEXT[tire.status])}>
+                              {delta < 0 ? <ArrowDown aria-hidden="true" className="size-3.5" /> : <ArrowUp aria-hidden="true" className="size-3.5" />}
+                              {copy.sinceLast(delta, date(before.readAt))}
+                            </span>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           ) : null}
           <p className="px-4 pb-4 pt-3 text-xs text-muted-foreground">
             {data.inspection

@@ -287,6 +287,11 @@ describe('Las llantas de la inspección van a Alignment y dicen qué llanta y po
     const tires = mine.jobs.find((job: Json) => job.displayName === 'Tires');
     same('ve qué llanta y por qué (gastada)', tires.tireFindings.map((finding: Json) => `${finding.position}:${finding.reason}`), ['RRO:worn']);
 
+    // AP-4 / D57: el Manager ve en la fila del Job la misma llanta y el mismo motivo.
+    const adminTireWo = await adminWo(workOrderId);
+    same('el Admin ve qué llanta y por qué (presión)', adminTireWo.jobs.find((job: Json) => job.displayName === 'Flat Repair').tireFindings, flat.tireFindings);
+    same('el Admin ve qué llanta y por qué (gastada)', adminTireWo.jobs.find((job: Json) => job.displayName === 'Tires').tireFindings, tires.tireFindings);
+
     const other = await createWo('968');
     const sheet2 = await state(other.truck.id);
     ok('guardar con "Assign later" en Flat Repair', await manager.post(`/admin/trucks/${other.truck.id}/inspection`, sheet(sheet2, {}, { LFO: [72, 8] }, {

@@ -332,6 +332,18 @@ export function AdminJobTable({
               {job.helperOfJobId ? <span className="font-normal text-muted-foreground">{messages.helperJobSuffix}</span> : null}
             </p>
             <p className="text-xs text-muted-foreground">{sub}</p>
+            {/* AP-4 / D57: why this is a Job, one line per tire, with the same reason the mechanic reads. */}
+            {job.tireFindings?.length ? (
+              <ul className="mt-0.5 space-y-0.5 text-xs text-muted-foreground" data-testid="admin-wo-job-tire-findings">
+                {job.tireFindings.map((finding) => (
+                  <li key={finding.position} className="tnum" data-testid="admin-wo-job-tire-finding">
+                    {finding.reason === 'worn'
+                      ? fillPlaceholders(messages.jobTireFindingWorn, { position: finding.position, tread: String(finding.tread), min: String(finding.minTread) })
+                      : fillPlaceholders(messages.jobTireFindingPressure, { position: finding.position, psi: String(finding.psi), target: String(finding.targetPsi), kind: finding.reason === 'low_pressure' ? messages.jobTireFindingLow : messages.jobTireFindingHigh })}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {awaitingInvoice ? (
               <p className="mt-0.5" data-testid="admin-wo-job-awaiting-invoice">
                 <AdminNavLink href={outsideInvoiceHref} className="tap-inline inline-flex items-center gap-1 rounded-md border border-warning/50 bg-warning/10 px-1.5 py-0.5 text-xs text-foreground hover:bg-warning/20">
@@ -374,13 +386,14 @@ export function AdminJobTable({
                   const text = pending
                     ? fillPlaceholders(messages.pcTiresChip, { count: String(pending) })
                     : fillPlaceholders(messages.pcTiresChipDone, { issued: String(issued), toBuy: String(toBuy) });
+                  const hint = pending ? fillPlaceholders(messages.pcTiresChipTitle, { count: String(pending) }) : undefined;
                   const tone = pending || toBuy ? 'border-warning/50 bg-warning/10 text-foreground' : 'text-muted-foreground';
                   return canSeeCosts && onStockChanged ? (
-                    <button type="button" onClick={() => setTiresJobId(job.id)} className={`tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs hover:bg-warning/20 ${tone}`}>
+                    <button type="button" onClick={() => setTiresJobId(job.id)} title={hint} aria-label={hint ? `${text} — ${hint}` : undefined} className={`tap-inline inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs hover:bg-warning/20 ${tone}`}>
                       <CircleDot aria-hidden="true" className="size-3" />{text}
                     </button>
                   ) : (
-                    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs ${tone}`}><CircleDot aria-hidden="true" className="size-3" />{text}</span>
+                    <span title={hint} className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs ${tone}`}><CircleDot aria-hidden="true" className="size-3" />{text}</span>
                   );
                 })()}
               </p>

@@ -509,6 +509,8 @@ export interface AdminWorkOrderJobDto {
   stockParts?: Array<{ movementId: string; partId: string; description: string; quantity: string; returned: boolean; valueCents?: number }>;
   /** D45 / ST-4: the tires to put on this Job, one per position (`valueCents` only for Manager and System Admin). */
   tires?: import('./parts-costs').AdminJobTireDto[];
+  /** AP-4 / D57: the tire readings behind this Job, one per tire, so the row says which tire and why. */
+  tireFindings?: JobTireFindingDto[];
   /** PCA3 (UX-10-001): the Job went to an external shop at some point (out now or already back), so its invoice can still be loaded. */
   wentExternal?: boolean;
 }
