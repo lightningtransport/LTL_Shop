@@ -31,6 +31,7 @@ import { Badge } from './ui';
 
 const PHASE_KEY: Record<string, keyof AdminMessages> = {
   inspection: 'inspection',
+  waiting_for_mechanic: 'waitingForMechanic',
   shop_work: 'shopWork',
   pm: 'pm',
   alignment: 'alignment',

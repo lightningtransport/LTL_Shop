@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityEventType, AppCapability, OPEN_WORK_ORDER_STATUSES, SHOP_WORK_QUEUE_KEY, ShopWorkflowStepKey, type TeamQueueItemDto } from '@ltl-shop/shared';
+import { ActivityEventType, AppCapability, OPEN_WORK_ORDER_STATUSES, SHOP_WORK_QUEUE_KEY, ShopWorkflowStepKey, isQualityCheckJob, truckBusyFor, type TeamQueueItemDto } from '@ltl-shop/shared';
 import type { WorkOrderStatus } from '@prisma/client';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
@@ -58,6 +58,10 @@ export class TeamQueueService {
               displayId: true,
               priority: true,
               truck: { select: { truckNumber: true, make: true, model: true, year: true } },
+              // D57 §3: what tells whether another mechanic has this truck right now.
+              jobs: { select: { id: true, status: true, assignedMechanicId: true, startedAt: true, externalSince: true, helperOfJobId: true, displayName: true, category: { select: { name: true } } } },
+              sessions: { where: { endedAt: null }, select: { endedAt: true, userId: true } },
+              pauseEvents: { where: { isOfficialPause: false, resolvedAt: null, jobId: { not: null } }, select: { jobId: true } },
             },
           },
         },
@@ -71,7 +75,18 @@ export class TeamQueueService {
       this.prisma.shopWorkflowStep.findMany({ where: { stepKey: { in: stepKeys } }, select: { id: true, stepKey: true } }),
     ]);
     const sizeByKey = new Map(steps.map((step) => [step.stepKey, teamSizes.find((row) => row.stepId === step.id)?._count._all ?? 0]));
-    return jobs.map((job) => ({
+    // D57 §3 (LTR-306): a truck another mechanic is working on does not show as available until they let it go.
+    const free = jobs.filter((job) => !truckBusyFor(user.id, job.workOrder.jobs.map((other) => ({
+      id: other.id,
+      status: other.status,
+      assignedMechanicId: other.assignedMechanicId,
+      startedAt: other.startedAt,
+      blocked: job.workOrder.pauseEvents.some((pause) => pause.jobId === other.id),
+      external: !!other.externalSince,
+      helperOfJobId: other.helperOfJobId,
+      isQualityCheck: isQualityCheckJob(other.category.name, other.displayName),
+    }))));
+    return free.map((job) => ({
       jobId: job.id,
       displayName: job.displayName,
       stepKey: job.workflowStepKey!,

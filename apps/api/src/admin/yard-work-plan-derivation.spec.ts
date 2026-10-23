@@ -34,6 +34,13 @@ const job = (
   status,
 });
 
+// D57 §3 (LTR-306): a Job its owner has started holds the truck, so the holder decides the Yard column.
+const startedBy = (item: ReturnType<typeof job>, mechanicId = 'mech-1', name = 'MG') => ({
+  ...item,
+  assignedMechanic: { id: mechanicId, name },
+  startedAt: new Date('2026-10-22T14:00:00Z'),
+});
+
 // LTR-144: PM and QC are mandatory steps of every truck Work Plan.
 const pmDone = job('pm', 'PM A Service', 'PM', JobStatus.COMPLETED);
 const qcDone = job('qc', 'Quality Check', 'Quality Check', JobStatus.COMPLETED);
@@ -79,7 +86,7 @@ describe('work plan derivation', () => {
     expect(result.mandatory.qualityCheck.status).toBe(WorkPlanMandatoryStatus.PENDING);
   });
 
-  it('paints PM first (mandatory, not yet done) while repair jobs remain (D57)', () => {
+  it('waits for a mechanic when work is left and nobody has started it (D57 §3)', () => {
     const result = deriveWorkPlan({
       workOrder: {
         id: 'wo-1',
@@ -94,7 +101,8 @@ describe('work plan derivation', () => {
       ],
       inspectionRequirementOutcome: ReadinessRequirementOutcome.REQUIRED,
     });
-    expect(result.phase).toBe(WorkPlanPhase.PM);
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+    expect(result.holder).toBeNull();
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
     expect(result.remainingJobCount).toBe(2);
     expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
@@ -274,6 +282,20 @@ describe('Inspection Category Jobs (LTR-89)', () => {
       ],
     });
     expect(result.inspection.outcome).toBe(WorkPlanInspectionOutcome.ISSUES_FOUND);
+    // D57 §3: repairs are left and nobody has started them.
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+    expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
+  });
+
+  it('paints PM before Shop Work when the PM mechanic has the truck (D57)', () => {
+    const result = deriveWorkPlan({
+      workOrder: { ...inProgress, status: WorkOrderStatus.IN_PROGRESS },
+      jobs: [
+        job('j1', 'Fuel Leak', 'Fuel System'),
+        job('j2', 'General Inspection', 'Inspection', JobStatus.COMPLETED),
+        startedBy(job('pm', 'PM A Service', 'PM')),
+      ],
+    });
     expect(result.phase).toBe(WorkPlanPhase.PM);
     expect(result.readyReason).toBe(WorkPlanNotReadyReason.PM_PENDING);
   });
@@ -358,14 +380,27 @@ describe('work areas (D57, LTR-300): the 911 case', () => {
     expect(result.jobs.find((entry) => entry.id === 'm')!.area).toBe(WorkPlanJobLane.SHOP_WORK);
     expect(result.mandatory.alignment.remainingCount).toBe(3);
     expect(result.shopWorkRemainingCount).toBe(1);
+    // D57 §3: nobody has started anything yet.
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+  });
+
+  it('Tires started by the Alignment mechanic: the truck is in Alignment and the holder says so (D57 §3)', () => {
+    const jobs = plan().map((item) => (item.id === 't' ? startedBy(item, 'mech-al', 'Alex') : item));
+    const result = deriveWorkPlan({ workOrder: wo, jobs, inspectionRequirementOutcome: insp });
     expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(result.holder).toEqual({
+      mechanic: { id: 'mech-al', name: 'Alex' },
+      jobId: 't',
+      jobName: 'Tires',
+      area: WorkPlanJobLane.ALIGNMENT,
+    });
   });
 
   it('Alignment is not complete while only the Alignment Job is done and tires are left', () => {
     const result = deriveWorkPlan({ workOrder: wo, jobs: plan(JobStatus.COMPLETED), inspectionRequirementOutcome: insp });
     expect(result.mandatory.alignment.status).not.toBe(WorkPlanMandatoryStatus.COMPLETE);
     expect(result.mandatory.alignment.remainingCount).toBe(2);
-    expect(result.phase).toBe(WorkPlanPhase.ALIGNMENT);
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
     expect(result.readyReason).toBe(WorkPlanNotReadyReason.ALIGNMENT_PENDING);
   });
 
@@ -394,5 +429,52 @@ describe('work areas (D57, LTR-300): the 911 case', () => {
     });
     expect(next).toMatchObject({ kind: 'add_missing_steps' });
     expect(next?.missingLanes).toEqual([WorkPlanJobLane.ALIGNMENT]);
+  });
+});
+
+describe('truck holder (D57 §3, LTR-306)', () => {
+  const wo = { id: 'wo-1', displayId: 'WO-1', status: WorkOrderStatus.IN_PROGRESS, version: 2, primaryCategoryName: 'Inspection' };
+  const insp = ReadinessRequirementOutcome.REQUIRED;
+  const base = () => [
+    job('i', 'General Inspection', 'Inspection', JobStatus.COMPLETED),
+    job('m', 'Mirrors', 'Cab, Body & Glass'),
+    job('al', 'Alignment', 'Suspension & Steering'),
+  ];
+
+  it('returns the mechanic, the Job name and the area of the Job in hand', () => {
+    const jobs = base().map((item) => (item.id === 'm' ? startedBy(item, 'mech-9', 'Sam') : item));
+    const result = deriveWorkPlan({ workOrder: wo, jobs, inspectionRequirementOutcome: insp });
+    expect(result.holder).toEqual({
+      mechanic: { id: 'mech-9', name: 'Sam' },
+      jobId: 'm',
+      jobName: 'Mirrors',
+      area: WorkPlanJobLane.SHOP_WORK,
+    });
+    expect(result.phase).toBe(WorkPlanPhase.SHOP_WORK);
+  });
+
+  it('nobody started: the truck waits for a mechanic and has no holder', () => {
+    const result = deriveWorkPlan({ workOrder: wo, jobs: base(), inspectionRequirementOutcome: insp });
+    expect(result.holder).toBeNull();
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+  });
+
+  it('a started but blocked Job does not hold the truck', () => {
+    const jobs = base().map((item) => (item.id === 'm' ? { ...startedBy(item), blocked: true } : item));
+    const result = deriveWorkPlan({ workOrder: wo, jobs, inspectionRequirementOutcome: insp });
+    expect(result.holder).toBeNull();
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
+  });
+
+  it('a started Job at an external shop does not hold the truck', () => {
+    const jobs = base().map((item) => (item.id === 'm' ? { ...startedBy(item), externalSince: new Date('2026-10-22T15:00:00Z') } : item));
+    expect(deriveWorkPlan({ workOrder: wo, jobs, inspectionRequirementOutcome: insp }).holder).toBeNull();
+  });
+
+  it("the owner's open session alone does not hold the truck (only startedAt does)", () => {
+    const jobs = base().map((item) => (item.id === 'al' ? { ...item, assignedMechanic: { id: 'mech-al', name: 'Alex' } } : item));
+    const result = deriveWorkPlan({ workOrder: wo, jobs, inspectionRequirementOutcome: insp, sessions: [{ endedAt: null, userId: 'mech-al' }] });
+    expect(result.holder).toBeNull();
+    expect(result.phase).toBe(WorkPlanPhase.WAITING_FOR_MECHANIC);
   });
 });

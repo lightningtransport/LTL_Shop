@@ -213,7 +213,7 @@ describe('returnJobExternal (LTR-188 / D24)', () => {
   it('assign: gives the Job to a Standard mechanic who joins the team', async () => {
     const { tx, service } = setup(row([outside()]), { user: { id: HELPER_ID, name: 'Luis' } });
     await service.returnJobExternal(manager, WO_ID, JOB_ID, { outcome: 'assign', mechanicId: HELPER_ID, expectedVersion: 1, idempotencyKey: key() });
-    expect(tx.workOrderJob.update).toHaveBeenCalledWith({ where: { id: JOB_ID }, data: { assignedMechanicId: HELPER_ID } });
+    expect(tx.workOrderJob.update).toHaveBeenCalledWith({ where: { id: JOB_ID }, data: { assignedMechanicId: HELPER_ID, startedAt: null } });
     expect(tx.mechanicAssignment.create).toHaveBeenCalledWith({ data: { workOrderId: WO_ID, mechanicId: HELPER_ID, addedById: manager.id } });
     expect(tx.workOrder.updateMany).toHaveBeenCalledTimes(1);
   });

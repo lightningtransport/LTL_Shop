@@ -9,7 +9,7 @@ import { beforeEach, describe, inject, it } from 'vitest';
 import { addLocalDays, isoWeekday, localDateTimeIn, SHOP_TIME_ZONE, zonedTimeToUtc, type LocalDate } from '../../src/common/shop-time';
 import { REAL_CRON_SECRET } from '../env';
 import {
-  USERS, Json, adminWo, as, laneJob, manager, admin, mechanicWo, meta, ok, plannedWo, prisma, refused, resetDb, same, sessionsOf, start, truthy,
+  USERS, Json, adminWo, as, laneJob, manager, admin, mechanicWo, meta, ok, plannedWo, prisma, refused, resetDb, same, sessionsOf, start, truthy, helpOn,
 } from '../harness';
 
 const today = (): LocalDate => {
@@ -56,8 +56,11 @@ describe('El día del mecánico se cierra solo (HU-ME5, D20)', () => {
   it('A32 | Cierre del día: el reloj se cierra a las 5:00 p.m. (no a la hora en que alguien mira), el viernes no corre el fin de semana, fuera de horario a las 11:59 p.m., y al día siguiente "toca Continue"', async () => {
     const { workOrderId } = await plannedWo('905', [{ category: 'Electrical & Starting', job: 'Lights', assignee: USERS.general }]);
     ok('Start alignment', await start(USERS.alignment, workOrderId));
-    ok('Start detailing', await start(USERS.detailing, workOrderId));
-    ok('Start general', await start(USERS.general, workOrderId));
+    // D57 §3: the others help on Alignment (D23) so the three clocks run on one truck.
+    await helpOn(USERS.detailing, workOrderId, 'Alignment');
+    await helpOn(USERS.general, workOrderId, 'Alignment');
+    ok('Start detailing (ayudante)', await start(USERS.detailing, workOrderId));
+    ok('Start general (ayudante)', await start(USERS.general, workOrderId));
 
     const workday = lastWorkday();
     const friday = lastFriday();

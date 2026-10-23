@@ -250,6 +250,15 @@ export async function start(email: string, workOrderId: string) {
   return as(email).post(`/work-orders/${workOrderId}/start`);
 }
 
+/** D23: `email` helps on the Job named `jobName` (the Manager adds the helper Job). D57 §3: helpers work together. */
+export async function helpOn(email: string, workOrderId: string, jobName: string) {
+  const wo = await adminWo(workOrderId);
+  const job = (wo.jobs as Json[]).find((item) => item.displayName === jobName && !item.helperOfJobId);
+  return ok(`${email} ayuda en ${jobName}`, await manager.post(`/admin/work-orders/${workOrderId}/jobs/${job.id}/helper`, {
+    mechanicId: await userId(email), expectedVersion: wo.version, idempotencyKey: randomUUID(),
+  }));
+}
+
 export async function completeJob(email: string, workOrderId: string, jobId: string) {
   return as(email).post(`/work-orders/${workOrderId}/jobs/${jobId}/complete`, { notes: 'Hecho.' });
 }

@@ -27,6 +27,10 @@ import {
   changePmServiceSchema,
   updatePmServiceSchema,
   mechanicModeSchema,
+  isPmCategory,
+  isQualityCheckJob,
+  jobsToStart,
+  truckBusyFor,
   type CreateWorkOrderInput,
 } from '@ltl-shop/shared';
 import { Prisma } from '@prisma/client';
@@ -496,6 +500,8 @@ export class WorkOrdersService {
       const now = new Date();
       // LTR-186 / D20: yesterday's open clock closes at the day close, not now.
       await this.clock?.closeDue(tx, now);
+      // D57 §3: two mechanics tapping Start on one truck at once must not both take it.
+      await lockTruckMutation(tx, await this.requireTruckId(tx, id));
       const wo = await this.requireWo(tx, id);
       this.assertMechanicAccess(user, wo);
       const isPm = wo.primaryCategory.name === 'PM';
@@ -521,6 +527,10 @@ export class WorkOrdersService {
           throw new BadRequestException({ code: 'LABOR_ALREADY_RUNNING', message: 'Your work is already running on this Work Order.' });
         }
         throw new BadRequestException('Work Order can only be started from created status');
+      }
+      if (!isPm) {
+        this.assertTruckFree(user, wo);
+        await this.markJobsStarted(tx, user, wo, now);
       }
       // LTR-186 / D21: one clock per mechanic — starting here stops it on any other Truck.
       const movedFromIds = (await this.clock?.closeOtherClocks(tx, user.id, id, now)) ?? [];
@@ -1458,6 +1468,8 @@ export class WorkOrdersService {
         return this.continuePmJob(tx, user, wo, job, now);
       }
       if (job.startedAt) throw new BadRequestException({ code: 'PM_JOB_ALREADY_STARTED', message: 'The PM service is already started.' });
+      // D57 §3: the PM mechanic waits while another area has the truck.
+      this.assertTruckFree(user, wo);
       // LTR-157 / D15: the PM mechanic who starts the PM takes it, even when the
       // default owner was someone else (who may be out today). D2 still applies below.
       const previousAssigneeId = job.assignedMechanicId;
@@ -1926,6 +1938,55 @@ export class WorkOrdersService {
   }
 
   /** LTR-155 / D17: the unresolved mechanic blocker on a Job, if any. */
+  /**
+   * D57 §3 (LTR-306): one area at a time. Someone else's started, unblocked Job on this truck stops `user` from
+   * starting here (409 `TRUCK_BUSY`), unless one of the two helps the other's Job (D23).
+   */
+  private assertTruckFree(user: AuthUser, wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>) {
+    const busy = truckBusyFor(user.id, wo.jobs.map((job) => this.holderJob(wo, job)));
+    if (busy) {
+      throw new ConflictException({
+        code: 'TRUCK_BUSY',
+        message: `${busy.holder?.name ?? 'Another mechanic'} is working on this truck (${busy.displayName}). Start when they finish or report a blocker.`,
+        holder: busy.holder ? { id: busy.holder.id, name: busy.holder.name } : null,
+        jobName: busy.displayName,
+      });
+    }
+  }
+
+  /**
+   * D57 §3: Start takes the truck — my pending, workable Jobs here are started until done, blocked or out. When
+   * someone else has it and I came to help (D23), only my helper Jobs are started; my own area waits.
+   */
+  private async markJobsStarted(
+    tx: Prisma.TransactionClient,
+    user: AuthUser,
+    wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>,
+    now: Date,
+  ) {
+    const ids = jobsToStart(user.id, wo.jobs.filter((job) => !isPmCategory(job.category.name)).map((job) => this.holderJob(wo, job)))
+      .map((job) => job.id);
+    if (ids.length) await tx.workOrderJob.updateMany({ where: { id: { in: ids } }, data: { startedAt: now } });
+  }
+
+  private holderJob(
+    wo: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>,
+    job: Prisma.WorkOrderGetPayload<{ include: typeof workOrderDetailInclude }>['jobs'][number],
+  ) {
+    return {
+      id: job.id,
+      status: job.status,
+      assignedMechanicId: job.assignedMechanicId,
+      startedAt: job.startedAt,
+      blocked: !!this.activeBlockerForJob(wo, job.id),
+      external: !!job.externalSince,
+      helperOfJobId: job.helperOfJobId,
+      isQualityCheck: isQualityCheckJob(job.category.name, job.displayName),
+      holder: job.assignedMechanic,
+      displayName: job.displayName,
+    };
+  }
+
   private activeBlockerForJob(
     wo: { pauseEvents?: { id: string; jobId?: string | null; isOfficialPause?: boolean; resolvedAt?: Date | null }[] },
     jobId: string,

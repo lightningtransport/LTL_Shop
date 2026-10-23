@@ -291,6 +291,8 @@ describe('Start on another Truck (LTR-186 / D21)', () => {
           return row;
         }),
       },
+      // D57 §3: Start marks the mechanic's pending Jobs as started.
+      workOrderJob: { updateMany: vi.fn(async () => ({ count: 1 })) },
     };
     const prisma = { ...db, $transaction: vi.fn(async (callback: (client: unknown) => unknown) => callback(tx)) };
     const clock = new LaborClockService(prisma as never, { log: vi.fn() } as never);

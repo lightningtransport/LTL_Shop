@@ -300,6 +300,8 @@ export interface WorkOrderSummaryDto {
    * started on another Truck — and I still have work here. Tap Continue. Null when it does not apply.
    */
   myClockStopped?: MyClockStoppedDto | null;
+  /** D57 §3 (LTR-306): another mechanic has this truck now; Start waits for them (`TRUCK_BUSY`). Viewer-only. */
+  truckBusy?: { holder: { id: string; name: string }; jobName: string } | null;
 }
 
 /** LTR-186: why my clock stopped on this Work Order and, after a switch, where it runs now. */
@@ -699,6 +701,8 @@ export interface YardOperationsTruckDto {
   readyReason?: string;
   /** Work Plan board only — Shop Work Jobs still to do (excludes PM, Alignment, Detailing, QC). */
   shopWorkRemainingCount?: number;
+  /** D57 §3 (LTR-306): who has the truck now (null: nobody). */
+  holder?: TruckHolderDto | null;
   /** LTR-159: the one Next step rule (same as Truck Detail, Dashboard and Work Order). */
   nextStep?: TruckNextStepDto | null;
   /** LTR-188 / D24: a pending Job of the truck's Work Order sent the whole truck to an external shop. */
@@ -809,6 +813,14 @@ export interface WorkPlanJobDto {
   completedAt?: string | null;
 }
 
+/** D57 §3 (LTR-306): the mechanic who has the truck now, and the Job and area they took it with. */
+export interface TruckHolderDto {
+  mechanic: { id: string; name: string };
+  jobId: string;
+  jobName: string;
+  area: WorkPlanJobLane;
+}
+
 export interface WorkPlanMandatoryPhaseDto {
   required: boolean;
   status: WorkPlanMandatoryStatus;
@@ -842,6 +854,8 @@ export interface TruckWorkPlanDto {
   readiness: WorkPlanReadiness;
   readyReason: WorkPlanNotReadyReason;
   phase: WorkPlanPhase;
+  /** D57 §3 (LTR-306): who has the truck now (null: nobody; absent on an older API). */
+  holder?: TruckHolderDto | null;
   mandatory: {
     /** LTR-144: PM is a mandatory step of every truck Work Order. */
     pm: WorkPlanMandatoryPhaseDto;

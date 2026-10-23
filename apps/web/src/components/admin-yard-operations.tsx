@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Building2, CalendarClock, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, X, type LucideIcon } from 'lucide-react';
-import { AppCapability, Priority, YardPresenceState, type YardOperationsTruckDto } from '@ltl-shop/shared';
+import { Building2, CalendarClock, CirclePause, OctagonPause, PlugZap, Search, Truck, UserPlus, Wrench, X, type LucideIcon } from 'lucide-react';
+import { AppCapability, Priority, WorkPlanPhase, YardPresenceState, type YardOperationsTruckDto } from '@ltl-shop/shared';
 import { adminTruckHref } from '@/lib/admin-truck-origin';
 import { adminPauseReasonLabel, type AdminLocale, type AdminMessages } from '@/lib/admin-messages';
 import { useAdminYardDataBoundary, useAdminYardOperations } from '@/lib/admin-data';
@@ -44,6 +44,7 @@ import { useDebouncedFilterText, useUrlFilters } from '@/lib/use-url-filters';
 
 const phaseMessageKey = {
   inspection: 'inspection',
+  waiting_for_mechanic: 'waitingForMechanic',
   pm: 'pm',
   alignment: 'alignment',
   detailing: 'detailing',
@@ -419,6 +420,7 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
   const alertText = alert ? yardAlertText(alert, messages, locale, item.outOfShopJobName ?? null) : null;
   const warning = alert && (alert.kind === 'blocked' || alert.kind === 'paused' || alert.kind === 'leaves');
   const AlertIcon = alert ? ALERT_ICON[alert.kind] : null;
+  const holder = item.holder && item.phase !== WorkPlanPhase.WAITING_FOR_MECHANIC ? item.holder : null;
   const describedBy = useId();
   const rts = readyToGo && canManage && item.nextStep?.workOrderId ? item.nextStep.workOrderId : null;
 
@@ -450,6 +452,13 @@ function YardTruckCard({ item, messages, locale, dispatch, soonUntil = null, can
           {[vehicle, workOrder ? null : messages.noOpenWorkOrder].filter(Boolean).join(' · ')}
           {workOrder ? <>{vehicle ? ' · ' : ''}<span className="font-mono">{workOrder.displayId}</span> · {compactAge(workOrder.createdAt)}</> : null}
         </p>
+        {holder ? (
+          // D57 §3 (LTR-306): in an area column, who has the truck now and with which Job.
+          <p className="flex items-start gap-1.5 text-xs font-medium text-foreground" data-testid="yard-card-holder">
+            <Wrench aria-hidden="true" className="mt-px size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{fillYardText(messages.truckHolderLine, { name: holder.mechanic.name, job: holder.jobName })}</span>
+          </p>
+        ) : null}
         {alert && alertText && AlertIcon ? (
           <p
             id={`${describedBy}-line`}

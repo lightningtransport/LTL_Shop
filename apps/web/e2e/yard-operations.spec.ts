@@ -179,7 +179,7 @@ test.describe('Yard Operations Phase 1', () => {
       await page.setViewportSize(viewport);
       // D33: desktop shows every step as a list, an empty one too; phones hide the empty steps.
       const phases = viewport.width >= 1024
-        ? ['Inspection', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']
+        ? ['Inspection', 'Waiting for a mechanic', 'PM', 'Alignment', 'Shop Work', 'Detailing', 'Quality Check', 'Ready to close', 'Ready to Go']
         : ['Inspection', 'PM', 'Shop Work'];
       for (const phase of phases) {
         await expect(page.getByTestId('yard-lanes').getByRole('heading', { name: phase, exact: true })).toBeVisible();

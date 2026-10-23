@@ -46,6 +46,7 @@ export function workPlanJobUiStatusLabel(status: string, messages: AdminMessages
 
 export function workPlanPhaseLabel(phase: string, messages: AdminMessages) {
   if (phase === 'shop_work') return messages.shopWork;
+  if (phase === 'waiting_for_mechanic') return messages.waitingForMechanic;
   if (phase === 'ready_to_close') return messages.readyToClose;
   return phaseLabel(phase, messages);
 }

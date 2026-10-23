@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from 'vitest';
 import {
   USERS, Json, activeBlocker, adminWo, as, completeJob, laneJob, laneOf, manager, mechanicWo, namedJob, ok,
-  openSessionUsers, plannedWo, prisma, refused, reportBlocker, resetDb, same, sameNextStepEverywhere, start, truthy, userId,
+  openSessionUsers, plannedWo, prisma, refused, reportBlocker, resetDb, same, sameNextStepEverywhere, start, truthy, userId, helpOn,
 } from '../harness';
 
 const openSessions = (workOrder: Json) => (workOrder.laborSessions as Json[]).filter((session) => !session.endedAt);
@@ -93,7 +93,9 @@ describe('Mecánico Standard: ver, trabajar, bloquear', () => {
     ]);
     refused('no se pausa un WO que no ha empezado', await manager.post(`/admin/work-orders/${workOrderId}/pause`, { reason: 'waiting_for_parts' }), 400);
     ok('Start general', await start(USERS.general, workOrderId));
-    ok('Start alignment', await start(USERS.alignment, workOrderId));
+    // D57 §3: one area at a time; two clocks on one truck means one helps the other (D23).
+    await helpOn(USERS.alignment, workOrderId, 'Battery');
+    ok('Start alignment (ayudante)', await start(USERS.alignment, workOrderId));
     same('dos sesiones abiertas', openSessions(await adminWo(workOrderId)).length, 2);
 
     refused('el mecánico no pausa (LTR-180: el endpoint ya no existe)', await as(USERS.general).post(`/work-orders/${workOrderId}/pause`, { reason: 'waiting_for_parts' }), 404);
@@ -116,5 +118,53 @@ describe('Mecánico Standard: ver, trabajar, bloquear', () => {
     truthy('la pausa quedó cerrada en el historial', (workOrder.pauseHistory as Json[]).every((pause) => pause.endedAt), workOrder.pauseHistory);
     const pauses = await prisma.pauseEvent.count({ where: { workOrderId, isOfficialPause: true } });
     same('una pausa oficial registrada', pauses, 1);
+  });
+});
+
+/** D57 §3 (LTR-306): a truck is worked by one area at a time. */
+describe('Un camión a la vez: quien toca Start se lleva el camión (D57 §3)', () => {
+  beforeEach(resetDb);
+
+  it('A171 | El de Alignment toca Start y se lleva el camión: el general no puede empezar (TRUCK_BUSY), lo ve "con él" y el Yard dice quién lo tiene; al completar lo suelta; un bloqueo también; el PM espera; el cierre del día no lo suelta', async () => {
+    const { truck, workOrderId } = await plannedWo('944', [{ category: 'Electrical & Starting', job: 'Battery', assignee: USERS.general }]);
+    const plan = async () => ok('Work Plan', await manager.get(`/admin/trucks/${truck.id}/work-plan`));
+    same('nadie lo tiene: espera un mecánico', [(await plan()).phase, (await plan()).holder ?? null], ['waiting_for_mechanic', null]);
+
+    ok('el de Alignment toca Start', await start(USERS.alignment, workOrderId));
+    const taken = await plan();
+    same('el camión es del de Alignment', [taken.phase, taken.holder?.mechanic.id, taken.holder?.jobName], ['alignment', await userId(USERS.alignment), 'Alignment']);
+    refused('el general no puede empezar', await start(USERS.general, workOrderId), 409, 'TRUCK_BUSY');
+    same('el general lo ve con el de Alignment', (await mechanicWo(USERS.general, workOrderId)).truckBusy?.holder.id, await userId(USERS.alignment));
+    same('el de Alignment no se ve a sí mismo como ocupado', (await mechanicWo(USERS.alignment, workOrderId)).truckBusy ?? null, null);
+
+    // D20: the day close stops the clock, not the hold.
+    await prisma.workSession.updateMany({ where: { workOrderId, endedAt: null }, data: { endedAt: new Date(), endReason: 'day_close' } });
+    refused('después del cierre del día sigue siendo suyo', await start(USERS.general, workOrderId), 409, 'TRUCK_BUSY');
+    ok('al día siguiente el de Alignment toca Continue', await start(USERS.alignment, workOrderId));
+
+    const alignmentJob = laneJob(await adminWo(workOrderId), 'alignment');
+    ok('completa Alignment', await completeJob(USERS.alignment, workOrderId, alignmentJob.id));
+    same('completar lo suelta', (await plan()).holder ?? null, null);
+    ok('ahora el general empieza', await start(USERS.general, workOrderId));
+    same('el camión es del general, en Shop Work', [(await plan()).phase, (await plan()).holder?.mechanic.id], ['shop_work', await userId(USERS.general)]);
+
+    const pmJob = laneJob(await adminWo(workOrderId), 'pm');
+    refused('el PM espera mientras el general lo tiene', await as(USERS.pm).post(`/work-orders/${workOrderId}/jobs/${pmJob.id}/pm/start`), 409, 'TRUCK_BUSY');
+
+    const battery = namedJob(await adminWo(workOrderId), 'Battery');
+    ok('el general reporta un bloqueo', await reportBlocker(USERS.general, workOrderId, battery.id));
+    same('un bloqueo lo suelta', (await plan()).holder ?? null, null);
+    ok('el PM empieza', await as(USERS.pm).post(`/work-orders/${workOrderId}/jobs/${pmJob.id}/pm/start`));
+    same('el camión es del PM', [(await plan()).phase, (await plan()).holder?.mechanic.id], ['pm', await userId(USERS.pm)]);
+
+    // The queues do not offer a truck someone else has (D28 and the shop queue, D57 §5).
+    const queued = await prisma.workOrderJob.create({ data: {
+      workOrderId, catalogJobId: battery.catalogJobId, categoryId: battery.category.id, displayName: 'Lights',
+      isCustom: false, addedById: await userId(USERS.manager), status: 'to_do', workflowStepKey: 'shop_work',
+    } });
+    const inQueue = async () => (ok('cola de John', await as(USERS.spare).get('/team-queue')) as Json[]).some((item) => item.jobId === queued.id);
+    same('con el PM trabajando, la reparación no aparece disponible', await inQueue(), false);
+    await prisma.workOrderJob.update({ where: { id: pmJob.id }, data: { status: 'completed', completedAt: new Date() } });
+    same('cuando el PM termina, aparece', await inQueue(), true);
   });
 });

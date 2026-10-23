@@ -2,7 +2,7 @@ import { beforeEach, describe, it } from 'vitest';
 import {
   USERS, Json, activeBlocker, admin, adminCompleteJob, adminWo, cancelWo, closeWo, createWo, doLane, doPm, inspect,
   laneJob, manager, meta, namedJob, as, ok, openSessionUsers, plannedWo, prisma, refused, reportBlocker, resetDb, same,
-  sameNextStepEverywhere, start, truckDetail, truthy,
+  sameNextStepEverywhere, start, truckDetail, truthy, helpOn,
 } from '../harness';
 
 describe('Manager y Admin: cancelar y reabrir', () => {
@@ -13,7 +13,9 @@ describe('Manager y Admin: cancelar y reabrir', () => {
       { category: 'Electrical & Starting', job: 'Battery', assignee: USERS.general },
     ]);
     ok('Start general', await start(USERS.general, workOrderId));
-    ok('Start alignment', await start(USERS.alignment, workOrderId));
+    // D57 §3: two clocks on one truck means one helps the other (D23).
+    await helpOn(USERS.alignment, workOrderId, 'Battery');
+    ok('Start alignment (ayudante)', await start(USERS.alignment, workOrderId));
     ok('pausa oficial', await manager.post(`/admin/work-orders/${workOrderId}/pause`, { reason: 'waiting_for_parts' }));
 
     refused('cancelar exige motivo', await manager.post(`/admin/work-orders/${workOrderId}/cancel`, await meta(workOrderId)), 400);

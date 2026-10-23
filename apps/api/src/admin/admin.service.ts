@@ -884,7 +884,8 @@ export class AdminService {
     if (!isPmJob && !isQcJob) await joinWorkOrderTeam(tx, workOrderId, mechanicId, user.id);
     await tx.workOrderJob.update({
       where: { id: job.id },
-      data: { assignedMechanicId: mechanicId },
+      // D57 §3: a new owner has not started yet, so the Job stops holding the truck (the PM keeps its own start).
+      data: { assignedMechanicId: mechanicId, ...(isPmJob || job.assignedMechanicId === mechanicId ? {} : { startedAt: null }) },
     });
     if (job.assignedMechanicId && job.assignedMechanicId !== mechanicId) {
       await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
@@ -927,7 +928,8 @@ export class AdminService {
         if (!job.assignedMechanicId) throw new NotFoundException('Job is not assigned');
         await tx.workOrderJob.update({
           where: { id: jobId },
-          data: { assignedMechanicId: null },
+          // D57 §3: with no owner the Job does not hold the truck (the PM keeps its own start).
+          data: { assignedMechanicId: null, ...(isPmCategory(job.category.name) ? {} : { startedAt: null }) },
         });
         await this.releaseMechanicFromWorkOrder(tx, workOrderId, job.assignedMechanicId);
         const incremented = await tx.workOrder.updateMany({

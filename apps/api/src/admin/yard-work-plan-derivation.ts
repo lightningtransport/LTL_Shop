@@ -13,8 +13,11 @@ import {
   isQualityCheckJob,
   laneForSystemKey,
   jobWorkStatus,
+  holdingJobs,
   jobArea,
   workAreaOf,
+  workAreaRank,
+  type TruckHolderDto,
   type JobExternalDto,
   type JobExternalKind,
   type WorkPlanJobDto,
@@ -272,6 +275,7 @@ function deriveLegacyPmWorkPlan(input: WorkPlanDerivationInput) {
     readiness: open ? WorkPlanReadiness.NOT_READY : WorkPlanReadiness.READY,
     readyReason: open ? WorkPlanNotReadyReason.PM_PENDING : WorkPlanNotReadyReason.PLAN_COMPLETE,
     phase: open ? WorkPlanPhase.PM : WorkPlanPhase.READY_TO_GO,
+    holder: null as TruckHolderDto | null,
     mandatory: { pm, alignment: notApplicable, detailing: notApplicable, qualityCheck: notApplicable },
   };
 }
@@ -298,6 +302,7 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
   // Repairs found (any area): the inspection's "Issues found" needs at least one.
   const shopPresent = byLane(WorkPlanJobLane.SHOP_WORK).some((job) => job.status !== JobStatus.CANCELLED);
   const needsAddWork = inspectionOutcome === WorkPlanInspectionOutcome.ISSUES_FOUND && !shopPresent;
+  const holder = deriveTruckHolder(input, jobs);
 
   // D57 (LTR-300): the first area not done, in WORK_AREA_ORDER (Inspection · PM · Alignment · Shop Work · Detailing ·
   // QC). The areas have no order between them; this only picks the Yard column. "Issues found" with no repair yet
@@ -331,6 +336,13 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     phase = WorkPlanPhase.INSPECTION;
   } else if (needsAddWork) {
     phase = WorkPlanPhase.SHOP_WORK;
+  } else if (holder && (unresolved(pm) || unresolved(alignment) || shopRemaining > 0 || unresolved(detailing))) {
+    // D57 §3 (LTR-306): the column is where the truck is now — the area of whoever has it.
+    phase = holder.area as unknown as WorkPlanPhase;
+  } else if (jobs.some((job) => job.status === JobStatus.TO_DO && !job.external && job.lane !== WorkPlanJobLane.QUALITY_CHECK
+    && job.lane !== WorkPlanJobLane.INSPECTION)) {
+    // Work is left in the shop and nobody has the truck: it waits for the next area, in any order.
+    phase = WorkPlanPhase.WAITING_FOR_MECHANIC;
   } else if (unresolved(pm)) {
     phase = WorkPlanPhase.PM;
   } else if (unresolved(alignment)) {
@@ -354,6 +366,30 @@ export function deriveWorkPlan(input: WorkPlanDerivationInput) {
     readiness,
     readyReason,
     phase,
+    holder,
     mandatory: { pm, alignment, detailing, qualityCheck },
   };
+}
+
+/**
+ * D57 §3 (LTR-306): who has the truck — the owner of a started, unblocked, in-shop Job (`holdingJobs`). With
+ * several (a helper, or data from before the rule), the one painted first in WORK_AREA_ORDER.
+ */
+function deriveTruckHolder(input: WorkPlanDerivationInput, jobs: WorkPlanJobDto[]): TruckHolderDto | null {
+  const dtoById = new Map(jobs.map((job) => [job.id, job]));
+  const held = holdingJobs(input.jobs.map((job) => ({
+    id: job.id,
+    status: job.status,
+    assignedMechanicId: job.assignedMechanic?.id ?? null,
+    startedAt: job.startedAt,
+    blocked: job.blocked,
+    external: Boolean(job.externalSince),
+    helperOfJobId: job.helperOfJobId,
+    isQualityCheck: dtoById.get(job.id)?.lane === WorkPlanJobLane.QUALITY_CHECK,
+  })))
+    .map((job) => dtoById.get(job.id)!)
+    .filter((job) => job.assignedMechanic)
+    .sort((left, right) => workAreaRank(jobArea(left)) - workAreaRank(jobArea(right)));
+  const first = held[0];
+  return first ? { mechanic: first.assignedMechanic!, jobId: first.id, jobName: first.displayName, area: jobArea(first) } : null;
 }

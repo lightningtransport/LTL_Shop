@@ -252,6 +252,29 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await expect(team.getByTestId('team-queue-item')).toHaveCount(1);
   });
 
+  test('D57 §3 (LTR-306): when another mechanic has the truck, Home and the Work Order show who and Start is disabled', async ({ page }) => {
+    const busy = { holder: { id: 'mechanic-2', name: 'Jamie Technician' }, jobName: 'Brake Inspection' };
+    await page.route('**/api/work-orders**', async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (route.request().method() !== 'GET') return route.fallback();
+      if (path === '/api/work-orders') return json(route, { created: [{ ...workOrder, truckBusy: busy }], active: [], paused: [], completed: [] });
+      if (path === `/api/work-orders/${workOrder.id}`) {
+        return json(route, { ...workOrder, truckBusy: busy, notes: null, createdById: user.id, completedAt: null, totalActiveLaborMs: 0, totalWaitingMs: 0, mechanics: [], currentPause: null, truck, version: 1 });
+      }
+      return route.fallback();
+    });
+    await login(page);
+    const card = page.getByTestId(`home-card-${workOrder.truckNumber}`);
+    await expect(card.getByTestId('truck-busy')).toHaveText('With Jamie Technician · Brake Inspection · wait');
+    const start = card.getByRole('button', { name: /Start when the truck is free/ });
+    await expect(start).toBeDisabled();
+    expect((await start.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.goto(`/work-orders/${workOrder.id}`);
+    await expect(page.getByTestId('truck-busy')).toHaveText('With Jamie Technician · Brake Inspection · wait');
+    await expect(page.getByTestId('start-when-free')).toBeDisabled();
+    await expect(page.getByTestId('start-when-free')).toHaveText('Start when the truck is free');
+  });
+
   test('finishes login initialization before navigating to Home', async ({ page }) => {
     let releaseProfile!: () => void;
     profileBarrier = new Promise<void>((resolve) => {

@@ -225,7 +225,9 @@ export enum ReadinessPhase {
 export enum WorkPlanPhase {
   INSPECTION = 'inspection',
   SHOP_WORK = 'shop_work',
-  /** LTR-141 / LTR-144: mandatory PM between Shop Work and Alignment. */
+  /** D57 §3 (LTR-306): work is left in the shop areas and nobody has the truck. */
+  WAITING_FOR_MECHANIC = 'waiting_for_mechanic',
+  /** LTR-141 / LTR-144: mandatory PM. D57: an area, no order with the others. */
   PM = 'pm',
   ALIGNMENT = 'alignment',
   DETAILING = 'detailing',
@@ -243,6 +245,8 @@ export const YardBoardPhase = {
   ...ReadinessPhase,
   SHOP_WORK: WorkPlanPhase.SHOP_WORK,
   READY_TO_CLOSE: WorkPlanPhase.READY_TO_CLOSE,
+  /** D57 §3 (LTR-306): the board's "Waiting for a mechanic" column. */
+  WAITING_FOR_MECHANIC: WorkPlanPhase.WAITING_FOR_MECHANIC,
 } as const;
 
 export type YardBoardPhase = (typeof YardBoardPhase)[keyof typeof YardBoardPhase];

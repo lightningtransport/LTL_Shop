@@ -12,6 +12,7 @@ export type ApiErrorCode =
   | 'TRUCK_HAS_OPEN_WORK_ORDER'
   | 'TRUCK_HAS_HISTORY'
   | 'TRUCK_INACTIVE'
+  | 'TRUCK_BUSY'
   | 'SAMSARA_VEHICLE_TAKEN'
   | 'SAMSARA_VEHICLE_NOT_FOUND'
   | 'SAMSARA_CHOICE_REQUIRED'
@@ -140,6 +141,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     TRUCK_HAS_OPEN_WORK_ORDER: 'Close or cancel the truck\'s open Work Order before deactivating it.',
     TRUCK_HAS_HISTORY: 'This truck has history in the Shop, so it cannot be deleted. Deactivate it instead.',
     TRUCK_INACTIVE: 'This truck is deactivated. Reactivate it in Trucks first.',
+    TRUCK_BUSY: 'Another mechanic has this truck right now. Start when it is free.',
     SAMSARA_VEHICLE_TAKEN: 'Another truck is already connected to this Samsara vehicle.',
     SAMSARA_VEHICLE_NOT_FOUND: 'Samsara does not list this vehicle any more. Refresh the list.',
     SAMSARA_CHOICE_REQUIRED: 'Some fields differ from Samsara. Choose which value stays.',
@@ -265,6 +267,7 @@ export const API_ERROR_COPY: Record<ShopLocale, ApiErrorCopy> = {
     TRUCK_HAS_OPEN_WORK_ORDER: 'Cierra o cancela la Work Order abierta del camión antes de desactivarlo.',
     TRUCK_HAS_HISTORY: 'Este camión tiene historial en el taller, así que no se puede borrar. Desactívalo en su lugar.',
     TRUCK_INACTIVE: 'Este camión está desactivado. Reactívalo primero en Trucks.',
+    TRUCK_BUSY: 'Otro mecánico tiene este camión ahora. Empieza cuando se libere.',
     SAMSARA_VEHICLE_TAKEN: 'Otro camión ya está conectado a este vehículo de Samsara.',
     SAMSARA_VEHICLE_NOT_FOUND: 'Samsara ya no lista este vehículo. Actualiza la lista.',
     SAMSARA_CHOICE_REQUIRED: 'Algunos datos difieren de Samsara. Elige cuál se queda.',
