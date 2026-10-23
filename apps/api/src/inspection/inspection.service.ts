@@ -596,8 +596,8 @@ export class InspectionService {
   private async limits(client: Tx | PrismaService): Promise<InspectionTireLimits> {
     const row = await client.inspectionSettings.findUnique({ where: { id: 1 } });
     if (!row) return DEFAULT_INSPECTION_TIRE_LIMITS;
-    const { steerTargetPsi, driveTargetPsi, steerMinTread, driveMinTread, watchPct, fixPct } = row;
-    return { steerTargetPsi, driveTargetPsi, steerMinTread, driveMinTread, watchPct, fixPct };
+    const { steerTargetPsi, driveTargetPsi, steerMinTread, driveMinTread, watchPct, fixPct, treadWatchMargin } = row;
+    return { steerTargetPsi, driveTargetPsi, steerMinTread, driveMinTread, watchPct, fixPct, treadWatchMargin };
   }
 
   private activeChecklist(client: Tx | PrismaService): Promise<ChecklistRow[]> {

@@ -9,6 +9,7 @@ import {
   TireReadingStatus,
   tireAxle,
   tireTargets,
+  treadBand,
   type InspectionChecklistItemDto,
   type TirePosition,
   type TruckInspectionDto,
@@ -754,7 +755,8 @@ function TiresCard({
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t bg-sunken px-4 py-2.5 text-xs text-muted-foreground">
           <span>{copy.targets(limits.steerTargetPsi, limits.driveTargetPsi)}</span>
-          <span>{copy.minTread(limits.steerMinTread, limits.driveMinTread)}</span>
+          <span>{copy.treadLine(copy.steer, treadBand(limits.steerMinTread, limits.treadWatchMargin))}</span>
+          <span>{copy.treadLine(copy.driveAxle, treadBand(limits.driveMinTread, limits.treadWatchMargin))}</span>
         </div>
       </SectionCard>
     </div>
@@ -870,7 +872,7 @@ function TireForm({
     <>
       <div className="space-y-3 sm:space-y-4">
         {stepper('psi', copy.pressureTarget(target.targetPsi), 'PSI', psi, setPsi)}
-        {stepper('tread', copy.treadMin(target.minTread), '/32', tread, setTread)}
+        {stepper('tread', copy.treadMin(treadBand(target.minTread, state.limits.treadWatchMargin)), '/32', tread, setTread)}
         <div className="min-h-6">
           {status ? (
             <Badge variant={status === TireReadingStatus.FIX ? 'destructive' : status === TireReadingStatus.WATCH ? 'warning' : 'success'} dot>

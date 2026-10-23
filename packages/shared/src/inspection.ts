@@ -78,9 +78,11 @@ export type InspectionTireLimits = {
   driveMinTread: number;
   watchPct: number;
   fixPct: number;
+  /** D57: tread this many 32nds above the minimum still counts as "watch". */
+  treadWatchMargin: number;
 };
 
-/** D41 defaults: 110 / 95 PSI, 4/32 and 2/32 tread (DOT), watch at ±10 %, fix at ±20 %. */
+/** D41 defaults: 110 / 95 PSI, 4/32 and 2/32 tread (DOT), watch at ±10 %, fix at ±20 %; D57: watch 2/32 above the minimum. */
 export const DEFAULT_INSPECTION_TIRE_LIMITS: InspectionTireLimits = {
   steerTargetPsi: 110,
   driveTargetPsi: 95,
@@ -88,10 +90,8 @@ export const DEFAULT_INSPECTION_TIRE_LIMITS: InspectionTireLimits = {
   driveMinTread: 2,
   watchPct: 10,
   fixPct: 20,
+  treadWatchMargin: 2,
 };
-
-/** Tread this many 32nds above the minimum still counts as "watch". */
-export const TIRE_TREAD_WATCH_MARGIN = 2;
 
 export function tireTargets(position: TirePosition, limits: InspectionTireLimits) {
   return tireAxle(position) === 'steer'
@@ -107,17 +107,18 @@ export type TireStatusResult = {
 
 /**
  * D41 tire rule. Pressure: beyond ±fixPct of target → fix, beyond ±watchPct → watch.
- * Tread: under the minimum → fix, less than 2/32 above it → watch. The worse of the two wins;
+ * Tread (D57): at or under the minimum → fix, less than `treadWatchMargin`/32 above it → watch. The worse of the two wins;
  * on a tie, tread wins (a worn tire is replaced, a low one is repaired).
  */
 export function tireReadingStatus(
   reading: { psi: number; tread: number },
   target: { targetPsi: number; minTread: number },
-  limits: Pick<InspectionTireLimits, 'watchPct' | 'fixPct'>,
+  limits: Pick<InspectionTireLimits, 'watchPct' | 'fixPct' | 'treadWatchMargin'>,
 ): TireStatusResult {
   const off = (Math.abs(reading.psi - target.targetPsi) / target.targetPsi) * 100;
   const pressure = off > limits.fixPct ? 2 : off > limits.watchPct ? 1 : 0;
-  const tread = reading.tread < target.minTread ? 2 : reading.tread < target.minTread + TIRE_TREAD_WATCH_MARGIN ? 1 : 0;
+  const band = treadBand(target.minTread, limits.treadWatchMargin);
+  const tread = reading.tread <= band.jobAtOrBelow ? 2 : reading.tread < band.okFrom ? 1 : 0;
   const level = Math.max(pressure, tread);
   const status = level === 2 ? TireReadingStatus.FIX : level === 1 ? TireReadingStatus.WATCH : TireReadingStatus.OK;
   const reason = level === 0 ? null : tread >= pressure ? 'tread' : 'pressure';
@@ -125,11 +126,23 @@ export function tireReadingStatus(
 }
 
 /**
+ * D57: the tread numbers the sheet and Setup show for one axle. Job at `jobAtOrBelow`/32 or less;
+ * Watch from `watchFrom` to `watchTo` (none when the margin is 0); OK from `okFrom`.
+ */
+export function treadBand(minTread: number, treadWatchMargin: number) {
+  // A limits payload from before D57 has no margin: fall back to the default instead of NaN.
+  const margin = Number.isFinite(treadWatchMargin) ? Math.max(0, treadWatchMargin) : DEFAULT_INSPECTION_TIRE_LIMITS.treadWatchMargin;
+  const okFrom = minTread + 1 + margin;
+  return { jobAtOrBelow: minTread, watchFrom: minTread + 1, watchTo: okFrom - 1, okFrom };
+}
+export type TreadBand = ReturnType<typeof treadBand>;
+
+/**
  * D54: why a tire made a Job, from the saved reading alone. A Job is only made for `fix`, and on a tie tread
- * wins (D41), so a tread under the minimum is `worn`; otherwise the pressure was off one way or the other.
+ * wins (D41), so a tread at or under the minimum (D57) is `worn`; otherwise the pressure was off one way or the other.
  */
 export function tireFindingReason(reading: { psi: number; tread: number; targetPsi: number; minTread: number }): 'low_pressure' | 'high_pressure' | 'worn' {
-  if (reading.tread < reading.minTread) return 'worn';
+  if (reading.tread <= reading.minTread) return 'worn';
   return reading.psi < reading.targetPsi ? 'low_pressure' : 'high_pressure';
 }
 
@@ -195,7 +208,9 @@ export const inspectionTireLimitsSchema = z.object({
   driveMinTread: z.number().int().min(0).max(32),
   watchPct: z.number().int().min(1).max(100),
   fixPct: z.number().int().min(2).max(100),
-}).refine((limits) => limits.fixPct > limits.watchPct, { message: 'Fix must be farther from the target than Watch' });
+  treadWatchMargin: z.number().int().min(0).max(16),
+}).refine((limits) => limits.fixPct > limits.watchPct, { message: 'Fix must be farther from the target than Watch' })
+  .refine((limits) => Math.max(limits.steerMinTread, limits.driveMinTread) + limits.treadWatchMargin < 32, { message: 'Min tread plus the Watch margin must stay under 32/32' });
 
 export const saveInspectionChecklistSchema = z.object({
   items: z.array(inspectionChecklistItemInputSchema).min(1).max(300),
