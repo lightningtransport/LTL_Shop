@@ -271,7 +271,12 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   Flat Repair (presión) o Tires (tread, también en el mínimo). **D54:** Flat Repair y Tires nacen con el
   equipo de **Alignment** (uno → a él; varios → su cola, `workflow_step_key =
   alignment`; vacío → sin dueño), salvo que el Manager elija otro o "Assign
-  later" (`assignedMechanicId: null`); también si inspecciona un mecánico. El
+  later" (`assignedMechanicId: null`); también si inspecciona un mecánico.
+  **D57 §5 (LTR-305):** cualquier otra reparación nueva sin elegir a nadie nace
+  en la **cola del taller** (`workflow_step_key = shop_work`), también si
+  inspecciona un mecánico; "Assign later" la deja sin dueño y fuera de la cola
+  a propósito. En la hoja, la opción por defecto de esas reparaciones es "Shop
+  queue (any mechanic)". El
   mecánico ve en el Job la lectura y el motivo (`tireFindings`: posición, PSI,
   tread, `low_pressure` / `high_pressure` / `worn`, de `tireFindingReason` en
   shared) y las notas de la hoja (`inspectionNotes`). Cada hallazgo queda ligado a su Job en
@@ -729,7 +734,15 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   equipo** (`work_order_jobs.workflow_step_key`); un Job en la cola no cuenta
   como "sin asignar" en el siguiente paso ni en el Dashboard. Sin nadie, nace
   sin dueño y el Manager lo asigna.
-- **La cola:** `GET /api/team-queue` lista los Jobs de los pasos del mecánico;
+- **Cola del taller (D57 §5, LTR-305):** las reparaciones de Shop Work sin dueño
+  que vienen de la inspección (ver arriba) esperan con `workflow_step_key =
+  shop_work` (`SHOP_WORK_QUEUE_KEY`). No es un paso de Shop workflow ni tiene
+  equipo: la ve y la toma **cualquier mecánico Standard activo** (no el de PM
+  ni Safety; `NOT_ON_STEP_TEAM` "Only a general mechanic can take it"). Take y
+  release son los de abajo; el Manager sigue pudiendo asignar directo. El Job
+  sigue en el área Shop Work. En la home del mecánico sale aparte de la cola
+  del equipo, como **"Available in the shop"**.
+- **La cola:** `GET /api/team-queue` lista los Jobs de los pasos del mecánico (y la del taller si es Standard);
   `POST /api/team-queue/:jobId/take` (gana el primero, `JOB_ALREADY_TAKEN`) y
   `/release` (no con su reloj corriendo en ese camión,
   `JOB_RELEASE_CLOCK_RUNNING`). Los dos quedan en el Activity Log
@@ -821,8 +834,9 @@ Jobs, agrupados por Truck) → abre el WO: ve "Your Jobs" y, en solo lectura,
 
 **MECH-INSP — Inspeccionar (con "Can inspect trucks", D41):** My work →
 "To inspect" → Start → la misma hoja (`/mechanic/{standard,pm}/inspect/[truckId]`).
-Sus Jobs nacen sin dueño y el Manager los asigna, salvo Flat Repair y Tires,
-que van a Alignment (D54).
+Sus Jobs nacen sin dueño: Flat Repair y Tires van a Alignment (D54) y las
+demás reparaciones a la cola del taller (D57 §5), donde cualquier mecánico las
+toma; el Manager también las puede asignar.
 
 **MECH02 — Trabajar:** Start/Continue abre su sesión → cada Job suyo es una
 tarjeta con dos botones debajo, **Completar Job** (primario) y **Reportar

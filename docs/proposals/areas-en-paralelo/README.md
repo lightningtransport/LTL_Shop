@@ -124,6 +124,8 @@ Para el 911 queda: **PM** → PM A Service · **Alignment** → Alignment, Tires
 
 ### 3.10 Cola de Shop Work para mecánicos generales
 
+**Construido en AP-6 (LTR-305), sin migración.** La clave es `shop_work` (`SHOP_WORK_QUEUE_KEY`) en `workflow_step_key`, que ya era texto. Entran las reparaciones nuevas de la inspección sin elegir a nadie (la hoja ofrece "Shop queue (any mechanic)" por defecto); "Assign later" las deja fuera. La ven todos los mecánicos Standard activos y Add work no cambia (**P44**).
+
 Los Jobs sin dueño del área Shop Work (defectos de la inspección, pedidos de Safety, Add work sin asignar) aparecen en la app del mecánico general bajo **"Available in the shop"**, igual que las colas de D28: Take lo hace dueño, Release lo devuelve; el camión que alguien tiene no se muestra (§3.3). El Manager sigue asignando directo. Internamente es `workflowStepKey = shop_work` con capability `MECHANIC_STANDARD`; si hace falta una fila en `shop_workflow_steps` se decide al diseñar AP-6.
 
 ## 4. Reglas (D57)
@@ -167,6 +169,7 @@ Para no malgastar tokens y cerrar cada etapa en un loop hasta verde:
 - **P39** Si Safety devuelve el camión y vuelve al shop después del Detailing, ¿la app ofrece reabrir Detailing? Hoy el dueño lo pidió como duda; en v1 el Manager agrega un Detailing nuevo con Add work.
 - **P40** ¿El área "Shop Work" se llama **"Repairs"** para el Manager? Hoy mezcla defectos de la inspección, hallazgos de Safety y pedidos.
 - **P41** ¿El Manager puede dejar que dos áreas trabajen el mismo camión a la vez (override con motivo)? **v1: nunca.**
+- **P44** ¿La cola del taller la ven solo los mecánicos generales, o todos los Standard (v1)? ¿Add work sin mecánico también va a la cola (v1: no)?
 - **P43** Tire Mounting y Tire Rotation (Tires & Wheels), ¿también son del área Alignment? **v1: no**, solo Tires y Flat Repair como dice D57.
 - **P42** Un camión que alguien tiene desde ayer y no ha vuelto a tocar Continue, ¿sigue tomado? **v1: sí**, hasta completar o bloquear; el Manager lo ve en la columna del área con "since yesterday" en ámbar y puede bloquear el Job para soltarlo.
 
