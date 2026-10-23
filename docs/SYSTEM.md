@@ -937,11 +937,29 @@ Inspection → [ PM · Alignment · Shop Work · Detailing ] → Quality Check �
   Wheel Seals, Tire Rotation, Tire Mounting) sigue en Shop Work.
 - Un área está **completa** cuando están hechos todos sus Jobs: Alignment no
   termina mientras falten las llantas.
-- **Fase del Yard:** la primera área sin terminar en ese orden (Inspection,
-  PM, Alignment, Shop Work, Detailing, QC). Va primero, antes del PM, el caso
-  "Issues found" sin ninguna reparación agregada (Shop Work: el Manager tiene
-  que agregar el trabajo). La fase solo elige la columna; no dice qué se hace
-  primero. El motivo de "no listo" (`readyReason`) y el requisito que bloquea en el
+- **Un camión a la vez (D57 §3, LTR-306).** El mecánico que toca **Start**
+  (o el Start del PM) se lleva el camión: sus Jobs pendientes de esa WO quedan
+  **empezados** (`work_order_jobs.started_at`). Mientras tenga uno empezado, sin
+  bloqueo y no en taller externo, el Start de otro mecánico en esa WO responde
+  409 `TRUCK_BUSY` ("{nombre} is working on this truck (Job)"). Lo sueltan
+  completar ese Job, reportar un bloqueo o mandarlo a taller externo; el
+  **cierre del día (D20) no** (el Job sigue empezado y al otro día toca
+  Continue). Reasignar o quitar el dueño borra la marca. **Ayudantes (D23):** el
+  ayudante, el dueño del Job que ayuda y los otros ayudantes de ese Job no se
+  frenan; si alguien ya tiene el camión, el Start del ayudante solo marca sus
+  Jobs de ayudante. El Quality Check nunca lo toma. Las colas (D28 y la del
+  taller) no muestran Jobs de un camión que tiene otro. Start toma el lock del
+  camión para que dos no lo tomen a la vez. Código:
+  `packages/shared/src/truck-holder.ts` (`holdingJobs`, `truckBusyFor`,
+  `jobsToStart`). El mecánico ve "With {nombre} · {Job} · wait" con Start
+  apagado (`truckBusy` en su WO); el Work Plan y el Yard reciben `holder`.
+- **Fase del Yard:** Inspection; luego "Issues found" sin ninguna reparación
+  agregada (Shop Work: el Manager tiene que agregar el trabajo); luego, si queda
+  trabajo en las áreas del taller, **la del Job de quien tiene el camión**, o
+  **Waiting for a mechanic** (`waiting_for_mechanic`) si nadie lo tiene; si lo
+  único que queda está afuera, la primera área sin terminar en el orden de
+  pintado; después QC, Ready to close y Ready to Go. El siguiente paso no cambia
+  con esto (sigue diciendo qué áreas faltan). El motivo de "no listo" (`readyReason`) y el requisito que bloquea en el
   Yard siguen el mismo orden: con el PM y reparaciones pendientes dicen PM.
 - El orden **se muestra, no se obliga**: los mecánicos trabajan en paralelo. El Work Plan del camión y la tabla de Jobs de la WO pintan las áreas así (sin numerar las cuatro del taller; ver Work Order detail).
 - **Ready to Go** = todos los pasos resueltos **y** el WO `completed` (D1).
