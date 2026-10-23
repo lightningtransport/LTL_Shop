@@ -1,3 +1,5 @@
+import type { TreadBand } from '@ltl-shop/shared';
+
 /**
  * D41: the inspection sheet's words, in English and Spanish. It lives apart from the Admin catalog (server-only)
  * because the same sheet runs in the mechanic's workspace (HU-ME7). The type keeps both languages complete.
@@ -46,6 +48,10 @@ export type InspectionCopy = {
   ruleOk: string;
   ruleWatch: string;
   ruleFix: string;
+  treadWatchMargin: string;
+  /** D57: one axle's tread numbers in Setup and under the sheet's diagram. */
+  treadLine: (axle: string, band: TreadBand) => string;
+  driveAxle: string;
   whoCanInspectTitle: string;
   whoCanInspectText: string;
   openPeople: string;
@@ -95,12 +101,11 @@ export type InspectionCopy = {
   legendWatch: string;
   legendFix: string;
   targets: (steer: number, drive: number) => string;
-  minTread: (steer: number, drive: number) => string;
   tireOf: (index: number) => string;
   lastCheck: (date: string, psi: number, tread: number) => string;
   noPreviousReading: string;
   pressureTarget: (target: number) => string;
-  treadMin: (min: number) => string;
+  treadMin: (band: TreadBand) => string;
   less: string;
   more: string;
   done: string;
@@ -195,6 +200,17 @@ export type InspectionCopy = {
   addedLaterCount: (count: number) => string;
 };
 
+/** D57: "Job at 4/32 or less · Watch 5–6/32 · OK from 7/32"; no Watch part when the margin is 0. */
+function treadBandEn(band: TreadBand) {
+  const watch = band.watchTo < band.watchFrom ? null : band.watchTo === band.watchFrom ? `Watch ${band.watchFrom}/32` : `Watch ${band.watchFrom}–${band.watchTo}/32`;
+  return [`Job at ${band.jobAtOrBelow}/32 or less`, watch, `OK from ${band.okFrom}/32`].filter(Boolean).join(' · ');
+}
+
+function treadBandEs(band: TreadBand) {
+  const watch = band.watchTo < band.watchFrom ? null : band.watchTo === band.watchFrom ? `Vigilar ${band.watchFrom}/32` : `Vigilar ${band.watchFrom}–${band.watchTo}/32`;
+  return [`Job con ${band.jobAtOrBelow}/32 o menos`, watch, `OK desde ${band.okFrom}/32`].filter(Boolean).join(' · ');
+}
+
 const en: InspectionCopy = {
   crumbTrucks: 'Trucks',
   setupTitle: 'Inspection checklist',
@@ -233,9 +249,12 @@ const en: InspectionCopy = {
   driveMinTread: 'Drive min tread /32',
   watchPct: 'Watch past ±%',
   fixPct: 'Fix past ±%',
-  ruleOk: 'OK: within the watch range and tread 2/32 above the minimum',
-  ruleWatch: 'Watch: past the watch range or tread near the minimum',
-  ruleFix: 'Fix: past the fix range or under the minimum tread',
+  ruleOk: 'OK: within the watch range and tread past the watch margin',
+  ruleWatch: 'Watch: past the watch range or tread within the margin above the minimum',
+  ruleFix: 'Fix: past the fix range or tread at the minimum or under',
+  treadWatchMargin: 'Watch margin above min tread /32',
+  treadLine: (axle, band) => `${axle} tread: ${treadBandEn(band)}`,
+  driveAxle: 'Drive',
   whoCanInspectTitle: 'Who can inspect',
   whoCanInspectText: 'Managers always. Mechanics only with “Can inspect trucks” in People.',
   openPeople: 'Open People',
@@ -285,12 +304,11 @@ const en: InspectionCopy = {
   legendWatch: 'Watch (no Job)',
   legendFix: 'Fix (creates a Job)',
   targets: (steer, drive) => `Target: steer ${steer} PSI · drive ${drive} PSI`,
-  minTread: (steer, drive) => `Min tread: steer ${steer}/32 · drive ${drive}/32`,
   tireOf: (index) => `Tire ${index} of 10`,
   lastCheck: (date, psi, tread) => `Last check ${date}: ${psi} PSI · ${tread}/32`,
   noPreviousReading: 'No earlier reading',
   pressureTarget: (target) => `Pressure · target ${target}`,
-  treadMin: (min) => `Tread · min ${min}/32`,
+  treadMin: (band) => `Tread · ${treadBandEn(band)}`,
   less: 'Less',
   more: 'More',
   done: 'Done',
@@ -423,9 +441,12 @@ const es: InspectionCopy = {
   driveMinTread: 'Tread mínimo tracción /32',
   watchPct: 'Vigilar desde ±%',
   fixPct: 'Arreglar desde ±%',
-  ruleOk: 'OK: dentro del rango y tread 2/32 sobre el mínimo',
-  ruleWatch: 'Vigilar: fuera del rango de vigilar o tread cerca del mínimo',
-  ruleFix: 'Arreglar: fuera del rango o bajo el tread mínimo',
+  ruleOk: 'OK: dentro del rango y tread por encima del margen de vigilar',
+  ruleWatch: 'Vigilar: fuera del rango de vigilar o tread dentro del margen sobre el mínimo',
+  ruleFix: 'Arreglar: fuera del rango o tread en el mínimo o por debajo',
+  treadWatchMargin: 'Margen vigilar sobre el tread mínimo /32',
+  treadLine: (axle, band) => `Tread ${axle.toLowerCase()}: ${treadBandEs(band)}`,
+  driveAxle: 'Tracción',
   whoCanInspectTitle: 'Quién inspecciona',
   whoCanInspectText: 'Los Managers siempre. Los mecánicos solo con “Puede inspeccionar camiones” en People.',
   openPeople: 'Abrir People',
@@ -475,12 +496,11 @@ const es: InspectionCopy = {
   legendWatch: 'Vigilar (sin Job)',
   legendFix: 'Arreglar (crea un Job)',
   targets: (steer, drive) => `Objetivo: dirección ${steer} PSI · tracción ${drive} PSI`,
-  minTread: (steer, drive) => `Tread mínimo: dirección ${steer}/32 · tracción ${drive}/32`,
   tireOf: (index) => `Llanta ${index} de 10`,
   lastCheck: (date, psi, tread) => `Última revisión ${date}: ${psi} PSI · ${tread}/32`,
   noPreviousReading: 'Sin lectura anterior',
   pressureTarget: (target) => `Presión · objetivo ${target}`,
-  treadMin: (min) => `Tread · mínimo ${min}/32`,
+  treadMin: (band) => `Tread · ${treadBandEs(band)}`,
   less: 'Menos',
   more: 'Más',
   done: 'Listo',

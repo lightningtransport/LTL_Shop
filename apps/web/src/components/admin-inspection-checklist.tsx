@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { InspectionSection, type InspectionChecklistDto, type InspectionTireLimits } from '@ltl-shop/shared';
+import { InspectionSection, treadBand, type InspectionChecklistDto, type InspectionTireLimits } from '@ltl-shop/shared';
 import { ArrowDown, ArrowUp, CircleAlert, CircleDot, Lock, MessageSquare, MoreHorizontal, Pencil, Plus, Power, Wrench } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import type { AdminLocale } from '@/lib/admin-messages';
@@ -211,7 +211,12 @@ export function AdminInspectionChecklist({ locale, leaveConfirm }: { locale: Adm
                 {limitField('driveMinTread', copy.driveMinTread)}
                 {limitField('watchPct', copy.watchPct)}
                 {limitField('fixPct', copy.fixPct)}
+                {limitField('treadWatchMargin', copy.treadWatchMargin)}
               </div>
+              <ul className="tnum space-y-1 text-sm">
+                <li>{copy.treadLine(copy.steer, treadBand(limits.steerMinTread, limits.treadWatchMargin))}</li>
+                <li>{copy.treadLine(copy.driveAxle, treadBand(limits.driveMinTread, limits.treadWatchMargin))}</li>
+              </ul>
               <ul className="space-y-1 text-xs text-muted-foreground">
                 <li><span className="font-medium text-success">{copy.ruleOk}</span></li>
                 <li><span className="font-medium text-warning-foreground dark:text-warning">{copy.ruleWatch}</span></li>

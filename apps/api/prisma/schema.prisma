@@ -981,12 +981,12 @@ model OutsideRepair {
   voidedById     String?          @map("voided_by_id") @db.Uuid
   voidReason     String?          @map("void_reason")
 
-  truck        Truck         @relation(fields: [truckId], references: [id], onDelete: Restrict)
-  vendor       Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  workOrder    WorkOrder?    @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
-  workOrderJob WorkOrderJob? @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
-  createdBy    User?         @relation("OutsideRepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  voidedBy     User?         @relation("OutsideRepairVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  truck        Truck               @relation(fields: [truckId], references: [id], onDelete: Restrict)
+  vendor       Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  workOrder    WorkOrder?          @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  workOrderJob WorkOrderJob?       @relation(fields: [workOrderJobId], references: [id], onDelete: SetNull)
+  createdBy    User?               @relation("OutsideRepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  voidedBy     User?               @relation("OutsideRepairVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
   lines        OutsideRepairLine[]
 
   @@index([truckId, invoiceDate])
@@ -1487,17 +1487,19 @@ model InspectionChecklistItem {
 
 /// D41: one row (id = 1). Tire targets and limits; the Manager edits them in Setup.
 model InspectionSettings {
-  id             Int      @id @default(1)
-  steerTargetPsi Int      @default(110) @map("steer_target_psi")
-  driveTargetPsi Int      @default(95) @map("drive_target_psi")
+  id               Int      @id @default(1)
+  steerTargetPsi   Int      @default(110) @map("steer_target_psi")
+  driveTargetPsi   Int      @default(95) @map("drive_target_psi")
   /// Minimum tread in 32nds of an inch (DOT: 4 steer, 2 drive).
-  steerMinTread  Int      @default(4) @map("steer_min_tread")
-  driveMinTread  Int      @default(2) @map("drive_min_tread")
+  steerMinTread    Int      @default(4) @map("steer_min_tread")
+  driveMinTread    Int      @default(2) @map("drive_min_tread")
   /// Percent away from target: past `watchPct` → watch, past `fixPct` → fix.
-  watchPct       Int      @default(10) @map("watch_pct")
-  fixPct         Int      @default(20) @map("fix_pct")
-  updatedById    String?  @map("updated_by_id") @db.Uuid
-  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  watchPct         Int      @default(10) @map("watch_pct")
+  fixPct           Int      @default(20) @map("fix_pct")
+  /// D57: tread up to this many 32nds above the minimum is watch; at or under the minimum is fix.
+  treadWatchMargin Int      @default(2) @map("tread_watch_margin")
+  updatedById      String?  @map("updated_by_id") @db.Uuid
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
   updatedBy User? @relation("InspectionSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 

@@ -1,6 +1,6 @@
 # Matriz de flujos contra la API real
 
-PASA 205 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
+PASA 207 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 
 | # | Flujo | API real |
 |---|---|---|
@@ -179,6 +179,8 @@ PASA 205 · FALLA 0 · NO APLICA 2 · SIN PROBAR 0
 | A159 | R8: el PM no se termina sin millaje, sin partes ni con un millaje por debajo del camión (D10) | PASA |
 | A160 | R15 en pantalla: con todo cancelado fuera del QC, el siguiente paso es Cancel Work Order en todas partes | PASA |
 | A161 | La factura del taller trae sus trabajos como líneas; el total es la suma; una de antes se lee como una sola línea (LTR-298) | PASA |
+| A162 | Steer a 4/32 y drive a 2/32 (justo el mínimo) crean Tires; steer 5/32 y drive 3/32 quedan en Watch; 7/32 es OK | PASA |
+| A163 | El Manager cambia el margen en Setup: vale para la hoja nueva y la inspección guardada no se reclasifica | PASA |
 | E1 | Un Truck con WO abierto no acepta un segundo WO | PASA |
 | E2 | Reintento de crear WO (misma clave) no crea otro | PASA |
 | E3 | Dos Managers cambian el mismo WO: gana el primero, el segundo recibe aviso | PASA |

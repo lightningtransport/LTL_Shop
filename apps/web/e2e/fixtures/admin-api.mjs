@@ -1010,7 +1010,7 @@ createServer(async (request, response) => {
         item(5, 'exterior', 'Brake chambers', brakeJob),
         item(6, 'exterior', 'Lights and reflectors', null, 'detailing'),
       ].map((row, index) => body?.items?.[index] ? { ...row, ...body.items[index], id: row.id } : row),
-      limits: body?.limits ?? { steerTargetPsi: 110, driveTargetPsi: 105, steerMinTread: 4, driveMinTread: 2, watchPct: 10, fixPct: 20 },
+      limits: body?.limits ?? { steerTargetPsi: 110, driveTargetPsi: 105, steerMinTread: 4, driveMinTread: 2, watchPct: 10, fixPct: 20, treadWatchMargin: 2 },
       canEdit: true,
       catalogJobs: [{ id: pmJob.id, displayName: pmJob.displayName, categoryName: pmJob.categoryName }, ...catalogJobs.map((job) => ({ id: job.id, displayName: job.displayName, categoryName: adminCatalog.find((category) => category.id === job.categoryId)?.name ?? 'Brakes' }))],
     });

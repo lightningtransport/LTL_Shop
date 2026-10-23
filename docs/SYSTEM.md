@@ -1,6 +1,6 @@
 # Cómo funciona Lightning Shop hoy
 
-**Actualizado:** 2026-10-22 (LTR-295: siguiente paso `cancel_work_order` cuando todo se canceló; el "Mark complete" del QC apagado hasta que se puede usar); antes 2026-10-22 (D55, LTR-294: reglas que una Work Order no se salta al cerrar, §5); antes 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
+**Actualizado:** 2026-10-23 (D57 / LTR-302: el tread en el mínimo crea Tires, margen Watch editable en Setup, números Job / Watch / OK a la vista); antes 2026-10-22 (LTR-295: siguiente paso `cancel_work_order` cuando todo se canceló; el "Mark complete" del QC apagado hasta que se puede usar); antes 2026-10-22 (D55, LTR-294: reglas que una Work Order no se salta al cerrar, §5); antes 2026-10-21 (LTR-274: botones de las tarjetas de mecánico, PM y Safety a lo ancho y con aspecto de botón en oscuro); antes 2026-10-21 (LTR-273: Dashboard con la llegada sin Work Order y la salida de la yard, nombres del menú People / Jobs / Shop rates, PWA en teléfono o tablet); antes 2026-10-21 (LTR-272: Safety / Quality Check a lo ancho en iPad); antes 2026-10-21 (LTR-271: mecánicos en iPad sin franjas vacías ni tarjetas en media fila); antes 2026-10-21 (D54: mecánicos sin tiempo a la vista y a lo ancho en iPad; llantas de la inspección a Alignment con qué llanta y por qué); antes 2026-10-17 (teclado del teléfono, LTR-234: las hojas se paran encima del teclado y las barras fijas se esconden al escribir, ver `design-system/patterns.md`; Disconnect Samsara en el "…" del camión, LTR-235); antes 2026-10-16 (Safety oculto para el Shop y QC sin asignar, D46 / SQ-1; leer el PDF de la factura, D45 / ST-6; el PM descuenta del stock y cobra el aceite, ST-5; llantas desde la inspección, ST-4; stock del taller, ST-3; catálogo con repuestos y llantas, ST-2; compra atada al Job, ST-1); antes 2026-10-14 (§1 al día: inspección con hoja D41, QC por Safety D19, costos D32/D34, Samsara D35/D42). Las secciones se actualizan en cada PR; la visión y los módulos están en [`PRD.md`](PRD.md).
 **Regla:** este documento describe solo lo que el código hace hoy. Un PR que
 cambia comportamiento lo actualiza en el mismo PR. Las decisiones y su
 historia están en [`DECISIONS.md`](DECISIONS.md); lo que falta o está mal, en Linear
@@ -268,7 +268,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   todos los puntos, la nota de cada defecto y las 10 llantas (PSI y tread). Cada
   defecto crea su Job; los del mismo Job van en uno; si el Job ya está en la WO
   solo se suma la nota; la limpieza va a Detailing; una llanta en "fix" crea
-  Flat Repair (presión) o Tires (tread). **D54:** Flat Repair y Tires nacen con el
+  Flat Repair (presión) o Tires (tread, también en el mínimo). **D54:** Flat Repair y Tires nacen con el
   equipo de **Alignment** (uno → a él; varios → su cola, `workflow_step_key =
   alignment`; vacío → sin dueño), salvo que el Manager elija otro o "Assign
   later" (`assignedMechanicId: null`); también si inspecciona un mecánico. El
@@ -280,8 +280,18 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   mismo requirement de readiness.
 - Lo guardado no se edita: "Add defects" solo pasa un punto OK / N/A a defecto.
   Para quitar un defecto se cancela su Job en la WO.
-- Umbrales (`inspection_settings`): 110 / 95 PSI, tread mínimo 4/32 y 2/32,
-  vigilar a ±10 %, arreglar a ±20 % (`tireReadingStatus` en shared).
+- Umbrales (`inspection_settings`): 110 / 95 PSI, tread mínimo 4/32 (steer) y
+  2/32 (drive), vigilar a ±10 %, arreglar a ±20 % (`tireReadingStatus` en
+  shared). **Tread (D57 §6, LTR-302):** en el mínimo o por debajo = Fix, crea el
+  Job Tires; Watch = los N/32 por encima del mínimo; OK desde ahí. N es
+  `inspection_settings.tread_watch_margin` (entero 0–16, por defecto 2; se edita
+  en Setup → Inspection checklist → Tires). Con los valores de fábrica: steer
+  "Job at 4/32 or less · Watch 5–6/32 · OK from 7/32"; drive "Job at 2/32 or
+  less · Watch 3–4/32 · OK from 5/32". La presión no cambió. Los números se ven
+  en Setup (una línea por eje), en el diálogo de la llanta y en la leyenda bajo
+  el diagrama (EN y ES). Las lecturas guardadas (`tire_readings`) **no se
+  reclasifican**: cada una conserva su estado; el margen nuevo vale desde la
+  siguiente hoja. El mecánico ve "worn" en un tread en el mínimo.
 - Hace falta una WO abierta que no sea de PM.
 - Antes de D41 se registraba con "No issues found" / "Issues found"; esas
   inspecciones viejas quedan como estaban. La inspección **pertenece a
@@ -513,7 +523,7 @@ created ──(Start del mecánico, arranque del PM o Job completado por el Mana
   - Cada parte se bloquea (`FOR UPDATE`) mientras se mueve, así dos salidas a la
     vez no sacan la misma unidad.
 - **Llantas desde la inspección** (D45 / ST-4, LTR-224): una llanta con el tread
-  bajo el mínimo (la que ya creaba el Job **Tires**, D41) deja además en ese Job
+  en el mínimo o por debajo (la que crea el Job **Tires**, D41 / D57) deja además en ese Job
   la **llanta a poner** en esa posición (`job_tire_changes`): **steer siempre
   New**, **drive Recap** propuesta. La presión sola (Flat Repair) no. Add defects
   no cambia llantas.

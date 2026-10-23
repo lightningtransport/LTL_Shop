@@ -218,7 +218,7 @@ describe('Setup → Inspection checklist (D41, HU-M17)', () => {
       await prisma.inspectionChecklistItem.update({ where: { id: row.id }, data: { label: row.label, active: row.active, sortOrder: row.sortOrder, catalogJobId: row.catalogJobId, workflowStepKey: row.workflowStepKey } });
     }
     await prisma.inspectionChecklistItem.deleteMany({ where: { id: { notIn: snapshot.map((row) => row.id) } } });
-    await prisma.inspectionSettings.update({ where: { id: 1 }, data: { steerTargetPsi: 110, driveTargetPsi: 95, steerMinTread: 4, driveMinTread: 2, watchPct: 10, fixPct: 20 } });
+    await prisma.inspectionSettings.update({ where: { id: 1 }, data: { steerTargetPsi: 110, driveTargetPsi: 95, steerMinTread: 4, driveMinTread: 2, watchPct: 10, fixPct: 20, treadWatchMargin: 2 } });
   });
 
   it('A88 | El Manager agrega, renombra y desactiva puntos y cambia umbrales; la inspección guardada no cambia y el mecánico no edita', async () => {
@@ -302,5 +302,50 @@ describe('Las llantas de la inspección van a Alignment y dicen qué llanta y po
     } finally {
       await prisma.userCapability.deleteMany({ where: { userId: general, capability: 'INSPECTION_PERFORM' } });
     }
+  });
+});
+
+describe('Tread en el mínimo crea el Job Tires; el margen de Watch se edita en Setup (D57)', () => {
+  beforeEach(resetDb);
+  afterEach(async () => {
+    await prisma.inspectionSettings.update({ where: { id: 1 }, data: { treadWatchMargin: 2 } });
+  });
+
+  it('A162 | Steer a 4/32 y drive a 2/32 (justo el mínimo) crean Tires; steer 5/32 y drive 3/32 quedan en Watch; 7/32 es OK', async () => {
+    const { truck: row, workOrderId } = await createWo('905');
+    const before = await state(row.id);
+    same('el margen viene del taller', before.limits.treadWatchMargin, 2);
+    const saved = ok('guardar con las llantas en el mínimo', await manager.post(`/admin/trucks/${row.id}/inspection`, sheet(before, {}, {
+      LF: [110, 4], RF: [110, 5], LFO: [95, 2], LFI: [95, 3], RFI: [95, 5], RRO: [95, 7],
+    })));
+    same('estado por llanta', saved.inspection.tires.filter((tire: Json) => tire.status !== 'ok').map((tire: Json) => `${tire.position}:${tire.status}`), ['LF:fix', 'RF:watch', 'LFO:fix', 'LFI:watch']);
+    const wo = await adminWo(workOrderId);
+    same('un Job Tires', jobsNamed(wo, 'Tires').length, 1);
+    same('sin Flat Repair', jobsNamed(wo, 'Flat Repair').length, 0);
+    const mine = ok('el mecánico de Alignment abre el camión', await as(USERS.alignment).get(`/work-orders/${workOrderId}`));
+    const tires = mine.jobs.find((job: Json) => job.displayName === 'Tires');
+    same('las dos en el mínimo, gastadas', tires.tireFindings.map((finding: Json) => `${finding.position}:${finding.tread}/${finding.minTread}:${finding.reason}`).sort(), ['LF:4/4:worn', 'LFO:2/2:worn']);
+  });
+
+  it('A163 | El Manager cambia el margen en Setup: vale para la hoja nueva y la inspección guardada no se reclasifica', async () => {
+    const { truck: row } = await createWo('957');
+    const first = await state(row.id);
+    ok('guardar con steer a 6/32 (Watch con margen 2)', await manager.post(`/admin/trucks/${row.id}/inspection`, sheet(first, {}, { LF: [110, 6] })));
+
+    const list = ok('leer la lista', await manager.get('/admin/inspection-checklist'));
+    same('margen de fábrica', list.limits.treadWatchMargin, 2);
+    const items = list.items.map((item: Json) => ({ id: item.id, section: item.section, label: item.label, catalogJobId: item.catalogJob?.id ?? null, workflowStepKey: item.workflowStepKey, active: item.active }));
+    refused('el margen no es negativo', await manager.put('/admin/inspection-checklist', { items, limits: { ...list.limits, treadWatchMargin: -1 } }), 400);
+    const saved = ok('margen 1', await manager.put('/admin/inspection-checklist', { items, limits: { ...list.limits, treadWatchMargin: 1 } }));
+    same('margen guardado', saved.limits.treadWatchMargin, 1);
+
+    const after = await state(row.id);
+    same('la hoja nueva usa el margen nuevo', after.limits.treadWatchMargin, 1);
+    same('la lectura guardada sigue en Watch', after.inspection.tires.find((tire: Json) => tire.position === 'LF').status, 'watch');
+
+    const other = await createWo('968');
+    const sheet2 = await state(other.truck.id);
+    const next = ok('guardar otra con steer a 6/32', await manager.post(`/admin/trucks/${other.truck.id}/inspection`, sheet(sheet2, {}, { LF: [110, 6], RF: [110, 5] })));
+    same('con margen 1: 6/32 OK y 5/32 Watch', next.inspection.tires.filter((tire: Json) => tire.status !== 'ok').map((tire: Json) => `${tire.position}:${tire.status}`), ['RF:watch']);
   });
 });
