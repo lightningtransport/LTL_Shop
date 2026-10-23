@@ -189,7 +189,11 @@ export type InspectionCopy = {
   tiresCard: string;
   installedTitle: string;
   installedLine: (type: 'new' | 'recap', size: string | null, date: string, wo: string) => string;
-  tiresOk: (ok: number) => string;
+  tiresOk: (ok: number, total: number) => string;
+  /** AP-4 / D57: the groups under the tire diagram and why a tire is in the first one. */
+  tiresGroupJob: string;
+  tiresGroupWatch: string;
+  tireReason: (tire: { psi: number; tread: number; targetPsi: number; minTread: number; reason: 'low_pressure' | 'high_pressure' | 'worn' }) => string;
   noTireReadings: string;
   sinceLast: (psi: number, date: string) => string;
   checkedBy: (date: string, name: string, previous: string | null) => string;
@@ -392,7 +396,12 @@ const en: InspectionCopy = {
   tiresCard: 'Tires',
   installedTitle: 'Mounted',
   installedLine: (type, size, date, wo) => `${type === 'new' ? 'New' : 'Recap'}${size ? ` ${size}` : ''} · ${date} · ${wo}`,
-  tiresOk: (ok) => `${ok}/10 OK`,
+  tiresOk: (ok, total) => `${ok}/${total} OK`,
+  tiresGroupJob: 'Job',
+  tiresGroupWatch: 'Watch',
+  tireReason: ({ psi, tread, targetPsi, minTread, reason }) => (reason === 'worn'
+    ? `${psi} PSI · ${tread}/32 (min ${minTread}) · worn`
+    : `${psi} PSI (should be ${targetPsi}) · ${reason === 'low_pressure' ? 'low' : 'high'} pressure`),
   noTireReadings: 'No tire readings for this visit yet. They are recorded in the inspection.',
   sinceLast: (psi, date) => `${Math.abs(psi)} PSI since ${date}`,
   checkedBy: (date, name, previous) => `Checked ${date} by ${name}${previous ? ` · previous ${previous}` : ''}`,
@@ -584,7 +593,12 @@ const es: InspectionCopy = {
   tiresCard: 'Llantas',
   installedTitle: 'Montadas',
   installedLine: (type, size, date, wo) => `${type === 'new' ? 'Nueva' : 'Recap'}${size ? ` ${size}` : ''} · ${date} · ${wo}`,
-  tiresOk: (ok) => `${ok}/10 OK`,
+  tiresOk: (ok, total) => `${ok}/${total} OK`,
+  tiresGroupJob: 'Job',
+  tiresGroupWatch: 'Vigilar',
+  tireReason: ({ psi, tread, targetPsi, minTread, reason }) => (reason === 'worn'
+    ? `${psi} PSI · ${tread}/32 (mín. ${minTread}) · gastada`
+    : `${psi} PSI (debe ser ${targetPsi}) · presión ${reason === 'low_pressure' ? 'baja' : 'alta'}`),
   noTireReadings: 'Todavía no hay lecturas de llantas en esta visita. Se anotan en la inspección.',
   sinceLast: (psi, date) => `${Math.abs(psi)} PSI desde ${date}`,
   checkedBy: (date, name, previous) => `Revisadas ${date} por ${name}${previous ? ` · anterior ${previous}` : ''}`,

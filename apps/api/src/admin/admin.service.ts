@@ -63,6 +63,7 @@ import {
   CatalogStatus,
   TruckOperationalStatus,
   SAMSARA_YARD_GEOFENCE_IDS,
+  tireFindingReason,
 } from '@ltl-shop/shared';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { AuthUser } from '../auth/auth.guard';
@@ -243,6 +244,12 @@ const detailInclude = {
       },
       // D45 / ST-4: the tires to put on a Tires Job.
       tireChanges: { include: tireChangeInclude, orderBy: { position: 'asc' as const } },
+      // AP-4 / D57: the tire readings behind a Job, so the row says which tire and why (same as the mechanic's).
+      sources: {
+        where: { tireReadingId: { not: null } },
+        select: { tireReading: { select: { position: true, psi: true, tread: true, targetPsi: true, minTread: true } } },
+        orderBy: { createdAt: 'asc' as const },
+      },
       // D45 / ST-3: parts that left the stock for the Job (the controller drops their value for non-Managers).
       stockMovements: {
         where: { kind: 'issue' as const },
@@ -2653,6 +2660,7 @@ function toAdminDetail(row: DetailRow): AdminWorkOrderDetailDto {
       lineTotalCents: line.lineTotalCents,
     })),
     tires: (job.tireChanges ?? []).map((change) => toJobTireDto(change, { steer: null, drive: null })),
+    tireFindings: (job.sources ?? []).flatMap((source) => (source.tireReading ? [{ position: source.tireReading.position, psi: source.tireReading.psi, targetPsi: source.tireReading.targetPsi, tread: source.tireReading.tread, minTread: source.tireReading.minTread, reason: tireFindingReason(source.tireReading) }] : [])),
     stockParts: (job.stockMovements ?? []).map((movement) => ({
       movementId: movement.id,
       partId: movement.partId,
