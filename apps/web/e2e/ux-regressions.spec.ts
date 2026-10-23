@@ -225,6 +225,33 @@ test.describe('Mechanic UX regressions (deterministic API fixtures)', () => {
     await mockShopApi(page);
   });
 
+  test('D57 §5 (LTR-305): Home shows the team queue and "Available in the shop" apart; Take works from the shop list', async ({ page }) => {
+    const item = (jobId: string, displayName: string, stepKey: string, truckNumber: string) => ({
+      jobId, displayName, stepKey, teamSize: stepKey === 'shop_work' ? 4 : 2, addedAt: '2026-10-23T12:00:00.000Z',
+      workOrderId: `wo-${jobId}`, workOrderDisplayId: `WO-${truckNumber}`, priority: 'normal',
+      truck: { truckNumber, make: 'Peterbilt', model: '579', year: 2026 },
+    });
+    let queue = [item('job-detail', 'Detailing', 'detailing', '905'), item('job-brake', 'Brake Inspection', 'shop_work', '911')];
+    await page.route('**/api/team-queue**', async (route) => {
+      if (route.request().method() === 'POST' && route.request().url().includes('/job-brake/take')) {
+        queue = queue.filter((entry) => entry.jobId !== 'job-brake');
+      }
+      return json(route, queue);
+    });
+    await login(page);
+    const team = page.getByTestId('team-queue');
+    const shop = page.getByTestId('shop-queue');
+    await expect(team.getByRole('heading', { name: /Team queue/ })).toBeVisible();
+    await expect(team.getByTestId('team-queue-item')).toHaveCount(1);
+    await expect(team).toContainText('Detailing');
+    await expect(shop.getByRole('heading', { name: /Available in the shop/ })).toBeVisible();
+    await expect(shop).toContainText('Any mechanic can take one');
+    await expect(shop.getByTestId('shop-queue-item')).toContainText('Brake Inspection');
+    await shop.getByRole('button', { name: 'Take' }).click();
+    await expect(page.getByTestId('shop-queue')).toHaveCount(0);
+    await expect(team.getByTestId('team-queue-item')).toHaveCount(1);
+  });
+
   test('finishes login initialization before navigating to Home', async ({ page }) => {
     let releaseProfile!: () => void;
     profileBarrier = new Promise<void>((resolve) => {

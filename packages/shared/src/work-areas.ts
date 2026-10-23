@@ -30,6 +30,13 @@ const STEP_AREAS: Record<string, WorkPlanJobLane> = {
 };
 
 /**
+ * D57 §5 (LTR-305): the Shop Work queue. A repair with no owner waits here (in `work_order_jobs.workflow_step_key`,
+ * like the D28 team queues) for any active Standard mechanic to take it. It is not a Shop workflow step: there is no
+ * team to set up, and a Job in it stays in the Shop Work area.
+ */
+export const SHOP_WORK_QUEUE_KEY = 'shop_work';
+
+/**
  * D54 §3 / D57 §4: the tire machine is in Alignment, so these two Jobs are Alignment's (the rest of the category is
  * not). Found by their catalog seed key, which a rename keeps (D30); by name only when the caller has no key.
  */

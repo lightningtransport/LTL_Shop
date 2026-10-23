@@ -142,6 +142,9 @@ export type InspectionCopy = {
   assignLater: string;
   managerAssigns: string;
   alignmentQueue: string;
+  /** D57 §5: the Shop Work queue any general mechanic takes from. */
+  shopQueue: string;
+  goesToShopQueue: string;
   goesToAlignment: (name: string | null) => string;
   unassigned: string;
   notesOnSteps: string;
@@ -349,6 +352,8 @@ const en: InspectionCopy = {
   assignLater: 'Assign later',
   managerAssigns: 'Manager assigns',
   alignmentQueue: 'Alignment queue',
+  shopQueue: 'Shop queue (any mechanic)',
+  goesToShopQueue: 'Goes to the shop queue',
   goesToAlignment: (name) => (name ? `Goes to ${name} · Alignment` : 'Goes to the Alignment queue'),
   unassigned: 'Unassigned',
   notesOnSteps: 'Notes on steps already on the Work Order',
@@ -546,6 +551,8 @@ const es: InspectionCopy = {
   assignLater: 'Asignar después',
   managerAssigns: 'Lo asigna el Manager',
   alignmentQueue: 'Cola de Alignment',
+  shopQueue: 'Cola del taller (cualquier mecánico)',
+  goesToShopQueue: 'Va a la cola del taller',
   goesToAlignment: (name) => (name ? `Va a ${name} · Alignment` : 'Va a la cola de Alignment'),
   unassigned: 'Sin asignar',
   notesOnSteps: 'Notas a pasos que ya están en la Work Order',

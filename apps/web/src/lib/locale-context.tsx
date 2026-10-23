@@ -328,6 +328,9 @@ type Copy = {
   teamQueueRelease: string;
   teamQueueReleaseHint: string;
   teamQueueReleased: (job: string) => string;
+  /** D57 §5 (LTR-305): the Shop Work queue on the mechanic's home. */
+  shopQueueTitle: string;
+  shopQueueHint: string;
   ordersReadyToStart: (count: number) => string;
   noActivePmServices: string;
   pmServicesStartImmediately: string;
@@ -841,6 +844,8 @@ const copy: Record<ShopLocale, Copy> = {
     teamQueueRelease: 'Let go',
     teamQueueReleaseHint: 'Back to the team queue, for someone else to take.',
     teamQueueReleased: (job) => `${job} is back in the team queue.`,
+    shopQueueTitle: 'Available in the shop',
+    shopQueueHint: 'Repairs nobody took yet. Any mechanic can take one; the first one owns it.',
     ordersReadyToStart: (count) => `${count} ${count === 1 ? 'order' : 'orders'} ready to Start work`,
     noActivePmServices: 'No active PM services assigned to you.',
     pmServicesStartImmediately: 'PM services start immediately after creation.',
@@ -1353,6 +1358,8 @@ const copy: Record<ShopLocale, Copy> = {
     teamQueueRelease: 'Soltar',
     teamQueueReleaseHint: 'Vuelve a la cola del equipo, para que lo tome otra persona.',
     teamQueueReleased: (job) => `${job} volvió a la cola del equipo.`,
+    shopQueueTitle: 'Disponibles en el taller',
+    shopQueueHint: 'Reparaciones que nadie tomó todavía. Cualquier mecánico puede tomar una; el primero queda como responsable.',
     ordersReadyToStart: (count) => `${count} ${count === 1 ? 'orden lista' : 'órdenes listas'} para Iniciar trabajo`,
     noActivePmServices: 'No hay servicios de PM activos asignados a ti.',
     pmServicesStartImmediately: 'Los servicios de PM comienzan inmediatamente después de crearse.',
