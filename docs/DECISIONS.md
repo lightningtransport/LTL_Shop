@@ -224,3 +224,8 @@ Se deciden aquí; mientras tanto, no se construye nada que dependa de ellas.
 | P42 | **Camión tomado desde ayer:** un mecánico empezó un Job y no volvió a tocar Continue, ¿sigue teniendo el camión? **v1 (construido, AP-7): sí**, hasta completar o bloquear; el Manager lo suelta bloqueando el Job o reasignándolo. Falta mostrar "since yesterday" en ámbar en el Yard. (D57) |
 | P43 | **Otras llantas en Alignment:** Tire Mounting y Tire Rotation (Tires & Wheels), ¿también son del área Alignment? v1: no, solo Tires y Flat Repair (D57). |
 | P44 | **Quién ve la cola del taller:** v1 la ven todos los mecánicos Standard activos (también los de Alignment y Detailing). ¿Solo los generales? ¿Y un Job que el Manager agrega con Add work sin mecánico, también va a la cola? v1: no, queda sin dueño como hoy. (D57 §5) |
+| P45 | **"Visit" en pantalla en lugar de "Work Order"** (propuesta [`rediseno-pizarra/`](proposals/rediseno-pizarra/README.md), 2026-10-24): Work Order se queda en el código y el historial. Recomendación: sí. |
+| P46 | **QC "Not required" lo decide solo el Manager, con motivo** (cambia D55 R9; propuesta `rediseno-pizarra/` HU-RD3). "To decide" no deja liberar el camión. Recomendación: sí. |
+| P47 | **Take job empieza el tiempo** (un toque en lugar de Take → Start; propuesta `rediseno-pizarra/` HU-RD8). Validar con el Shop Manager si el mecánico toma y después va por las llaves. Recomendación: sí. |
+| P48 | **La pizarra muestra el camión que tiene otro mecánico** ("With Juan", sin poder tomarlo) en lugar de esconderlo como la cola de hoy (D57 §3 no cambia). Recomendación: mostrarlo. |
+| P49 | **Columnas de la pizarra:** PM · Repairs · Alignment · Detailing, con Inspection y QC a los lados. Validar con el Shop Manager. |

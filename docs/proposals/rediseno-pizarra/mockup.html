@@ -1,0 +1,650 @@
+<title>Shop Board redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+/* Layout: one prototype shell; a screen picker on top, each screen built from the app's own tokens
+   (apps/web/src/app/globals.css). The board is the whiteboard: one column per trade, one card per Job. */
+:root {
+  --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.69);
+  --card: oklch(0.9842 0.0034 247.86); --muted: oklch(0.9683 0.0069 247.9);
+  --muted-foreground: oklch(0.5 0.0407 257.42); --primary: oklch(0.5358 0.1444 248.04);
+  --primary-text: oklch(0.48 0.14 248); --primary-foreground: oklch(1 0 0);
+  --accent: oklch(0.9514 0.025 236.82); --border: oklch(0.9288 0.0126 255.51);
+  --input: oklch(0.64 0.02 256); --ring: oklch(0.5358 0.1444 248.04);
+  --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+  --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+  --destructive-text: oklch(0.5 0.19 27); --sunken: oklch(0.965 0.006 247.9);
+  --note: oklch(0.97 0.03 95); --note-border: oklch(0.85 0.08 90);
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --radius: 0.375rem;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --background: oklch(0.2077 0.0398 265.75); --foreground: oklch(0.9842 0.0034 247.86);
+  --card: oklch(0.2795 0.0368 260.03); --muted: oklch(0.31 0.037 259);
+  --muted-foreground: oklch(0.7107 0.0351 256.79); --primary: oklch(0.7535 0.139 232.66);
+  --primary-text: oklch(0.7535 0.139 232.66); --primary-foreground: oklch(0.2077 0.0398 265.75);
+  --accent: oklch(0.33 0.04 258); --border: oklch(0.3717 0.0392 257.29); --input: oklch(0.55 0.035 257);
+  --ring: oklch(0.7535 0.139 232.66); --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6);
+  --warning-foreground: oklch(0.92 0.12 91.6); --warning-surface: oklch(0.29 0.05 78);
+  --destructive-text: oklch(0.78 0.12 22); --sunken: oklch(0.24 0.038 263);
+  --note: oklch(0.3 0.04 85); --note-border: oklch(0.45 0.07 85); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --background: oklch(0.2077 0.0398 265.75); --foreground: oklch(0.9842 0.0034 247.86);
+  --card: oklch(0.2795 0.0368 260.03); --muted: oklch(0.31 0.037 259);
+  --muted-foreground: oklch(0.7107 0.0351 256.79); --primary: oklch(0.7535 0.139 232.66);
+  --primary-text: oklch(0.7535 0.139 232.66); --primary-foreground: oklch(0.2077 0.0398 265.75);
+  --accent: oklch(0.33 0.04 258); --border: oklch(0.3717 0.0392 257.29); --input: oklch(0.55 0.035 257);
+  --ring: oklch(0.7535 0.139 232.66); --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6);
+  --warning-foreground: oklch(0.92 0.12 91.6); --warning-surface: oklch(0.29 0.05 78);
+  --destructive-text: oklch(0.78 0.12 22); --sunken: oklch(0.24 0.038 263);
+  --note: oklch(0.3 0.04 85); --note-border: oklch(0.45 0.07 85); color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; border-color: var(--border); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans);
+  font-size: 14px; letter-spacing: -0.01em; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--background); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--muted-foreground); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Prototype chrome */
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--background); border-bottom: 1px solid var(--border); }
+.proto-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 10px; max-width: 1600px; margin: 0 auto; }
+.proto-title { font-weight: 600; margin-right: 8px; }
+.proto-title small { display: block; font-weight: 400; font-size: 12px; color: var(--muted-foreground); }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tab { border: 1px solid var(--border); background: var(--card); border-radius: var(--radius); padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.tab[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary-text); font-weight: 600; }
+.tab .role { font-size: 11px; color: var(--muted-foreground); font-weight: 500; }
+.spacer { flex: 1; }
+.ghost { border: 1px solid var(--input); background: transparent; border-radius: var(--radius); padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 13px; color: var(--muted-foreground); }
+
+main { max-width: 1600px; margin: 0 auto; padding-block: 20px 48px; }
+.screen[hidden] { display: none; }
+.why { margin-top: 24px; border: 1px dashed var(--note-border); background: var(--note); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+.why b { font-weight: 600; }
+.why ul { margin: 6px 0 0; padding-left: 18px; }
+.why li { margin: 2px 0; }
+
+/* App look */
+.app-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.app-head h1 { font-size: 24px; font-weight: 600; margin: 0; text-wrap: balance; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--success); }
+.live i { width: 8px; height: 8px; border-radius: 9999px; background: var(--success); display: inline-block; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--input); background: var(--background); cursor: pointer; font-weight: 500; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.btn.sm { min-height: 36px; padding: 0 10px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn.block { width: 100%; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); }
+.card-pad { padding: 16px; }
+.section-title { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.group-title { font-size: 14px; font-weight: 600; margin: 0; }
+.badge { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; border-radius: 6px; border: 1px solid var(--border); padding: 1px 7px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary-text); }
+.b-ok { border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); color: var(--success); }
+.b-warn { border-color: color-mix(in oklch, var(--warning) 55%, transparent); background: var(--warning-surface); color: var(--warning-foreground); }
+.b-stop { border-color: color-mix(in oklch, var(--destructive-text) 45%, transparent); background: color-mix(in oklch, var(--destructive-text) 12%, transparent); color: var(--destructive-text); }
+.b-out { color: var(--muted-foreground); }
+.star { color: var(--warning-foreground); font-size: 16px; line-height: 1; }
+.col.side .badge { white-space: normal; }
+@media (max-width: 700px) { .proto { position: static; } .tab .role { display: none; } }
+.avatar { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 9999px; font-size: 10px; font-weight: 600; background: color-mix(in oklch, var(--primary) 18%, transparent); color: var(--primary-text); }
+.search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--input); border-radius: var(--radius); padding: 0 10px; min-height: 40px; background: var(--background); }
+.search input { border: 0; outline: 0; background: transparent; font: inherit; color: inherit; width: 140px; }
+
+/* Needs-your-decision strip */
+.decide { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); cursor: pointer; }
+.chip b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 12%, transparent); }
+.chip.zero { opacity: 0.6; }
+
+/* Board */
+.board { display: grid; grid-template-columns: 0.8fr repeat(4, 1fr) 0.8fr; gap: 10px; align-items: start; }
+.col { background: var(--sunken); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.col-head .count { margin-left: auto; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.col-body { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+.col.side .col-head .group-title { color: var(--muted-foreground); }
+.jcard { background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer; width: 100%; }
+.jcard .top { display: flex; align-items: center; gap: 6px; }
+.jcard .num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.jcard .job { font-size: 13px; }
+.jcard .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); }
+.jcard.blocked { border-left: 3px solid var(--warning-foreground); background: color-mix(in oklch, var(--warning-surface) 60%, var(--background)); }
+.jcard.hl { outline: 2px solid var(--primary); outline-offset: 1px; }
+.jcard.dim { opacity: 0.35; }
+.done-list { padding: 0 8px 8px; }
+.done-list summary { cursor: pointer; font-size: 12px; color: var(--muted-foreground); padding: 4px 2px; }
+.done-item { font-size: 13px; color: var(--muted-foreground); text-decoration: line-through; padding: 2px 2px; }
+.empty { font-size: 12px; color: var(--muted-foreground); padding: 8px 4px; }
+.jump { display: none; }
+@media (max-width: 1000px) {
+  .board { grid-template-columns: 1fr; }
+  .jump { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px; }
+  .jump a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9999px; background: var(--card); color: inherit; text-decoration: none; font-size: 13px; }
+  .col { scroll-margin-top: 12px; }
+}
+
+/* Two-column page */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.row:last-child { border-bottom: 0; }
+.row .grow { flex: 1; min-width: 160px; }
+.row .sub { font-size: 12px; color: var(--muted-foreground); }
+
+/* Visit form */
+.seg { display: inline-flex; border: 1px solid var(--input); border-radius: var(--radius); overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 0 14px; min-height: 44px; cursor: pointer; border-right: 1px solid var(--border); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary-text); font-weight: 600; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.check input { width: 20px; height: 20px; accent-color: var(--primary); }
+select, .field { font: inherit; color: inherit; background: var(--background); border: 1px solid var(--input); border-radius: var(--radius); min-height: 40px; padding: 0 8px; }
+
+/* Phone frame */
+.phones { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 390px; max-width: 100%; border: 1px solid var(--border); border-radius: 28px; padding: 14px; background: var(--background); box-shadow: 0 8px 30px color-mix(in oklch, var(--foreground) 10%, transparent); }
+.phone-bar { display: flex; align-items: center; gap: 8px; padding: 4px 4px 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.phone-bar .name { font-weight: 600; }
+.mcard { border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); background: var(--card); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.mcard .num { font-size: 22px; font-weight: 700; }
+.mcard .acts { display: flex; gap: 8px; }
+.mcard .acts .btn { flex: 1; }
+.mlist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.mtabs { display: flex; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+.mtabs span { flex: 1; text-align: center; font-size: 12px; color: var(--muted-foreground); padding: 6px 0; }
+.mtabs span.on { color: var(--primary-text); font-weight: 600; }
+.sheet { border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); background: var(--background); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 10px; min-height: 52px; border: 1px solid var(--input); border-radius: var(--radius); padding: 0 12px; background: var(--card); cursor: pointer; text-align: left; width: 100%; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.kpi { padding: 16px; }
+.kpi .v { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.kpi .l { font-weight: 600; }
+.kpi .c { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--foreground); color: var(--background); padding: 10px 14px; border-radius: var(--radius); font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .jcard, .chip, .tab { transition: background-color .15s, border-color .15s, opacity .15s; } }
+</style>
+
+<header class="proto">
+  <div class="proto-in wrap">
+    <div class="proto-title">Shop Board · boceto<small>Propuesta rediseno-pizarra · datos de ejemplo</small></div>
+    <div class="tabs" id="tabs" role="toolbar" aria-label="Pantallas"></div>
+    <span class="spacer"></span>
+    <button class="ghost" id="reset" type="button">Reiniciar datos</button>
+    <button class="ghost" id="theme" type="button">Tema</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="screen" id="s-board" aria-labelledby="h-board"></section>
+  <section class="screen" id="s-arrivals" hidden></section>
+  <section class="screen" id="s-visit" hidden></section>
+  <section class="screen" id="s-truck" hidden></section>
+  <section class="screen" id="s-mech" hidden></section>
+  <section class="screen" id="s-qc" hidden></section>
+  <section class="screen" id="s-mgmt" hidden></section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const SCREENS = [
+  ['board', 'Board', 'Manager'],
+  ['arrivals', 'Arrivals', 'Manager'],
+  ['visit', 'Open visit', 'Manager'],
+  ['truck', 'Truck', 'Manager'],
+  ['mech', 'My work', 'Mechanic'],
+  ['qc', 'Quality Check', 'Safety'],
+  ['mgmt', 'Shop today', 'Gerencia'],
+];
+const COLS = [
+  { key: 'inspection', name: 'Inspection', side: true },
+  { key: 'pm', name: 'PM' },
+  { key: 'repairs', name: 'Repairs' },
+  { key: 'alignment', name: 'Alignment' },
+  { key: 'detailing', name: 'Detailing' },
+  { key: 'qc', name: 'Quality Check', side: true },
+];
+const PEOPLE = {
+  anthony: { name: 'Anthony', ini: 'AN', trade: ['repairs'], role: 'General mechanic' },
+  luis: { name: 'Luis', ini: 'LU', trade: ['alignment', 'repairs'], role: 'Alignment' },
+  daniel: { name: 'Daniel', ini: 'DA', trade: ['pm'], role: 'PM' },
+  mike: { name: 'Mike', ini: 'MI', trade: ['detailing'], role: 'Detailing' },
+};
+const BLOCK_REASONS = ['Waiting for parts', 'Waiting for approval', 'Waiting for the truck', 'Other'];
+
+function seed() {
+  return {
+    trucks: {
+      901: { visit: 'End of contract', star: true, leaves: 'Leaves Tue', qc: 'required', keys: 'With Daniel', since: 'Fri' },
+      705: { visit: 'Passing through', star: false, qc: 'not_required', qcWhy: 'Passing through · filter only', keys: 'Office', since: 'Today 8:10' },
+      804: { visit: 'End of contract', star: true, qc: 'failed', qcNote: 'Air leak at rear chamber', keys: 'In truck', since: 'Wed' },
+      918: { visit: 'Other', star: false, qc: 'to_decide', keys: 'With Mike', since: 'Thu' },
+      944: { visit: 'End of contract', star: false, qc: 'required', keys: 'Office', since: 'Today 7:40' },
+    },
+    jobs: [
+      { id: 1, t: 901, col: 'pm', name: 'PM A Service', st: 'progress', who: 'daniel' },
+      { id: 2, t: 901, col: 'alignment', name: 'Alignment', st: 'available' },
+      { id: 3, t: 901, col: 'repairs', name: 'Brake chamber · RR', st: 'available' },
+      { id: 4, t: 901, col: 'detailing', name: 'Detailing', st: 'available' },
+      { id: 5, t: 705, col: 'repairs', name: 'Fuel filter replacement', st: 'taken', who: 'anthony' },
+      { id: 6, t: 804, col: 'repairs', name: 'Air leak · rear chamber', st: 'blocked', who: 'anthony', why: 'Waiting for parts', from: 'QC failed' },
+      { id: 7, t: 918, col: 'detailing', name: 'Detailing', st: 'progress', who: 'mike' },
+      { id: 8, t: 918, col: 'alignment', name: 'Tires · LF, RF', st: 'available' },
+      { id: 9, t: 944, col: 'inspection', name: 'Arrival inspection', st: 'available' },
+      { id: 10, t: 944, col: 'pm', name: 'PM B Service', st: 'available' },
+    ],
+    done: [
+      { t: 804, col: 'pm', name: 'PM A Service' }, { t: 804, col: 'alignment', name: 'Alignment' },
+      { t: 612, col: 'detailing', name: 'Detailing' },
+    ],
+    notRequired: { 705: [['PM', 'Passing through'], ['Alignment', 'Passing through'], ['Detailing', 'Passing through']] },
+    arrivals: [
+      { t: 933, where: 'In yard since 10:12', expected: false },
+    ],
+    expected: [
+      { t: 927, day: 'Mon 26', who: 'Return date · driver_pay' },
+      { t: 955, day: 'Tue 27', who: 'Expected return · returns' },
+      { t: 961, day: 'Wed 28', who: 'Early broke contract · driver_pay' },
+    ],
+    mech: 'anthony', filter: null, q: '', truckView: 901, sheet: null, nextId: 20,
+    visitDraft: null,
+  };
+}
+let S = seed();
+let screen = 'board';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
+function icons() { if (window.lucide) lucide.createIcons(); }
+
+/* D57 §3: the truck is held by whoever has a Job in progress on it (QC never holds it). */
+function holder(t) { const j = S.jobs.find((x) => x.t === t && x.st === 'progress' && x.col !== 'qc'); return j ? j.who : null; }
+function openJobs(t) { return S.jobs.filter((j) => j.t === t); }
+function qcState(t) {
+  const tr = S.trucks[t]; if (!tr) return null;
+  if (tr.qc === 'not_required' || tr.qc === 'to_decide' || tr.qc === 'passed') return tr.qc;
+  if (tr.qc === 'failed') return openJobs(t).length ? 'failed' : 'ready';
+  return openJobs(t).length ? 'required' : 'ready';
+}
+function readyToRelease(t) { const q = qcState(t); return openJobs(t).length === 0 && (q === 'not_required' || q === 'passed'); }
+
+const ST = {
+  available: ['Available', 'b-info', 'circle-dot'],
+  taken: ['Taken', 'b-out', 'user-round'],
+  progress: ['In progress', 'b-info', 'wrench'],
+  blocked: ['Blocked', 'b-warn', 'octagon-pause'],
+};
+const QC = {
+  not_required: ['Not required', 'b-out', 'minus-circle'],
+  to_decide: ['To decide', 'b-warn', 'circle-help'],
+  required: ['Required · waits for the work', 'b-out', 'shield'],
+  ready: ['Ready for Safety', 'b-info', 'shield-check'],
+  failed: ['Failed · corrective work open', 'b-stop', 'shield-x'],
+  passed: ['Passed', 'b-ok', 'shield-check'],
+};
+function badge([label, cls, icon]) { return `<span class="badge ${cls}"><i data-lucide="${icon}"></i>${esc(label)}</span>`; }
+function av(p) { return p ? `<span class="avatar" title="${esc(PEOPLE[p].name)}">${PEOPLE[p].ini}</span>` : ''; }
+
+/* ---------- Board ---------- */
+function decideCounts() {
+  return [
+    ['blocked', 'Blocked', S.jobs.filter((j) => j.st === 'blocked').length],
+    ['release', 'Ready to release', Object.keys(S.trucks).filter((t) => readyToRelease(+t)).length],
+    ['arrived', 'Arrived without a visit', S.arrivals.length],
+    ['qcdecide', 'QC to decide', Object.keys(S.trucks).filter((t) => S.trucks[t].qc === 'to_decide').length],
+  ];
+}
+function cardMatches(j) {
+  if (S.q && !String(j.t).includes(S.q)) return false;
+  if (S.filter === 'blocked') return j.st === 'blocked';
+  if (S.filter === 'release' || S.filter === 'arrived') return false;
+  if (S.filter === 'qcdecide') return S.trucks[j.t] && S.trucks[j.t].qc === 'to_decide';
+  return true;
+}
+function jobCard(j) {
+  const tr = S.trucks[j.t];
+  const h = holder(j.t);
+  const busy = j.st === 'available' && h && h !== j.who;
+  const status = busy ? badge([`With ${PEOPLE[h].name}`, 'b-out', 'lock']) : badge(ST[j.st]);
+  const who = j.who && !busy ? `${av(j.who)}<span>${esc(PEOPLE[j.who].name)}</span>` : '';
+  const extra = j.st === 'blocked' ? `<span>${esc(j.why)}</span>` : (j.from ? `<span>${esc(j.from)}</span>` : '');
+  const cls = ['jcard', j.st === 'blocked' ? 'blocked' : '', S.q && String(j.t).includes(S.q) ? 'hl' : '', cardMatches(j) ? '' : 'dim'].join(' ');
+  return `<button type="button" class="${cls}" data-truck="${j.t}" aria-label="Truck ${j.t}, ${esc(j.name)}, ${esc(busy ? 'with ' + PEOPLE[h].name : ST[j.st][0])}">
+    <span class="top"><span class="num">${j.t}</span>${tr && tr.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}<span class="spacer"></span>${tr && tr.leaves ? `<span class="badge b-warn"><i data-lucide="calendar-clock"></i>${esc(tr.leaves)}</span>` : ''}</span>
+    <span class="job">${esc(j.name)}</span>
+    <span class="meta">${status}${who}${extra}</span>
+  </button>`;
+}
+function qcCard(t) {
+  const q = qcState(t); const tr = S.trucks[t];
+  const cls = ['jcard', S.q && String(t).includes(S.q) ? 'hl' : '', (S.filter && !(S.filter === 'qcdecide' && q === 'to_decide')) || (S.q && !String(t).includes(S.q)) ? 'dim' : ''].join(' ');
+  return `<button type="button" class="${cls}" data-truck="${t}"><span class="top"><span class="num">${t}</span>${tr.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}</span>
+    <span class="meta">${badge(QC[q])}</span></button>`;
+}
+function renderBoard() {
+  const order = { blocked: 0, progress: 1, taken: 2, available: 3 };
+  const cols = COLS.map((c) => {
+    let cards;
+    if (c.key === 'qc') {
+      const ts = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) !== 'not_required');
+      cards = ts.length ? ts.map(qcCard).join('') : '<div class="empty">No QC pending</div>';
+      const nr = Object.keys(S.trucks).filter((t) => qcState(+t) === 'not_required');
+      cards += nr.length ? `<div class="empty">Not required: ${nr.join(', ')}</div>` : '';
+    } else {
+      const js = S.jobs.filter((j) => j.col === c.key).sort((a, b) => order[a.st] - order[b.st] || (S.trucks[b.t]?.star ? 1 : 0) - (S.trucks[a.t]?.star ? 1 : 0));
+      cards = js.length ? js.map(jobCard).join('') : '<div class="empty">Nothing open</div>';
+    }
+    const done = S.done.filter((d) => d.col === c.key);
+    const n = c.key === 'qc' ? Object.keys(S.trucks).filter((t) => qcState(+t) !== 'not_required').length : S.jobs.filter((j) => j.col === c.key).length;
+    return `<div class="col ${c.side ? 'side' : ''}" id="col-${c.key}"><div class="col-head"><h2 class="group-title">${c.name}</h2><span class="count">${n}</span></div>
+      <div class="col-body">${cards}</div>
+      ${done.length ? `<details class="done-list"><summary>Done today (${done.length})</summary>${done.map((d) => `<div class="done-item">${d.t} · ${esc(d.name)}</div>`).join('')}</details>` : ''}</div>`;
+  }).join('');
+  $('#s-board').innerHTML = `
+    <div class="app-head"><h1 id="h-board">Shop board</h1><span class="live"><i></i>Live</span><span class="spacer"></span>
+      <label class="search"><i data-lucide="search"></i><span class="sr-only" hidden>Find a truck</span><input id="q" inputmode="numeric" placeholder="Find truck" value="${esc(S.q)}" aria-label="Find a truck"></label>
+      <button class="btn sm" type="button" data-go="arrivals"><i data-lucide="truck"></i>Arrivals</button>
+      <button class="btn sm" type="button" title="Today's Yard board, kept as a second view"><i data-lucide="columns-3"></i>By truck</button>
+      <button class="btn sm" type="button"><i data-lucide="maximize"></i>Full screen</button></div>
+    <div class="decide" role="group" aria-label="Needs your decision">
+      <span class="muted" style="align-self:center;font-size:13px;font-weight:600">Needs your decision</span>
+      ${decideCounts().map(([k, l, n]) => `<button type="button" class="chip ${n ? '' : 'zero'}" data-filter="${k}" aria-pressed="${S.filter === k}"><b>${n}</b>${l}</button>`).join('')}
+      ${S.filter ? '<button type="button" class="ghost" data-filter="">Show all</button>' : ''}
+    </div>
+    ${S.filter === 'release' ? releaseList() : ''}${S.filter === 'arrived' ? arrivedList() : ''}
+    <nav class="jump" aria-label="Go to a column">${COLS.map((c) => `<a href="#col-${c.key}" data-jump="${c.key}">${c.name} <b>${c.key === 'qc' ? Object.keys(S.trucks).filter((t) => qcState(+t) !== 'not_required').length : S.jobs.filter((j) => j.col === c.key).length}</b></a>`).join('')}</nav>
+    <div class="board">${cols}</div>
+    <div class="why"><b>Por qué así (HU-RD1, HU-RD6).</b><ul>
+      <li>Una tarjeta = un trabajo. El 901 sale en PM, Repairs, Alignment, Detailing y QC, como en la pizarra física.</li>
+      <li>★ = prioridad High/Critical (el asterisco de la pizarra). Blocked va arriba y en ámbar con el motivo.</li>
+      <li>"With Mike": el camión 918 lo tiene otro mecánico (D57 §3, un camión a la vez). Se ve, pero no se puede tomar (P48).</li>
+      <li>"Needs your decision" reemplaza la cola del Dashboard: el Manager ve excepciones, no registros. Cada número filtra la pizarra.</li>
+      <li>Lo terminado hoy queda tachado y plegado al pie de su columna. Buscar "901" resalta todas sus tarjetas.</li>
+      <li>Toca una tarjeta para abrir el camión. "By truck" conserva el tablero de hoy.</li></ul></div>`;
+}
+function releaseList() {
+  const ts = Object.keys(S.trucks).filter((t) => readyToRelease(+t));
+  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Ready to release</h2>${ts.length ? ts.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><button class="btn sm primary" type="button" data-truck="${t}">Open truck</button></div>`).join('') : '<div class="muted">None yet. Finish 705\'s fuel filter from My work to see one.</div>'}</div>`;
+}
+function arrivedList() {
+  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Arrived without a visit</h2>${S.arrivals.map((a) => `<div class="row"><b>Truck ${a.t}</b><span class="grow sub">${esc(a.where)} · not on the return list → Passing through?</span><button class="btn sm primary" type="button" data-open-visit="${a.t}">Open visit</button></div>`).join('') || '<div class="muted">None.</div>'}</div>`;
+}
+
+/* ---------- Arrivals ---------- */
+function renderArrivals() {
+  $('#s-arrivals').innerHTML = `
+    <div class="app-head"><h1>Arrivals</h1><span class="muted">This week · Ninox returns + Samsara yard</span></div>
+    <div class="split"><div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card card-pad"><h2 class="section-title">Arrived · needs a visit</h2>
+        ${S.arrivals.map((a) => `<div class="row"><span class="num" style="font-size:20px;font-weight:700">${a.t}</span><span class="grow"><span class="badge b-info"><i data-lucide="map-pin"></i>${esc(a.where)}</span><div class="sub">Not on the return list · proposed: <b>Passing through</b></div></span><button class="btn primary" type="button" data-open-visit="${a.t}"><i data-lucide="clipboard-plus"></i>Open visit</button></div>`).join('') || '<div class="muted">Nobody waiting.</div>'}
+      </div>
+      <div class="card card-pad"><h2 class="section-title">Expected · end of contract</h2>
+        ${S.expected.map((e) => `<div class="row"><span class="num" style="font-size:20px;font-weight:700">${e.t}</span><span class="grow"><b>${esc(e.day)}</b><div class="sub">${esc(e.who)}</div></span><span class="badge b-out">Expected</span><button class="btn sm" type="button" data-toast="Marked as not coming. It stays in the list as Cancelled.">Didn't come</button></div>`).join('')}
+      </div>
+      <div class="card card-pad"><h2 class="section-title">In the shop</h2>
+        ${Object.keys(S.trucks).map((t) => `<div class="row"><b>${t}</b><span class="grow sub">${esc(S.trucks[t].visit)} · since ${esc(S.trucks[t].since)}</span><button class="btn sm" type="button" data-truck="${t}">Open truck</button></div>`).join('')}
+      </div></div>
+      <div class="why" style="margin-top:0"><b>Por qué así (HU-RD5).</b><ul>
+        <li>Expected sale de Ninox: <span class="mono">driver_pay</span> + <span class="mono">returns</span>, sin descartar "Fired" ni "Early broke contract" (hoy se pierden).</li>
+        <li>Arrived sale de los geofences de Samsara (D49). Si estaba en Expected, la visita se propone End of contract; si no, Passing through.</li>
+        <li>La app propone, el Manager confirma al abrir la visita (como D52).</li>
+        <li>Llega hasta 1–2 h tarde: el GPS y la sincronización son por hora.</li>
+        <li>Reemplaza la pestaña Dispatch del Yard. La fuente y las reglas no cambian.</li></ul></div>
+    </div>`;
+}
+
+/* ---------- Open visit ---------- */
+const TEMPLATES = {
+  'End of contract': { inspection: true, pm: true, alignment: true, detailing: true, qc: 'required' },
+  'Passing through': { inspection: false, pm: false, alignment: false, detailing: false, qc: 'to_decide' },
+  'Other': { inspection: true, pm: false, alignment: false, detailing: false, qc: 'to_decide' },
+};
+const STEP_NAMES = { inspection: 'Arrival inspection', pm: 'PM A Service', alignment: 'Alignment', detailing: 'Detailing' };
+function draftFor(t, type) {
+  const tpl = TEMPLATES[type];
+  return { t, type, steps: { ...tpl }, reasons: {}, qc: tpl.qc, qcWhy: '', repairs: t === 933 ? ['Headlight · left'] : [], star: false };
+}
+function renderVisit() {
+  const d = S.visitDraft || (S.visitDraft = draftFor(933, 'Passing through'));
+  const stepRows = Object.keys(STEP_NAMES).map((k) => {
+    const on = d.steps[k]; const wasInTpl = TEMPLATES[d.type][k];
+    return `<div class="row"><label class="check grow"><input type="checkbox" id="st-${k}" data-step="${k}" ${on ? 'checked' : ''}><span><b>${STEP_NAMES[k]}</b><div class="sub">${on ? 'Becomes an Available card in its column' : wasInTpl ? 'You took it out: say why' : `Not required · ${d.type}`}</div></span></label>
+      ${!on && wasInTpl ? `<select id="why-${k}" data-why="${k}" aria-label="Why ${STEP_NAMES[k]} is not required"><option value="">Why not?</option>${['Passing through', 'Done at another shop', 'Done last visit', 'Other'].map((r) => `<option ${d.reasons[k] === r ? 'selected' : ''}>${r}</option>`).join('')}</select>` : ''}</div>`;
+  }).join('');
+  const missing = Object.keys(STEP_NAMES).filter((k) => !d.steps[k] && TEMPLATES[d.type][k] && !d.reasons[k]);
+  const qcBad = d.qc === 'not_required' && !d.qcWhy;
+  $('#s-visit').innerHTML = `
+    <div class="app-head"><h1>Open visit · Truck ${d.t}</h1><span class="badge b-info"><i data-lucide="map-pin"></i>In yard since 10:12</span></div>
+    <div class="split"><div class="card card-pad" style="display:flex;flex-direction:column;gap:18px">
+      <div><h2 class="group-title" style="margin-bottom:8px">Visit type</h2>
+        <div class="seg" role="group" aria-label="Visit type">${Object.keys(TEMPLATES).map((ty) => `<button type="button" data-type="${ty}" aria-pressed="${d.type === ty}">${ty}</button>`).join('')}</div>
+        <div class="sub muted" style="margin-top:6px">Proposed: Passing through (in the yard, not on the return list).</div></div>
+      <div><h2 class="group-title">What this truck needs</h2>${stepRows}</div>
+      <div><h2 class="group-title" style="margin-bottom:8px">Repairs</h2>
+        ${d.repairs.map((r, i) => `<div class="row"><span class="grow">${esc(r)}</span><span class="badge b-info">Available · Repairs</span><button class="ghost" type="button" data-rm="${i}" aria-label="Remove ${esc(r)}">Remove</button></div>`).join('')}
+        <div class="row"><input class="field grow" id="newrep" placeholder="Add a repair (Fuel filter, Mirror…)" aria-label="Add a repair"><button class="btn sm" type="button" id="addrep"><i data-lucide="plus"></i>Add</button></div></div>
+      <div><h2 class="group-title" style="margin-bottom:8px">Quality Check</h2>
+        <div class="seg" role="group" aria-label="Quality Check">${[['to_decide', 'Decide later'], ['required', 'Required'], ['not_required', 'Not required']].map(([k, l]) => `<button type="button" data-qc="${k}" aria-pressed="${d.qc === k}">${l}</button>`).join('')}</div>
+        ${d.qc === 'not_required' ? `<input class="field" id="qcwhy" style="margin-top:8px;width:100%" placeholder="Why? (required)" value="${esc(d.qcWhy)}" aria-label="Why QC is not required">` : ''}
+        <div class="sub muted" style="margin-top:6px">${d.qc === 'to_decide' ? 'The truck cannot be released until someone decides.' : d.qc === 'required' ? 'Safety gets it when everything else is done.' : 'Only the Manager can set this. Saved with your name and the time.'}</div></div>
+      <label class="check"><input type="checkbox" id="vstar" ${d.star ? 'checked' : ''}><span>★ Priority</span></label>
+      <div><button class="btn primary block" type="button" id="openvisit" ${missing.length || qcBad ? 'disabled' : ''}>Open visit</button>
+        ${missing.length ? `<div class="sub" style="color:var(--destructive-text);margin-top:6px">Say why ${missing.map((k) => STEP_NAMES[k]).join(', ')} ${missing.length > 1 ? 'are' : 'is'} not required.</div>` : ''}
+        ${qcBad ? '<div class="sub" style="color:var(--destructive-text);margin-top:6px">Say why QC is not required.</div>' : ''}</div>
+    </div>
+    <div class="why" style="margin-top:0"><b>Por qué así (HU-RD2, HU-RD3).</b><ul>
+      <li>Reemplaza New Work Order. El tipo de visita marca los trabajos con una plantilla; el Manager quita o agrega.</li>
+      <li>Lo que la plantilla no trae queda "Not required · Passing through · quién" sin escribir nada. Solo pide motivo cuando el Manager se aparta de la plantilla (quita algo que trae). Nada desaparece (prompt §4) y no se agrega trabajo administrativo (prompt §9).</li>
+      <li>QC tiene su propio estado. "Decide later" no deja liberar el camión; "Not required" pide motivo (cambia D55 R9, P46).</li>
+      <li>Los trabajos nacen Available en su columna: nadie los asigna (HU-RD9). "Assign to…" queda en el menú de la tarjeta.</li>
+      <li>Prueba: cambia a End of contract y destilda Alignment.</li></ul></div></div>`;
+}
+
+/* ---------- Truck ---------- */
+function renderTruck() {
+  const t = S.truckView; const tr = S.trucks[t];
+  const pick = `<select id="tpick" aria-label="Truck">${Object.keys(S.trucks).map((x) => `<option value="${x}" ${+x === t ? 'selected' : ''}>Truck ${x}</option>`).join('')}</select>`;
+  if (!tr) { $('#s-truck').innerHTML = `<div class="app-head"><h1>Truck ${t}</h1>${pick}</div><div class="card card-pad">Released. It left the board.</div>`; return; }
+  const rows = [];
+  ['inspection', 'pm', 'repairs', 'alignment', 'detailing'].forEach((c) => {
+    const open = S.jobs.filter((j) => j.t === t && j.col === c);
+    const done = S.done.filter((d) => d.t === t && d.col === c);
+    const name = COLS.find((x) => x.key === c).name;
+    if (open.length) open.forEach((j) => rows.push([j.name, j.st === 'blocked' ? badge(['Blocked · ' + j.why, 'b-warn', 'octagon-pause']) : badge(ST[j.st]), j.who ? `${av(j.who)} ${PEOPLE[j.who].name}` : '']));
+    done.forEach((d) => rows.push([d.name, badge(['Done', 'b-ok', 'check']), '']));
+  });
+  (S.notRequired[t] || []).forEach(([n, why]) => rows.push([n, badge(['Not required', 'b-out', 'minus-circle']), `<span class="sub">${esc(why)} · Cristian</span>`]));
+  const q = qcState(t);
+  rows.push(['Quality Check', badge(QC[q]), q === 'not_required' && tr.qcWhy ? `<span class="sub">${esc(tr.qcWhy)} · Cristian</span>` : (q === 'failed' ? `<span class="sub">${esc(tr.qcNote)}</span>` : '')]);
+  const left = openJobs(t).length; const ok = readyToRelease(t);
+  $('#s-truck').innerHTML = `
+    <div class="app-head"><h1>Truck ${t}</h1>${tr.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}${pick}
+      <span class="badge ${ok ? 'b-ok' : 'b-out'}">${ok ? '<i data-lucide="check"></i>Ready to release' : `Not ready · ${left ? left + ' left' : 'QC'}`}</span>
+      <span class="badge b-out">${esc(tr.visit)}</span></div>
+    <div class="split"><div class="card card-pad"><h2 class="section-title">Can it leave?</h2>
+      <div class="rows">${rows.map(([a, b, c]) => `<div class="row"><span class="grow">${esc(a)}</span>${b}<span>${c}</span></div>`).join('')}</div>
+      <button class="btn primary block" style="margin-top:14px" type="button" id="release" ${ok ? '' : 'disabled'}><i data-lucide="log-out"></i>Release truck</button>
+      ${ok ? '' : '<div class="sub muted" style="margin-top:6px">Turns on when every row is Done or Not required and QC is Passed or Not required.</div>'}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card card-pad"><h2 class="section-title">Keys</h2><div class="row"><i data-lucide="key-round"></i><b class="grow">${esc(tr.keys)}</b><span class="sub">last said at 9:40</span></div></div>
+      <div class="card card-pad"><h2 class="section-title">Truck</h2><div class="sub">Freightliner Cascadia 2021 · 412,880 mi · VIN …4471</div><div class="sub" style="margin-top:6px">Costs, Faults, Tires and history stay in their tabs.</div></div>
+    </div></div>
+    <div class="why"><b>Por qué así (HU-RD4, HU-RD11).</b><ul>
+      <li>Una pregunta: ¿puede salir? Una fila por requisito con Done · Pending · Blocked · Not required, y el QC con su propio estado.</li>
+      <li>"Release truck" hace Close + Return to Service con una confirmación. Hoy son dos pasos en dos lugares.</li>
+      <li>Prueba: elige 705, completa su filtro en My work y vuelve aquí.</li>
+      <li>Llaves: lo último que alguien dijo, con hora (P1, necesita migración).</li></ul></div>`;
+}
+
+/* ---------- Mechanic ---------- */
+function renderMech() {
+  const me = S.mech; const p = PEOPLE[me];
+  const mine = S.jobs.filter((j) => j.who === me).sort((a, b) => (a.st === 'progress' ? -1 : 0) - (b.st === 'progress' ? -1 : 0));
+  const avail = S.jobs.filter((j) => j.st === 'available' && p.trade.includes(j.col)).sort((a, b) => (S.trucks[b.t]?.star ? 1 : 0) - (S.trucks[a.t]?.star ? 1 : 0));
+  const sheet = S.sheet;
+  const mcard = (j, kind) => {
+    const tr = S.trucks[j.t]; const h = holder(j.t); const busy = kind === 'avail' && h && h !== me;
+    let acts = '';
+    if (kind === 'avail') acts = busy ? `<button class="btn block" type="button" disabled><i data-lucide="lock"></i>With ${PEOPLE[h].name} · wait</button>` : `<button class="btn primary block" type="button" data-take="${j.id}"><i data-lucide="hand"></i>Take job</button>`;
+    else if (j.st === 'blocked') acts = `<div class="sub">Blocked · ${esc(j.why)}. The Manager is on it.</div>`;
+    else if (j.st === 'taken') acts = `<div class="acts"><button class="btn primary" type="button" data-start="${j.id}"><i data-lucide="play"></i>Start</button><button class="btn" type="button" data-release="${j.id}">Let go</button></div>`;
+    else acts = `<div class="acts"><button class="btn primary" type="button" data-complete="${j.id}"><i data-lucide="check"></i>Complete</button><button class="btn" type="button" data-block="${j.id}"><i data-lucide="octagon-pause"></i>Blocked</button></div>`;
+    const st = kind === 'avail' ? '' : (j.st === 'blocked' ? badge(['Blocked', 'b-warn', 'octagon-pause']) : badge(ST[j.st]));
+    return `<div class="mcard"><div style="display:flex;align-items:center;gap:8px"><span class="num">${j.t}</span>${tr?.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}<span class="spacer" style="flex:1"></span>${st}</div><div><b>${esc(j.name)}</b>${j.from ? `<div class="sub muted">${esc(j.from)}</div>` : ''}</div>${acts}</div>`;
+  };
+  let sheetHtml = '';
+  if (sheet && sheet.kind === 'block') sheetHtml = `<div class="sheet" role="dialog" aria-label="What is stopping you?"><b>What is stopping you?</b>${BLOCK_REASONS.map((r) => `<button class="opt" type="button" data-reason="${esc(r)}"><i data-lucide="octagon-pause"></i>${esc(r)}</button>`).join('')}<button class="ghost" type="button" data-cancel>Cancel</button></div>`;
+  if (sheet && sheet.kind === 'keys') sheetHtml = `<div class="sheet" role="dialog" aria-label="Where are the keys?"><b>Done. Where are the keys?</b>${['Back at the office', 'Left in the truck', 'Gave them to someone', "I don't know"].map((r) => `<button class="opt" type="button" data-keys="${esc(r)}"><i data-lucide="key-round"></i>${esc(r)}</button>`).join('')}</div>`;
+  $('#s-mech').innerHTML = `
+    <div class="app-head"><h1>My work</h1><span class="muted">Mechanic app · phone</span><span class="spacer"></span>
+      <label class="muted" for="mpick">Signed in as</label><select id="mpick">${Object.keys(PEOPLE).map((k) => `<option value="${k}" ${k === me ? 'selected' : ''}>${PEOPLE[k].name} · ${PEOPLE[k].role}</option>`).join('')}</select></div>
+    <div class="phones"><div class="phone">
+      <div class="phone-bar">${av(me)}<span class="name">${p.name}</span><span class="muted">${p.role}</span></div>
+      ${sheetHtml}
+      <h2 class="group-title" style="margin:8px 0">My work · ${mine.length}</h2>
+      <div class="mlist">${mine.length ? mine.map((j) => mcard(j, 'mine')).join('') : '<div class="empty">Nothing yet. Take one below.</div>'}</div>
+      <h2 class="group-title" style="margin:8px 0">Available for me · ${avail.length}</h2>
+      <div class="mlist">${avail.length ? avail.map((j) => mcard(j, 'avail')).join('') : `<div class="empty">Nothing free in ${p.trade.join(' / ')} right now.</div>`}</div>
+      <div class="mtabs"><span class="on">My work</span><span>Trucks</span><span>Completed</span></div>
+    </div>
+    <div class="why" style="margin-top:0;max-width:520px"><b>Por qué así (HU-RD7 a HU-RD11).</b><ul>
+      <li>Una pantalla con dos listas, en lugar de 8 secciones: lo mío arriba y lo libre de mi especialidad abajo, ★ primero.</li>
+      <li>"Take job": hoy son Take → Start → Complete → confirmar. Aquí se muestran dos variantes para decidir P47. Luis toma y empieza en un toque; si eliges a Anthony, el 705 está "Taken" y pide Start.</li>
+      <li>Si dos tocan a la vez gana el primero (ya es así en el API). El otro ve "Someone just took it".</li>
+      <li>Blocked son 4 opciones grandes, sin select. Solo el Manager resuelve (D17).</li>
+      <li>Al completar: "¿dónde quedan las llaves?", un toque. Completar no devuelve las llaves solo.</li>
+      <li>Cambia de mecánico arriba: Luis ve Alignment y Repairs; el 918 dice "With Mike".</li></ul></div></div>`;
+}
+
+/* ---------- Safety ---------- */
+function renderQc() {
+  const ready = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'ready');
+  const failed = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'failed');
+  const waiting = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'required');
+  $('#s-qc').innerHTML = `
+    <div class="app-head"><h1>Quality Check</h1><span class="muted">Safety · same screen as today (/qc)</span></div>
+    <div class="split"><div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card card-pad"><h2 class="section-title">To review · ${ready.length}</h2>${ready.length ? ready.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><button class="btn sm" type="button" data-qcret="${t}">Return</button><button class="btn sm primary" type="button" data-qcok="${t}">Approve</button></div>`).join('') : '<div class="muted">Nothing ready. Trucks show up when all their work is done.</div>'}</div>
+      <div class="card card-pad"><h2 class="section-title">Returned · waiting on the shop</h2>${failed.map((t) => `<div class="row"><b>Truck ${t}</b><span class="grow sub">${esc(S.trucks[t].qcNote)} · corrective Job open</span>${badge(QC.failed)}</div>`).join('') || '<div class="muted">None.</div>'}</div>
+      <div class="card card-pad"><h2 class="section-title">Coming · work still open</h2>${waiting.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><span class="sub">${openJobs(t).length} left</span></div>`).join('') || '<div class="muted">None.</div>'}</div>
+    </div>
+    <div class="why" style="margin-top:0"><b>Por qué así (HU-RD12).</b><ul>
+      <li>La pantalla de Safety ya funciona (QC1–QC13). Lo que cambia es cuándo le llega un camión: solo si el QC se requiere.</li>
+      <li>705 (Passing through, QC Not required) nunca aparece aquí. 918 tampoco hasta que el Manager decida.</li>
+      <li>804: QC falló y abrió un trabajo correctivo en Repairs. Cuando se completa, vuelve a "To review" (ya es así).</li></ul></div></div>`;
+}
+
+/* ---------- Management ---------- */
+function renderMgmt() {
+  const trucks = Object.keys(S.trucks).length;
+  const prog = S.jobs.filter((j) => j.st === 'progress').length;
+  const av_ = S.jobs.filter((j) => j.st === 'available').length;
+  const bl = S.jobs.filter((j) => j.st === 'blocked').length;
+  const done = S.done.length;
+  const working = new Set(S.jobs.filter((j) => j.st === 'progress').map((j) => j.who)).size;
+  const rel = Object.keys(S.trucks).filter((t) => readyToRelease(+t)).length;
+  const k = [[trucks, 'Trucks in the shop', 'Open visits'], [prog, 'Jobs in progress', 'A mechanic started it and has not finished'], [av_, 'Jobs available', 'Nobody has taken them'], [bl, 'Jobs blocked', 'Reported by the mechanic, not resolved'], [done, 'Jobs done today', 'Marked complete today'], [working, 'Mechanics working', 'With a Job in progress right now'], [rel, 'Ready to release', 'All work done, QC passed or not required']];
+  $('#s-mgmt').innerHTML = `
+    <div class="app-head"><h1>Shop today</h1><span class="live"><i></i>Live</span><span class="muted">Read only</span></div>
+    <div class="kpis">${k.map(([v, l, c]) => `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="c">${c}</div></div>`).join('')}</div>
+    <div class="why"><b>Por qué así (HU-RD13).</b><ul>
+      <li>Siete números que se pueden creer. Cada uno dice qué cuenta, así nadie lo lee como productividad.</li>
+      <li>Sin tiempos ni ranking de mecánicos en esta versión: cuentan registros, no horas (prompt §10).</li>
+      <li>Carlos entra con el rol de Admin de solo lectura que ya existe.</li></ul></div>`;
+}
+
+/* ---------- Render + events ---------- */
+const RENDER = { board: renderBoard, arrivals: renderArrivals, visit: renderVisit, truck: renderTruck, mech: renderMech, qc: renderQc, mgmt: renderMgmt };
+function renderTabs() {
+  $('#tabs').innerHTML = SCREENS.map(([k, l, r]) => `<button type="button" class="tab" data-go="${k}" aria-pressed="${k === screen}">${l}<span class="role">${r}</span></button>`).join('');
+}
+function render() {
+  renderTabs();
+  SCREENS.forEach(([k]) => { $('#s-' + k).hidden = k !== screen; });
+  RENDER[screen]();
+  icons();
+}
+function go(k) { screen = k; try { history.replaceState(null, '', '#' + k); } catch (e) {} render(); window.scrollTo(0, 0); }
+
+document.addEventListener('click', (e) => {
+  const jump = e.target.closest('[data-jump]');
+  if (jump) { e.preventDefault(); const c = document.getElementById('col-' + jump.dataset.jump); if (c) c.scrollIntoView({ block: 'start' }); return; }
+  const el = e.target.closest('button'); if (!el) return;
+  const d = el.dataset;
+  if (d.go) return go(d.go);
+  if (d.filter !== undefined) { S.filter = S.filter === d.filter || !d.filter ? null : d.filter; return render(); }
+  if (d.truck) { S.truckView = +d.truck; return go('truck'); }
+  if (d.openVisit) { S.visitDraft = draftFor(+d.openVisit, 'Passing through'); return go('visit'); }
+  if (d.toast) return toast(d.toast);
+  if (d.type) { const v = S.visitDraft; const keep = v.repairs; S.visitDraft = draftFor(v.t, d.type); S.visitDraft.repairs = keep; return render(); }
+  if (d.qc) { S.visitDraft.qc = d.qc; return render(); }
+  if (d.rm !== undefined) { S.visitDraft.repairs.splice(+d.rm, 1); return render(); }
+  if (el.id === 'addrep') { const v = $('#newrep').value.trim(); if (v) { S.visitDraft.repairs.push(v); render(); } return; }
+  if (el.id === 'openvisit') {
+    const v = S.visitDraft; const t = v.t;
+    S.trucks[t] = { visit: v.type, star: v.star, qc: v.qc, qcWhy: v.qcWhy, keys: 'Office', since: 'Today 10:12' };
+    Object.keys(STEP_NAMES).forEach((k) => { if (v.steps[k]) S.jobs.push({ id: S.nextId++, t, col: k, name: STEP_NAMES[k], st: 'available' }); });
+    v.repairs.forEach((r) => S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: r, st: 'available' }));
+    S.notRequired[t] = Object.keys(STEP_NAMES).filter((k) => !v.steps[k]).map((k) => [STEP_NAMES[k], v.reasons[k] || v.type]);
+    S.arrivals = S.arrivals.filter((a) => a.t !== t); S.q = String(t); S.filter = null;
+    toast(`Visit open for ${t}. Its Jobs are Available on the board.`);
+    return go('board');
+  }
+  if (d.take) {
+    const j = S.jobs.find((x) => x.id === +d.take);
+    if (j.st !== 'available') { toast('Someone just took it.'); return render(); }
+    j.who = S.mech; j.st = S.mech === 'anthony' ? 'taken' : 'progress';
+    toast(j.st === 'progress' ? `Truck ${j.t} is yours. Your time started.` : `Truck ${j.t} is yours. Tap Start when you have the keys.`);
+    return render();
+  }
+  if (d.start) { const j = S.jobs.find((x) => x.id === +d.start); if (holder(j.t) && holder(j.t) !== S.mech) { toast(`${PEOPLE[holder(j.t)].name} is working on this truck.`); return; } j.st = 'progress'; return render(); }
+  if (d.release) { const j = S.jobs.find((x) => x.id === +d.release); j.st = 'available'; delete j.who; toast('Back to Available.'); return render(); }
+  if (d.block) { S.sheet = { kind: 'block', id: +d.block }; return render(); }
+  if (d.reason) { const j = S.jobs.find((x) => x.id === S.sheet.id); j.st = 'blocked'; j.why = d.reason; S.sheet = null; toast('Blocked. The Manager sees it on the board.'); return render(); }
+  if (d.complete) { S.sheet = { kind: 'keys', id: +d.complete }; return render(); }
+  if (d.keys) {
+    const j = S.jobs.find((x) => x.id === S.sheet.id);
+    S.jobs = S.jobs.filter((x) => x.id !== j.id); S.done.push({ t: j.t, col: j.col, name: j.name });
+    if (S.trucks[j.t]) S.trucks[j.t].keys = d.keys === 'Back at the office' ? 'Office' : d.keys === 'Left in the truck' ? 'In truck' : d.keys === 'Gave them to someone' ? 'Given to a mechanic · not confirmed' : 'Unknown';
+    if (S.trucks[j.t] && S.trucks[j.t].qc === 'failed' && !openJobs(j.t).length) S.trucks[j.t].qc = 'required';
+    S.sheet = null; toast(`Done: ${j.t} · ${j.name}.`); return render();
+  }
+  if (d.cancel !== undefined) { S.sheet = null; return render(); }
+  if (d.qcok) { S.trucks[+d.qcok].qc = 'passed'; toast(`Truck ${d.qcok} approved.`); return render(); }
+  if (d.qcret) { const t = +d.qcret; S.trucks[t].qc = 'failed'; S.trucks[t].qcNote = 'Mirror loose'; S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: 'Mirror · driver side', st: 'available', from: 'QC failed' }); toast(`Returned. A corrective Job is Available in Repairs.`); return render(); }
+  if (el.id === 'release') { const t = S.truckView; delete S.trucks[t]; S.jobs = S.jobs.filter((j) => j.t !== t); toast(`Truck ${t} released. Return to Service saved.`); return render(); }
+  if (el.id === 'reset') { S = seed(); toast('Example data back to the start.'); return render(); }
+  if (el.id === 'theme') { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; }
+});
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.dataset.step) { S.visitDraft.steps[el.dataset.step] = el.checked; return render(); }
+  if (el.dataset.why) { S.visitDraft.reasons[el.dataset.why] = el.value; return render(); }
+  if (el.id === 'vstar') { S.visitDraft.star = el.checked; return; }
+  if (el.id === 'tpick') { S.truckView = +el.value; return render(); }
+  if (el.id === 'mpick') { S.mech = el.value; S.sheet = null; return render(); }
+  if (el.id === 'qcwhy') { S.visitDraft.qcWhy = el.value; return render(); }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'q') { S.q = e.target.value.replace(/\D/g, ''); const pos = e.target.selectionStart; renderBoard(); icons(); const q = $('#q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (err) {} }
+});
+const start = location.hash.slice(1);
+if (RENDER[start]) screen = start;
+render();
+</script>
