@@ -19,7 +19,7 @@ Leído de `origin/main` `0e2f46a`.
 | C2 | Quién decide "QC not required" (P46) | Safety 2, Carlos 1 | ⚠️ abierta |
 | C3 | Si un paso quitado de la plantilla pide motivo | Shop Manager 9, Carlos 3 | ⚠️ abierta |
 | C4 | Se queda "Work Order" (P45) | Dueño | ⚠️ recomendado, sin confirmar |
-| C5 | Qué nace con "Create PM service" sin WO (P53) | Shop Manager 16 | ⚠️ abierta |
+| C5 | Qué nace con "Create PM service" sin WO (P53) | Shop Manager 17 | ⚠️ abierta |
 | C6 | Si la devolución de Safety crea el correctivo (P54) | Safety 3 | ⚠️ abierta; puede ir en un PR aparte |
 | C7 | La decisión escrita como D58 en `DECISIONS.md` (cambia D13 y D55 R9) | Dueño | ⚠️ después de C1–C5 |
 | C8 | Issue en Linear | Dueño (OK para crear) | ⚠️ |

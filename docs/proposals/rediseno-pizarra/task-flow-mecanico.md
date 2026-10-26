@@ -162,8 +162,8 @@ otro, y esas horas se cobran a Finanzas (D34). Hay que diseñarlo (frente C) y q
 ## 6. Preguntas que salen de este flujo
 
 Ya están en la [hoja de preguntas](preguntas-validacion.md):
-- P47: ¿tomar empieza el tiempo? Shop Manager 12, mecánicos 2, Carlos 5.
-- P50–P52: la tablet de Detailing. Detailer 5–7, Carlos 5.
-- P44: ¿todo lo sin dueño va a la cola? Shop Manager 11.
+- P47: ¿tomar empieza el tiempo? Shop Manager 13, mecánico general 2, Carlos 5.
+- P50–P52: la tablet de Detailing. Detailer 2–4, Carlos 5.
+- P44: ¿todo lo sin dueño va a la cola? Shop Manager 12.
 - Los motivos de bloqueo: mecánicos 3.
-- Las llaves: mecánicos 4, Shop Manager 18.
+- Las llaves: mecánico general 4, detailer 5, Shop Manager 19.
