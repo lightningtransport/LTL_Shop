@@ -497,3 +497,37 @@ Manager.
 - Las rutas de hoy: lo que se mueve a More se abre en la misma URL.
 - Las 209 pruebas de flujo: cambian solo las filas de las reglas que el dueño cambie (P46), y se
   agregan las nuevas.
+
+---
+
+## 10. Trabajo en paralelo (para otros agentes)
+
+**Estado al 2026-10-26:** propuesta y boceto en la rama `claude/rediseno-pizarra` (solo `docs/`). El
+código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
+[`preguntas-validacion.md`](preguntas-validacion.md); **nada de RP-1 a RP-4 se construye antes**.
+
+**Archivos de esta propuesta:**
+
+| Archivo | Qué es |
+|---|---|
+| `README.md` | Síntesis, arquitectura, historias HU-RD1–HU-RD14, plan RP-0–RP-8 |
+| `ia-inventario.md` | Dónde queda cada pantalla y acción; R-1 a R-8 (lo que se rompería) |
+| `task-flow-manager.md`, `task-flow-safety.md` | Un día de cada rol |
+| `revision-sugerencias.md` | Qué está comprobado, qué es supuesto y qué se corrigió |
+| `preguntas-validacion.md` | Hoja para el Shop Manager, Safety, Carlos y mecánicos |
+| `mockup.html` | Boceto navegable; publicado en privado en https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE |
+
+**Frentes que se pueden trabajar a la vez, sin pisarse:**
+
+| Frente | Archivos | Depende de | Quién |
+|---|---|---|---|
+| **A. Propuesta y boceto:** task flow del mecánico, aplicar las respuestas de la hoja, ajustar el boceto | Solo `docs/proposals/rediseno-pizarra/*` y las P de `DECISIONS.md` | Las respuestas del taller | Una sola sesión a la vez (el boceto es un archivo) |
+| **B. Incoming completo (RP-5, defecto):** leer `returns` además de `driver_pay`; no descartar Fired / Early Broke Contract | `apps/api/src/admin/yard-data-boundary.ts`, `yard-data-boundary.service.ts` y sus pruebas | Nada del rediseño. Primero el issue en Linear | Otra sesión, rama propia desde `origin/main` |
+| **C. Diseño de la tablet de Detailing (P50):** cómo registra a una persona sin su contraseña; solo documento | Un archivo nuevo en esta carpeta | Nada | Otra sesión, solo docs |
+| **D. RP-1 a RP-4** | API, shared y web | P45–P56 decididas y D58 escrita | Después |
+
+**Reglas:**
+- Cada sesión, en su worktree y su rama desde `origin/main` (`docs/reference/AGENT_WORKFLOW.md`).
+- No tocar los archivos de otro frente.
+- Lo que es supuesto se dice como supuesto (`revision-sugerencias.md`).
+- El boceto se republica con el mismo link, desde la sesión que lo tiene abierto, o pasando la URL.

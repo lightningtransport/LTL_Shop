@@ -135,6 +135,8 @@ main { max-width: 1600px; margin: 0 auto; padding-block: 20px 48px; }
 }
 
 /* Two-column page */
+.qcsplit { grid-template-columns: minmax(0, 320px) minmax(0, 1fr) !important; }
+@media (max-width: 900px) { .qcsplit { grid-template-columns: 1fr !important; } }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
 @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
 .rows { display: flex; flex-direction: column; }
@@ -234,6 +236,10 @@ function seed() {
       804: { visit: 'End of contract', star: true, qc: 'failed', qcNote: 'Air leak at rear chamber', keys: 'In truck', since: 'Wed' },
       918: { visit: 'Other', star: false, qc: 'to_decide', keys: 'Detailing tablet', since: 'Thu' },
       944: { visit: 'End of contract', star: false, qc: 'required', keys: 'Office', since: 'Today 7:40' },
+      612: { visit: 'End of contract', star: false, leaves: 'Leaves Wed', qc: 'required', keys: 'Office', since: 'Mon', readySince: 'Today 9:05',
+        pm: 'PM A · 412,880 mi · 9 parts', inspection: 'Issues found · 3 defects, all fixed', tires: 'RRO 3/32 → replaced (New 11R22.5)', notes: ['Anthony: brake pads were at 2 mm, both changed.'] },
+      650: { visit: 'End of contract', star: true, qc: 'required', keys: 'Office', since: 'Fri', readySince: 'Yesterday 4:30',
+        pm: 'PM B · 388,102 mi · 11 parts', inspection: 'No issues found', tires: 'All OK', notes: [] },
     },
     jobs: [
       { id: 1, t: 901, col: 'pm', name: 'PM A Service', st: 'progress', who: 'daniel' },
@@ -249,7 +255,14 @@ function seed() {
     ],
     done: [
       { t: 804, col: 'pm', name: 'PM A Service' }, { t: 804, col: 'alignment', name: 'Alignment' },
-      { t: 612, col: 'detailing', name: 'Detailing' },
+      { t: 612, col: 'detailing', name: 'Detailing', who: 'mike', at: '8:50' },
+      { t: 612, col: 'pm', name: 'PM A Service', who: 'daniel', at: 'Mon 3:10' },
+      { t: 612, col: 'alignment', name: 'Alignment', who: 'luis', at: '7:40' },
+      { t: 612, col: 'alignment', name: 'Tires · RRO', who: 'luis', at: '8:05' },
+      { t: 612, col: 'repairs', name: 'Brake pads · front', who: 'anthony', at: 'Mon 4:20' },
+      { t: 650, col: 'pm', name: 'PM B Service', who: 'daniel', at: 'Yesterday 1:15' },
+      { t: 650, col: 'alignment', name: 'Alignment', who: 'luis', at: 'Yesterday 2:40' },
+      { t: 650, col: 'detailing', name: 'Detailing', who: 'mike', at: 'Yesterday 4:25' },
     ],
     notRequired: { 705: [['PM', 'Passing through'], ['Alignment', 'Passing through'], ['Detailing', 'Passing through']] },
     requests: [{ t: 918, who: 'Mike', text: 'Driver mirror is cracked. Add a Job?' }],
@@ -263,6 +276,11 @@ function seed() {
     ],
     mech: 'anthony', filter: null, q: '', truckView: 901, sheet: null, nextId: 20,
     visitDraft: null,
+    qcTab: 'review', qcSel: 612, qcTaken: { 650: 'Rosa' }, qcSheet: null, qcDraft: { note: '', finding: '', job: '' },
+    qcHistory: [
+      { t: 588, result: 'Approved', at: 'Yesterday 3:50', note: '' },
+      { t: 771, result: 'Returned', at: 'Yesterday 11:20', note: 'Left mud flap missing. Suggested Job: Mud flap.' },
+    ],
   };
 }
 let S = seed();
@@ -279,7 +297,7 @@ function openJobs(t) { return S.jobs.filter((j) => j.t === t); }
 function qcState(t) {
   const tr = S.trucks[t]; if (!tr) return null;
   if (tr.qc === 'not_required' || tr.qc === 'to_decide' || tr.qc === 'passed') return tr.qc;
-  if (tr.qc === 'failed') return openJobs(t).length ? 'failed' : 'ready';
+  if (tr.qc === 'failed') return openJobs(t).length || tr.qcWait ? 'failed' : 'ready';
   return openJobs(t).length ? 'required' : 'ready';
 }
 function readyToRelease(t) { const q = qcState(t); return !S.trucks[t].closed && openJobs(t).length === 0 && (q === 'not_required' || q === 'passed'); }
@@ -550,21 +568,71 @@ function renderMech() {
 }
 
 /* ---------- Safety ---------- */
+function qcReview(t) {
+  const tr = S.trucks[t]; if (!tr) return '<div class="muted">Pick a truck.</div>';
+  const taken = S.qcTaken[t]; const mine = taken === 'me';
+  const work = S.done.filter((d) => d.t === t);
+  const nr = (S.notRequired[t] || []);
+  let acts;
+  if (!taken) acts = `<button class="btn primary block" type="button" data-qctake="${t}"><i data-lucide="hand"></i>Take this truck</button>`;
+  else if (!mine) acts = `<div class="sub muted">Taken by ${esc(taken)}. You can read it; only ${esc(taken)} approves or returns it.</div>`;
+  else if (S.qcSheet) acts = '';
+  else acts = `<div class="mcard" style="background:transparent;border:0;padding:0"><div class="acts"><button class="btn" type="button" data-qcsheet="return"><i data-lucide="undo-2"></i>Return</button><button class="btn primary" type="button" data-qcsheet="approve"><i data-lucide="shield-check"></i>Approve</button></div><button class="ghost" type="button" data-qclet="${t}" style="margin-top:8px">Let go</button></div>`;
+  let sheet = '';
+  if (mine && S.qcSheet === 'approve') sheet = `<div class="sheet" role="dialog" aria-label="Approve"><b>Approve Truck ${t}?</b><div class="sub">The Manager can close the Work Order after this.</div>
+    <input class="field" id="qcnote" placeholder="Note for the shop (optional, does not stop the truck)" value="${esc(S.qcDraft.note)}" aria-label="Optional note">
+    <div class="acts" style="display:flex;gap:8px"><button class="btn" type="button" data-qccancel style="flex:1">Back</button><button class="btn primary" type="button" data-qcapprove="${t}" style="flex:1">Approve</button></div></div>`;
+  if (mine && S.qcSheet === 'return') {
+    const ok = S.qcDraft.note.trim().length > 0;
+    sheet = `<div class="sheet" role="dialog" aria-label="Return to the shop"><b>Return Truck ${t} to the shop</b>
+    <label class="sub" for="qcnote">What is wrong? (required)</label><input class="field" id="qcnote" placeholder="Driver mirror loose" value="${esc(S.qcDraft.note)}">
+    <label class="sub" for="qcjob">Job to fix it (suggested)</label><select id="qcjob"><option value="">Pick a Job (or leave it to the Manager)</option>${['Mirror', 'Mud flap', 'Lights', 'Brake adjustment', 'Other repair'].map((j) => `<option ${S.qcDraft.job === j ? 'selected' : ''}>${j}</option>`).join('')}</select>
+    <div class="sub muted">${S.qcDraft.job ? `"${esc(S.qcDraft.job)}" will appear Available in Repairs (P54).` : 'Without a Job, the Manager decides what to add.'}</div>
+    <div class="acts" style="display:flex;gap:8px"><button class="btn" type="button" data-qccancel style="flex:1">Back</button><button class="btn primary" type="button" data-qcreturn="${t}" style="flex:1" ${ok ? '' : 'disabled'}>Return</button></div>
+    <div class="sub" id="qchint" style="color:var(--destructive-text)" ${ok ? 'hidden' : ''}>Say what is wrong to return it.</div></div>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="num" style="font-size:24px;font-weight:700">Truck ${t}</span>${tr.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}<span class="badge b-out">${esc(tr.visit)}</span>${tr.leaves ? `<span class="badge b-warn"><i data-lucide="calendar-clock"></i>${esc(tr.leaves)}</span>` : ''}</div>
+    <div class="sub muted">Ready for Safety since ${esc(tr.readySince || '—')}</div>
+    ${acts}${sheet}
+    <div><h3 class="group-title" style="margin-bottom:4px">What was done</h3>${work.map((w) => `<div class="row"><i data-lucide="check" style="color:var(--success)"></i><span class="grow">${esc(w.name)}</span>${w.who ? `${av(w.who)}<span class="sub">${esc(PEOPLE[w.who].name)} · ${esc(w.at || '')}</span>` : ''}</div>`).join('')}
+      ${nr.map(([n, why]) => `<div class="row"><i data-lucide="minus-circle"></i><span class="grow">${esc(n)}</span><span class="sub">Not required · ${esc(why)}</span></div>`).join('')}</div>
+    ${tr.pm ? `<div class="row"><b style="min-width:90px">PM</b><span class="grow sub">${esc(tr.pm)}</span></div>` : ''}
+    ${tr.inspection ? `<div class="row"><b style="min-width:90px">Inspection</b><span class="grow sub">${esc(tr.inspection)} · <a href="#" onclick="return false" style="color:var(--primary-text)">Read the sheet</a></span></div>` : ''}
+    ${tr.tires ? `<div class="row"><b style="min-width:90px">Tires</b><span class="grow sub">${esc(tr.tires)}</span></div>` : ''}
+    ${(tr.notes || []).length ? `<div><h3 class="group-title" style="margin-bottom:4px">Notes</h3>${tr.notes.map((n) => `<div class="sub">${esc(n)}</div>`).join('')}</div>` : ''}
+  </div>`;
+}
 function renderQc() {
-  const ready = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'ready');
-  const failed = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'failed');
-  const waiting = Object.keys(S.trucks).map(Number).filter((t) => qcState(t) === 'required');
+  const ids = Object.keys(S.trucks).map(Number);
+  const rank = (t) => (S.trucks[t].leaves ? 0 : 2) + (S.trucks[t].star ? 0 : 1);
+  const ready = ids.filter((t) => qcState(t) === 'ready').sort((a, b) => rank(a) - rank(b));
+  const failed = ids.filter((t) => qcState(t) === 'failed');
+  const waiting = ids.filter((t) => qcState(t) === 'required');
+  if (!ready.includes(S.qcSel)) S.qcSel = ready[0] || null;
+  const tabs = [['review', `To review · ${ready.length}`], ['returned', `Returned · ${failed.length}`], ['done', `Done · ${S.qcHistory.length}`]];
+  let list = '';
+  if (S.qcTab === 'review') list = `${ready.map((t) => {
+      const tk = S.qcTaken[t];
+      return `<button type="button" class="jcard ${S.qcSel === t ? 'hl' : ''}" data-qcsel="${t}"><span class="top"><span class="num">${t}</span>${S.trucks[t].star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}<span class="spacer" style="flex:1"></span>${S.trucks[t].leaves ? `<span class="badge b-warn">${esc(S.trucks[t].leaves)}</span>` : ''}</span>
+        <span class="meta">${tk ? badge([tk === 'me' ? 'Taken by you' : `Taken by ${tk}`, tk === 'me' ? 'b-info' : 'b-out', 'user-round']) : badge(['Ready', 'b-info', 'shield'])}<span>since ${esc(S.trucks[t].readySince || '')}</span></span></button>`;
+    }).join('') || '<div class="empty">Nothing ready. A truck shows up when all its work is done.</div>'}
+    <h3 class="group-title" style="margin:16px 0 6px">Coming · work still open</h3>
+    ${waiting.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><span class="sub">${openJobs(t).length} left</span></div>`).join('') || '<div class="empty">None.</div>'}`;
+  if (S.qcTab === 'returned') list = failed.map((t) => `<div class="row"><b>Truck ${t}</b><span class="grow sub">${esc(S.trucks[t].qcNote)} · fix in progress</span>${badge(QC.failed)}</div>`).join('') || '<div class="empty">None.</div>';
+  if (S.qcTab === 'done') list = S.qcHistory.map((h) => `<div class="row"><b>Truck ${h.t}</b>${badge(h.result === 'Approved' ? ['Approved', 'b-ok', 'shield-check'] : ['Returned', 'b-stop', 'undo-2'])}<span class="grow sub">${esc(h.at)}${h.note ? ' · ' + esc(h.note) : ''}</span></div>`).join('');
   $('#s-qc').innerHTML = `
-    <div class="app-head"><h1>Quality Check</h1><span class="muted">Safety · same screen as today (/qc)</span></div>
-    <div class="split"><div style="display:flex;flex-direction:column;gap:16px">
-      <div class="card card-pad"><h2 class="section-title">To review · ${ready.length}</h2>${ready.length ? ready.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><button class="btn sm" type="button" data-qcret="${t}">Return</button><button class="btn sm primary" type="button" data-qcok="${t}">Approve</button></div>`).join('') : '<div class="muted">Nothing ready. Trucks show up when all their work is done.</div>'}</div>
-      <div class="card card-pad"><h2 class="section-title">Returned · waiting on the shop</h2>${failed.map((t) => `<div class="row"><b>Truck ${t}</b><span class="grow sub">${esc(S.trucks[t].qcNote)} · corrective Job open</span>${badge(QC.failed)}</div>`).join('') || '<div class="muted">None.</div>'}</div>
-      <div class="card card-pad"><h2 class="section-title">Coming · work still open</h2>${waiting.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><span class="sub">${openJobs(t).length} left</span></div>`).join('') || '<div class="muted">None.</div>'}</div>
+    <div class="app-head"><h1>Quality Check</h1><span class="muted">Safety · phone or iPad</span></div>
+    <div class="seg" role="tablist" aria-label="Quality Check" style="margin-bottom:16px">${tabs.map(([k, l]) => `<button type="button" role="tab" data-qctab="${k}" aria-pressed="${S.qcTab === k}" aria-selected="${S.qcTab === k}">${l}</button>`).join('')}</div>
+    <div class="split qcsplit">
+      <div class="col" style="background:transparent;border:0"><div class="col-body" style="padding:0">${list}</div></div>
+      ${S.qcTab === 'review' ? `<div class="card card-pad">${S.qcSel ? qcReview(S.qcSel) : '<div class="muted">Nothing to review right now.</div>'}</div>` : '<div></div>'}
     </div>
-    <div class="why" style="margin-top:0"><b>Por qué así (HU-RD12).</b><ul>
-      <li>La pantalla de Safety ya funciona (QC1–QC13). Lo que cambia es cuándo le llega un camión: solo si el QC se requiere.</li>
-      <li>705 (Passing through, QC Not required) nunca aparece aquí. 918 tampoco hasta que el Manager decida.</li>
-      <li>804: QC falló y abrió un trabajo correctivo en Repairs. Cuando se completa, vuelve a "To review" (ya es así).</li></ul></div></div>`;
+    <div class="why"><b>Por qué así (HU-RD12; task-flow-safety.md).</b><ul>
+      <li>Es la pantalla de hoy (D19, D46, QC1–QC13): tomar, revisar qué se hizo y quién, PM, inspección y llantas, aprobar con confirmación (D-QC1), devolver con nota obligatoria, Let go (D-QC2), Done.</li>
+      <li>Orden: sale pronto → ★ → más tiempo esperando (D-QC5). El 650 lo tomó otra persona de Safety: se lee, pero no se aprueba.</li>
+      <li>Nuevo: solo llegan camiones con QC Required (705 nunca, 918 hasta que el Manager decida); "Coming" muestra lo que viene; devolver con un Job sugerido lo crea Available en Repairs (P54, sin decidir).</li>
+      <li>Prueba: Take en el 612 → Return con "Mirror" → mira Repairs en Board. O Approve → el 612 queda Ready to close en Board.</li></ul></div>`;
 }
 
 /* ---------- Management ---------- */
@@ -645,8 +713,18 @@ document.addEventListener('click', (e) => {
     S.sheet = null; toast(`Done: ${j.t} · ${j.name}.`); return render();
   }
   if (d.cancel !== undefined) { S.sheet = null; return render(); }
-  if (d.qcok) { S.trucks[+d.qcok].qc = 'passed'; toast(`Truck ${d.qcok} approved.`); return render(); }
-  if (d.qcret) { const t = +d.qcret; S.trucks[t].qc = 'failed'; S.trucks[t].qcNote = 'Mirror loose'; S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: 'Mirror · driver side', st: 'available', from: 'QC failed' }); toast(`Returned. A corrective Job is Available in Repairs.`); return render(); }
+  if (d.qctab) { S.qcTab = d.qctab; return render(); }
+  if (d.qcsel) { S.qcSel = +d.qcsel; S.qcSheet = null; return render(); }
+  if (d.qctake) { S.qcTaken[+d.qctake] = 'me'; toast(`Truck ${d.qctake} is yours to review.`); return render(); }
+  if (d.qclet) { delete S.qcTaken[+d.qclet]; S.qcSheet = null; toast('Let go. The other Safety person can take it.'); return render(); }
+  if (d.qcsheet) { S.qcSheet = d.qcsheet; S.qcDraft = { note: '', job: '' }; return render(); }
+  if (d.qccancel !== undefined) { S.qcSheet = null; return render(); }
+  if (d.qcapprove) { const t = +d.qcapprove; S.trucks[t].qc = 'passed'; delete S.qcTaken[t]; S.qcHistory.unshift({ t, result: 'Approved', at: 'Today', note: S.qcDraft.note }); S.qcSheet = null; toast(`Truck ${t} approved. Ready to close for the Manager.`); return render(); }
+  if (d.qcreturn) { const t = +d.qcreturn; const dr = S.qcDraft; S.trucks[t].qc = 'failed'; S.trucks[t].qcNote = dr.note; S.trucks[t].qcWait = !dr.job; delete S.qcTaken[t];
+    if (dr.job) S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: dr.job, st: 'available', from: 'QC failed' });
+    S.qcHistory.unshift({ t, result: 'Returned', at: 'Today', note: dr.note }); S.qcSheet = null;
+    toast(dr.job ? `Returned. "${dr.job}" is Available in Repairs.` : 'Returned. The Manager decides what to add.'); return render(); }
+  if (false && d.qcret) { const t = +d.qcret; S.trucks[t].qc = 'failed'; S.trucks[t].qcNote = 'Mirror loose'; S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: 'Mirror · driver side', st: 'available', from: 'QC failed' }); toast(`Returned. A corrective Job is Available in Repairs.`); return render(); }
   if (el.id === 'release') { const t = S.truckView; S.trucks[t].closed = true; toast(`Work Order closed. Truck ${t} is Ready to Go.`); return render(); }
   if (el.id === 'rts') { const t = S.truckView; delete S.trucks[t]; S.jobs = S.jobs.filter((j) => j.t !== t); toast(`Truck ${t}: Return to Service saved. It left the board.`); return render(); }
   if (el.id === 'reset') { S = seed(); toast('Example data back to the start.'); return render(); }
@@ -660,8 +738,10 @@ document.addEventListener('change', (e) => {
   if (el.id === 'tpick') { S.truckView = +el.value; return render(); }
   if (el.id === 'mpick') { S.mech = el.value; S.sheet = null; return render(); }
   if (el.id === 'qcwhy') { S.visitDraft.qcWhy = el.value; return render(); }
+  if (el.id === 'qcjob') { S.qcDraft.job = el.value; return render(); }
 });
 document.addEventListener('input', (e) => {
+  if (e.target.id === 'qcnote') { S.qcDraft.note = e.target.value; const btn = document.querySelector('[data-qcreturn]'); if (btn) btn.disabled = !e.target.value.trim(); const h = document.getElementById('qchint'); if (h) h.hidden = !!e.target.value.trim(); return; }
   if (e.target.id === 'q') { S.q = e.target.value.replace(/\D/g, ''); const pos = e.target.selectionStart; renderBoard(); icons(); const q = $('#q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (err) {} }
 });
 const start = location.hash.slice(1);
