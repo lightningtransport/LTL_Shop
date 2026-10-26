@@ -9,6 +9,7 @@ del PM y la conversación con el dueño del 2026-10-24. Base del código leída:
 **Pruebas de hoy:** `test:real` sobre `main`, 209 pasan y 2 se saltan a propósito (A27, A28).
 Este rediseño parte de un motor que funciona.
 **Task flows:** [Manager](task-flow-manager.md) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
+**Inventario (nada se pierde ni se rompe):** [`ia-inventario.md`](ia-inventario.md).
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
@@ -119,7 +120,7 @@ bloqueado, sin datos, listo para liberar, llegada sin visita.
 
 #### T6 · Demasiado menú, todo al mismo nivel
 **Fuentes:** F5, F6.
-- 19 entradas en el menú del Manager (`admin-shell.tsx`).
+- 15 entradas en el menú del Manager (`admin-shell.tsx:20-53`).
 - El día a día (pizarra, llegadas, camión) pesa lo mismo que facturas internas, Samsara o tarifas.
 - El Dashboard "Needs you" y el Yard responden preguntas parecidas desde dos pantallas.
 
@@ -181,7 +182,10 @@ al terminar). No es un inventario.
 
 ## 3. Arquitectura de información
 
-### 3.1 Manager: de 19 entradas a 3 de trabajo + More
+### 3.1 Manager: de 15 entradas a 3 de trabajo + More
+
+El detalle de **cada** pantalla, grupo del Dashboard y acción, con lo que se rompería si no se
+ajusta, está en [`ia-inventario.md`](ia-inventario.md).
 
 | Hoy (menú) | Propuesta | Qué pasa con lo de hoy |
 |---|---|---|
