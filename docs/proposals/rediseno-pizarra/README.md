@@ -11,6 +11,7 @@ Este rediseño parte de un motor que funciona.
 **Task flows:** [Manager](task-flow-manager.md) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
 **Inventario (nada se pierde ni se rompe):** [`ia-inventario.md`](ia-inventario.md).
 **Revisión de las sugerencias (qué está comprobado y qué es supuesto):** [`revision-sugerencias.md`](revision-sugerencias.md).
+**Hoja de preguntas para validar (Shop Manager, Safety, Carlos, mecánicos):** [`preguntas-validacion.md`](preguntas-validacion.md).
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
