@@ -515,6 +515,8 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 | `task-flow-manager.md`, `task-flow-mecanico.md`, `task-flow-safety.md` | Un día de cada rol |
 | `revision-sugerencias.md` | Qué está comprobado, qué es supuesto y qué se corrigió |
 | `preguntas-validacion.md` | Hoja para el Shop Manager, Safety, Carlos y mecánicos |
+| `validacion-hoy.html` | Página para validar con el manager con los datos de Ninox del 26-oct (Board, Kanban, Arrivals con Check in, mecánicos, tablet de Detailing, PM / Fuel filter, lo que no cuadra) |
+| `ninox-hoy.md` | Qué muestra Ninox, qué se puede obtener y de dónde; la regla PM / Fuel filter; lo que no cuadra |
 | `rp1-plan-tecnico.md` | RP-1 archivo por archivo: condiciones para empezar, migración, API, web, pruebas, horas |
 | `mockup.html` | Boceto navegable; publicado en privado en https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE |
 
@@ -524,7 +526,7 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 |---|---|---|---|
 | **A. Propuesta y boceto:** task flow del mecánico, aplicar las respuestas de la hoja, ajustar el boceto | Solo `docs/proposals/rediseno-pizarra/*` y las P de `DECISIONS.md` | Las respuestas del taller | Una sola sesión a la vez (el boceto es un archivo) |
 | **B. Incoming completo (RP-5, defecto):** leer `returns` además de `driver_pay`; no descartar Fired / Early Broke Contract | `apps/api/src/admin/yard-data-boundary.ts`, `yard-data-boundary.service.ts` y sus pruebas | Nada del rediseño. Primero el issue en Linear | Otra sesión, rama propia desde `origin/main` |
-| **C. Diseño de la tablet de Detailing (P50):** cómo registra a una persona sin su contraseña; solo documento | Un archivo nuevo en esta carpeta | Nada | Otra sesión, solo docs |
+| ~~C. Diseño de la tablet de Detailing~~ | — | Ya no hace falta: el dueño decidió que no se identifican (P50–P52, 2026-10-26) | — |
 | **D. RP-1 a RP-4** | API, shared y web | P45–P56 decididas y D58 escrita | Después |
 
 **Reglas:**

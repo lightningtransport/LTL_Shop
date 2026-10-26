@@ -1,0 +1,463 @@
+<title>Shop Board today</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+/* Layout: one prototype shell; a screen picker on top, each screen built from the app's own tokens
+   (apps/web/src/app/globals.css). The board is the whiteboard: one column per trade, one card per Job. */
+:root {
+  --background: oklch(1 0 0); --foreground: oklch(0.23 0.0038 106.69);
+  --card: oklch(0.9842 0.0034 247.86); --muted: oklch(0.9683 0.0069 247.9);
+  --muted-foreground: oklch(0.5 0.0407 257.42); --primary: oklch(0.5358 0.1444 248.04);
+  --primary-text: oklch(0.48 0.14 248); --primary-foreground: oklch(1 0 0);
+  --accent: oklch(0.9514 0.025 236.82); --border: oklch(0.9288 0.0126 255.51);
+  --input: oklch(0.64 0.02 256); --ring: oklch(0.5358 0.1444 248.04);
+  --success: oklch(0.48 0.13 151); --warning: oklch(0.74 0.15 80);
+  --warning-foreground: oklch(0.38 0.09 72); --warning-surface: oklch(0.965 0.035 92);
+  --destructive-text: oklch(0.5 0.19 27); --sunken: oklch(0.965 0.006 247.9);
+  --note: oklch(0.97 0.03 95); --note-border: oklch(0.85 0.08 90);
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --radius: 0.375rem;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --background: oklch(0.2077 0.0398 265.75); --foreground: oklch(0.9842 0.0034 247.86);
+  --card: oklch(0.2795 0.0368 260.03); --muted: oklch(0.31 0.037 259);
+  --muted-foreground: oklch(0.7107 0.0351 256.79); --primary: oklch(0.7535 0.139 232.66);
+  --primary-text: oklch(0.7535 0.139 232.66); --primary-foreground: oklch(0.2077 0.0398 265.75);
+  --accent: oklch(0.33 0.04 258); --border: oklch(0.3717 0.0392 257.29); --input: oklch(0.55 0.035 257);
+  --ring: oklch(0.7535 0.139 232.66); --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6);
+  --warning-foreground: oklch(0.92 0.12 91.6); --warning-surface: oklch(0.29 0.05 78);
+  --destructive-text: oklch(0.78 0.12 22); --sunken: oklch(0.24 0.038 263);
+  --note: oklch(0.3 0.04 85); --note-border: oklch(0.45 0.07 85); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --background: oklch(0.2077 0.0398 265.75); --foreground: oklch(0.9842 0.0034 247.86);
+  --card: oklch(0.2795 0.0368 260.03); --muted: oklch(0.31 0.037 259);
+  --muted-foreground: oklch(0.7107 0.0351 256.79); --primary: oklch(0.7535 0.139 232.66);
+  --primary-text: oklch(0.7535 0.139 232.66); --primary-foreground: oklch(0.2077 0.0398 265.75);
+  --accent: oklch(0.33 0.04 258); --border: oklch(0.3717 0.0392 257.29); --input: oklch(0.55 0.035 257);
+  --ring: oklch(0.7535 0.139 232.66); --success: oklch(0.72 0.14 151); --warning: oklch(0.82 0.14 91.6);
+  --warning-foreground: oklch(0.92 0.12 91.6); --warning-surface: oklch(0.29 0.05 78);
+  --destructive-text: oklch(0.78 0.12 22); --sunken: oklch(0.24 0.038 263);
+  --note: oklch(0.3 0.04 85); --note-border: oklch(0.45 0.07 85); color-scheme: dark; }
+
+*, *::before, *::after { box-sizing: border-box; border-color: var(--border); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans);
+  font-size: 14px; letter-spacing: -0.01em; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--background); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+svg.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--muted-foreground); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Prototype chrome */
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--background); border-bottom: 1px solid var(--border); }
+.proto-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-block: 10px; max-width: 1600px; margin: 0 auto; }
+.proto-title { font-weight: 600; margin-right: 8px; }
+.proto-title small { display: block; font-weight: 400; font-size: 12px; color: var(--muted-foreground); }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tab { border: 1px solid var(--border); background: var(--card); border-radius: var(--radius); padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.tab[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary-text); font-weight: 600; }
+.tab .role { font-size: 11px; color: var(--muted-foreground); font-weight: 500; }
+.spacer { flex: 1; }
+.ghost { border: 1px solid var(--input); background: transparent; border-radius: var(--radius); padding: 6px 10px; min-height: 36px; cursor: pointer; font-size: 13px; color: var(--muted-foreground); }
+
+main { max-width: 1600px; margin: 0 auto; padding-block: 20px 48px; }
+.screen[hidden] { display: none; }
+.why { margin-top: 24px; border: 1px dashed var(--note-border); background: var(--note); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+.why b { font-weight: 600; }
+.why ul { margin: 6px 0 0; padding-left: 18px; }
+.why li { margin: 2px 0; }
+
+/* App look */
+.app-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.app-head h1 { font-size: 24px; font-weight: 600; margin: 0; text-wrap: balance; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--success); }
+.live i { width: 8px; height: 8px; border-radius: 9999px; background: var(--success); display: inline-block; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--input); background: var(--background); cursor: pointer; font-weight: 500; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.btn.sm { min-height: 36px; padding: 0 10px; font-size: 13px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn.block { width: 100%; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); }
+.card-pad { padding: 16px; }
+.section-title { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.group-title { font-size: 14px; font-weight: 600; margin: 0; }
+.badge { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; border-radius: 6px; border: 1px solid var(--border); padding: 1px 7px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.b-info { border-color: color-mix(in oklch, var(--primary) 30%, transparent); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary-text); }
+.b-ok { border-color: color-mix(in oklch, var(--success) 40%, transparent); background: color-mix(in oklch, var(--success) 10%, transparent); color: var(--success); }
+.b-warn { border-color: color-mix(in oklch, var(--warning) 55%, transparent); background: var(--warning-surface); color: var(--warning-foreground); }
+.b-stop { border-color: color-mix(in oklch, var(--destructive-text) 45%, transparent); background: color-mix(in oklch, var(--destructive-text) 12%, transparent); color: var(--destructive-text); }
+.b-out { color: var(--muted-foreground); }
+.star { color: var(--warning-foreground); font-size: 16px; line-height: 1; }
+.col.side .badge { white-space: normal; }
+@media (max-width: 700px) { .proto { position: static; } .tab .role { display: none; } }
+.avatar { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 9999px; font-size: 10px; font-weight: 600; background: color-mix(in oklch, var(--primary) 18%, transparent); color: var(--primary-text); }
+.search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--input); border-radius: var(--radius); padding: 0 10px; min-height: 40px; background: var(--background); }
+.search input { border: 0; outline: 0; background: transparent; font: inherit; color: inherit; width: 140px; }
+
+/* Needs-your-decision strip */
+.decide { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); cursor: pointer; }
+.chip b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 12%, transparent); }
+.chip.zero { opacity: 0.6; }
+
+/* Board */
+.board { display: grid; grid-template-columns: 0.8fr repeat(4, 1fr) 0.8fr; gap: 10px; align-items: start; }
+.col { background: var(--sunken); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); min-width: 0; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.col-head .count { margin-left: auto; font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.col-body { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+.col.side .col-head .group-title { color: var(--muted-foreground); }
+.jcard { background: var(--background); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer; width: 100%; }
+.jcard .top { display: flex; align-items: center; gap: 6px; }
+.jcard .num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.jcard .job { font-size: 13px; }
+.jcard .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-foreground); }
+.jcard.blocked { border-left: 3px solid var(--warning-foreground); background: color-mix(in oklch, var(--warning-surface) 60%, var(--background)); }
+.jcard.hl { outline: 2px solid var(--primary); outline-offset: 1px; }
+.jcard.dim { opacity: 0.35; }
+.done-list { padding: 0 8px 8px; }
+.done-list summary { cursor: pointer; font-size: 12px; color: var(--muted-foreground); padding: 4px 2px; }
+.done-item { font-size: 13px; color: var(--muted-foreground); text-decoration: line-through; padding: 2px 2px; }
+.empty { font-size: 12px; color: var(--muted-foreground); padding: 8px 4px; }
+.jump { display: none; }
+@media (max-width: 1000px) {
+  .board { grid-template-columns: 1fr; }
+  .jump { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px; }
+  .jump a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9999px; background: var(--card); color: inherit; text-decoration: none; font-size: 13px; }
+  .col { scroll-margin-top: 12px; }
+}
+
+/* Two-column page */
+.qcsplit { grid-template-columns: minmax(0, 320px) minmax(0, 1fr) !important; }
+@media (max-width: 900px) { .qcsplit { grid-template-columns: 1fr !important; } }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.row:last-child { border-bottom: 0; }
+.row .grow { flex: 1; min-width: 160px; }
+.row .sub { font-size: 12px; color: var(--muted-foreground); }
+
+/* Visit form */
+.seg { display: inline-flex; border: 1px solid var(--input); border-radius: var(--radius); overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 0 14px; min-height: 44px; cursor: pointer; border-right: 1px solid var(--border); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: color-mix(in oklch, var(--primary) 15%, transparent); color: var(--primary-text); font-weight: 600; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.check input { width: 20px; height: 20px; accent-color: var(--primary); }
+select, .field { font: inherit; color: inherit; background: var(--background); border: 1px solid var(--input); border-radius: var(--radius); min-height: 40px; padding: 0 8px; }
+
+/* Phone frame */
+.phones { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 390px; max-width: 100%; border: 1px solid var(--border); border-radius: 28px; padding: 14px; background: var(--background); box-shadow: 0 8px 30px color-mix(in oklch, var(--foreground) 10%, transparent); }
+.phone-bar { display: flex; align-items: center; gap: 8px; padding: 4px 4px 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.phone-bar .name { font-weight: 600; }
+.mcard { border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); background: var(--card); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.mcard .num { font-size: 22px; font-weight: 700; }
+.mcard .acts { display: flex; gap: 8px; }
+.mcard .acts .btn { flex: 1; }
+.mlist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.mtabs { display: flex; border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+.mtabs span { flex: 1; text-align: center; font-size: 12px; color: var(--muted-foreground); padding: 6px 0; }
+.mtabs span.on { color: var(--primary-text); font-weight: 600; }
+.sheet { border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); background: var(--background); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 10px; min-height: 52px; border: 1px solid var(--input); border-radius: var(--radius); padding: 0 12px; background: var(--card); cursor: pointer; text-align: left; width: 100%; }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.kpi { padding: 16px; }
+.kpi .v { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.kpi .l { font-weight: 600; }
+.kpi .c { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--foreground); color: var(--background); padding: 10px 14px; border-radius: var(--radius); font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .jcard, .chip, .tab { transition: background-color .15s, border-color .15s, opacity .15s; } }
+</style>
+<style>
+.ninox { font-size: 11px; border-radius: 4px; padding: 1px 6px; font-weight: 600; white-space: nowrap; }
+.nx-checked { background: oklch(0.93 0.12 100); color: oklch(0.35 0.08 95); }
+.nx-wip { background: oklch(0.88 0.07 235); color: oklch(0.32 0.09 245); }
+.nx-heavy { background: oklch(0.85 0.09 30); color: oklch(0.38 0.12 30); }
+.nx-readyqc { background: oklch(0.88 0.1 150); color: oklch(0.32 0.09 150); }
+.nx-qc { background: oklch(0.8 0.12 150); color: oklch(0.25 0.08 150); }
+.nx-rtg { background: oklch(0.55 0.13 150); color: oklch(0.99 0 0); }
+.nx-unk { background: var(--muted); color: var(--muted-foreground); }
+.src { font-size: 11px; color: var(--muted-foreground); }
+.ask { margin-top: 16px; border-left: 4px solid var(--primary); background: color-mix(in oklch, var(--primary) 8%, var(--background)); padding: 10px 14px; border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; }
+.ask b { display: block; margin-bottom: 4px; }
+.ask ol { margin: 0; padding-left: 18px; }
+.board5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .board5 { grid-template-columns: 1fr; } }
+.issue { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.issue:last-child { border-bottom: 0; }
+.mcols { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.kan { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; align-items: start; }
+@media (max-width: 1000px) { .kan { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .kan { grid-template-columns: 1fr; } }
+</style>
+
+<header class="proto">
+  <div class="proto-in wrap">
+    <div class="proto-title">Validación con datos de hoy<small>Leído de las capturas de Ninox del 26-oct · no es la app en vivo</small></div>
+    <div class="tabs" id="tabs" role="toolbar" aria-label="Pantallas"></div>
+    <span class="spacer"></span>
+    <button class="ghost" id="reset" type="button">Reiniciar</button>
+    <button class="ghost" id="theme" type="button">Tema</button>
+  </div>
+</header>
+<main class="wrap">
+  <section class="screen" id="s-board"></section>
+  <section class="screen" id="s-kanban" hidden></section>
+  <section class="screen" id="s-arrivals" hidden></section>
+  <section class="screen" id="s-mechanics" hidden></section>
+  <section class="screen" id="s-detailing" hidden></section>
+  <section class="screen" id="s-issues" hidden></section>
+  <section class="screen" id="s-pm" hidden></section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+/* Data transcribed from the owner's Ninox screenshots of 2026-10-26 (Kanban, Bay Work, Mechanics Work, Bay Shop 830).
+   Columns cut off in a screenshot are marked unknown, never guessed. */
+const PM_MILES = 40000; // owner, 2026-10-26 (Ninox truck 830 says "Oil change every 30,000": to confirm)
+const SUSPECT_MILES = 120000; // supuesto: more than 3x the interval reads as a data error, not a PM
+const NX = {
+  checked: ['Checked In', 'nx-checked'], wip: ['Work in Progress', 'nx-wip'], heavy: ['Heavy Work No ETA', 'nx-heavy'],
+  readyqc: ['Ready for Q.C.', 'nx-readyqc'], qc: ['Q.C.', 'nx-qc'], rtg: ['Ready To Go', 'nx-rtg'], unk: ['Status not in the screenshot', 'nx-unk'],
+};
+const MECHS = [
+  { key: 'ale1', name: 'Alejandro 1' }, { key: 'daniel', name: 'Daniel', note: 'PM' }, { key: 'ale2', name: 'Alejandro 2' },
+  { key: 'john', name: 'John' }, { key: 'anthony', name: 'Anthony' }, { key: 'elliot', name: 'Elliot' },
+];
+function seed() {
+  const T = {};
+  const put = (n, o) => { T[n] = Object.assign(T[n] || { n, nx: 'unk' }, o); };
+  [[843, 1, 'G2'], [863, 1, 'G1'], [871, 1, 'G2'], [910, 1, 'G2'], [921, 1, 'G1'], [968, null, null]].forEach(([n, d, g]) => put(n, { nx: 'checked', days: d, group: g }));
+  [[828, 15, 'G2'], [836, 8, 'G2'], [903, 8, 'G1']].forEach(([n, d, g]) => put(n, { nx: 'wip', days: d, group: g }));
+  [[277, 29, 'G2', 'Outside'], [823, 7, 'G2'], [830, 25, 'G2'], [832, 47, 'G1'], [834, 35, 'G1'], [857, null, null]].forEach(([n, d, g, loc]) => put(n, { nx: 'heavy', days: d, group: g, loc: loc || '301 Yard' }));
+  [[842, 6, 'G2'], [887, 5, 'G2']].forEach(([n, d, g]) => put(n, { nx: 'readyqc', days: d, group: g }));
+  [[818, 25, 'G2'], [845, 8, 'G2'], [856, 12, 'G1'], [866, 8, 'G2'], [878, 15, 'G1'], [879, null, null]].forEach(([n, d, g]) => put(n, { nx: 'rtg', days: d, group: g }));
+  // Bay Work → "View": truck + miles from last PM (read as: PM / fuel filter pending)
+  [[818, 17426], [830, 543878], [842, 25903], [843, 20324], [845, 29646], [863, 49812], [883, 23761], [905, 35260], [910, 29163], [911, 25256], [921, 29732], [941, 199919], [968, 42380]]
+    .forEach(([n, m]) => put(n, { pm: true, miles: m }));
+  [611, 834, 843, 845, 857, 863, 871, 898, 910, 921, 938, 941, 950, 964, 968].forEach((n) => put(n, { align: true }));
+  [611, 834, 843, 857, 863, 871, 910, 921, 938, 941, 950, 964, 968].forEach((n) => put(n, { detail: true }));
+  put(830, { notes: 'FF', phases: 'PM Pending · Mechanics Pending · Alignment Done · Detail Done · Q.C. Pending', lastPmOdo: 540, odo: 544418, interval: 30000 });
+  put(843, { odo: 653177 });
+  // Mechanics Work: green row with wrench = working
+  const mech = [{ t: 845, who: 'ale1', working: true, since: '1 day 10:19' }, { t: 879, who: 'ale1', working: true, since: '1 day 10:18' }, { t: 834, who: 'anthony', working: false }];
+  const returns = [[906, 'Oct 26', 57478], [907, 'Oct 26', 58383], [927, 'Nov 2', 61751], [954, 'Nov 2', 38825], [961, 'Nov 2', 35744], [899, 'Nov 6', 52981],
+    [912, 'Nov 9', 58760], [915, 'Nov 9', 57430], [932, 'Nov 9', 42124], [937, 'Nov 9', 42909], [959, 'Nov 9', 48530], [962, 'Nov 11', 38137],
+    [909, 'Nov 16', 56291], [975, 'Nov 16', 36584], [933, 'Nov 23', 54204], [960, 'Nov 23', 54806], [905, 'Nov 26', 35260], [969, 'Dec 21', 42774]]
+    .map(([t, day, miles]) => ({ t, day, miles, checkedIn: false }));
+  return { T, mech, returns, detailing: { 857: 'progress' }, done: [], q: '', screen: 'board' };
+}
+let S = seed();
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n) => n == null ? '—' : n.toLocaleString('en-US');
+function toast(m) { const el = $('#toast'); el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
+function nxBadge(t) { const [l, c] = NX[S.T[t]?.nx || 'unk']; return `<span class="ninox ${c}" title="Status in Ninox">${esc(l)}</span>`; }
+/* The owner's rule (2026-10-26): 40,000 mi or more since the last PM → PM (oil + filters); less → fuel filter only. */
+function pmKind(miles) {
+  if (miles == null) return { kind: 'unknown', label: 'Last PM unknown · check', cls: 'b-warn' };
+  if (miles >= SUSPECT_MILES) return { kind: 'check', label: `Check last PM · ${fmt(miles)} mi`, cls: 'b-stop' };
+  if (miles >= PM_MILES) return { kind: 'pm', label: `PM · ${fmt(miles)} mi`, cls: 'b-info' };
+  return { kind: 'ff', label: `Fuel filter · ${fmt(miles)} mi`, cls: 'b-ok' };
+}
+function mechOn(t) { return S.mech.find((m) => m.t === t); }
+
+/* ---------- Board ---------- */
+function card(t, title, sub, badgeHtml, extra = '') {
+  const hl = S.q && String(t).includes(S.q);
+  const dim = S.q && !hl;
+  return `<div class="jcard ${hl ? 'hl' : ''} ${dim ? 'dim' : ''}" role="listitem"><span class="top"><span class="num">${t}</span><span class="spacer" style="flex:1"></span>${nxBadge(t)}</span>
+    <span class="job">${title}</span><span class="meta">${badgeHtml}${sub ? `<span>${sub}</span>` : ''}</span>${extra}</div>`;
+}
+function renderBoard() {
+  const T = S.T; const ids = Object.keys(T).map(Number).sort((a, b) => a - b);
+  const pm = ids.filter((t) => T[t].pm).map((t) => { const k = pmKind(T[t].miles); return { t, k }; })
+    .sort((a, b) => ({ check: 0, pm: 1, ff: 2, unknown: 3 }[a.k.kind] - { check: 0, pm: 1, ff: 2, unknown: 3 }[b.k.kind]));
+  const repairs = S.mech.filter((m) => !S.done.includes(`${m.t}-repairs`)).map((m) => ({ t: m.t, m }));
+  if (T[830] && !repairs.some((r) => r.t === 830)) repairs.push({ t: 830, m: null });
+  const align = ids.filter((t) => T[t].align && !S.done.includes(`${t}-align`));
+  const detail = ids.filter((t) => T[t].detail && !S.done.includes(`${t}-detail`));
+  const qc = ids.filter((t) => T[t].nx === 'readyqc' || T[t].nx === 'qc' || t === 830);
+  const col = (name, n, body, src) => `<div class="col"><div class="col-head"><h2 class="group-title">${name}</h2><span class="count">${n}</span></div><div class="col-body" role="list">${body || '<div class="empty">Nothing</div>'}</div><div class="src" style="padding:0 10px 8px">${src}</div></div>`;
+  const busy = (t) => { const m = mechOn(t); return m && m.working ? MECHS.find((x) => x.key === m.who).name : null; };
+  const withX = (t) => busy(t) ? `<span class="badge b-out">With ${esc(busy(t))}</span>` : `<span class="badge b-info">Available</span>`;
+  $('#s-board').innerHTML = `
+    <div class="app-head"><h1>Shop board · today</h1><span class="live"><i></i>Ninox 26-oct</span><span class="spacer"></span>
+      <label class="search"><input id="q" inputmode="numeric" placeholder="Find truck" value="${esc(S.q)}" aria-label="Find a truck"></label></div>
+    <div class="board board5">
+      ${col('PM / Fuel filter', pm.length, pm.map(({ t, k }) => card(t, k.kind === 'pm' ? 'PM (oil + filters)' : k.kind === 'ff' ? 'Fuel filter only' : 'Check the last PM', '', `<span class="badge ${k.cls}">${esc(k.label)}</span>`)).join(''), 'Bay Work → View (miles from last PM)')}
+      ${col('Repairs', repairs.length, repairs.map(({ t, m }) => card(t, m ? 'Mechanic work' : 'Mechanics Pending', m ? `${esc(MECHS.find((x) => x.key === m.who).name)}${m.since ? ' · ' + esc(m.since) : ''}` : 'Bay Shop phases', m ? `<span class="badge ${m.working ? 'b-info' : 'b-out'}">${m.working ? 'In progress' : 'Taken'}</span>` : '<span class="badge b-info">Available</span>')).join(''), 'Mechanics Work + Bay Shop 830')}
+      ${col('Alignment', align.length, align.map((t) => card(t, 'Alignment / Tires', '', withX(t))).join(''), 'Bay Work → Alignment')}
+      ${col('Detailing', detail.length, detail.map((t) => card(t, 'Detail', '', S.detailing[t] === 'progress' ? '<span class="badge b-info">In progress · tablet</span>' : withX(t))).join(''), 'Bay Work → Detail')}
+      ${col('Quality Check', qc.length, qc.map((t) => card(t, 'Q.C.', '', `<span class="badge ${T[t].nx === 'readyqc' ? 'b-info' : 'b-out'}">${T[t].nx === 'readyqc' ? 'Ready for Safety' : 'Q.C. pending'}</span>`)).join(''), 'Kanban Ready for Q.C. + 830')}
+    </div>
+    <div class="ask"><b>Preguntas para el manager con esta pantalla</b><ol>
+      <li>¿Las listas de Bay Work son lo que falta hacer (pendiente) o lo que ya se hizo? <span class="src">Aquí se leyeron como pendientes.</span></li>
+      <li>¿Esto se parece a cómo piensas el día? ¿Qué columna falta?</li>
+      <li>El 845 sale en PM, Alignment y Repairs, pero en el Kanban dice Ready To Go. ¿Cuál es la verdad?</li>
+      <li>¿El 830 lleva PM o solo Fuel filter? Las notas dicen "FF".</li></ol></div>`;
+}
+
+/* ---------- Kanban by truck (same columns as Ninox) ---------- */
+function renderKanban() {
+  const order = ['checked', 'wip', 'heavy', 'readyqc', 'qc', 'rtg'];
+  const T = S.T;
+  const pending = (t) => [T[t].pm && !S.done.includes(`${t}-pm`) ? pmKind(T[t].miles).kind === 'pm' ? 'PM' : pmKind(T[t].miles).kind === 'ff' ? 'FF' : 'PM?' : null, mechOn(t) ? 'Repair' : null, T[t].align && !S.done.includes(`${t}-align`) ? 'Align' : null, T[t].detail && !S.done.includes(`${t}-detail`) ? 'Detail' : null].filter(Boolean);
+  $('#s-kanban').innerHTML = `
+    <div class="app-head"><h1>By truck</h1><span class="muted">Same columns as Ninox's Kanban, plus what each truck still has pending</span></div>
+    <div class="kan">${order.map((k) => {
+      const ts = Object.keys(T).map(Number).filter((t) => T[t].nx === k);
+      return `<div class="col"><div class="col-head"><span class="ninox ${NX[k][1]}">${NX[k][0]}</span><span class="count">${ts.length}</span></div><div class="col-body">${ts.map((t) => {
+        const p = pending(t); const odd = k === 'rtg' && p.length;
+        return `<div class="jcard ${odd ? 'blocked' : ''}"><span class="top"><span class="num">${t}</span><span class="spacer" style="flex:1"></span><span class="src">${esc(T[t].group || '')}</span></span>
+          <span class="meta">${esc(T[t].loc || '301 Yard')}${T[t].days != null ? ` · ${T[t].days} ${T[t].days === 1 ? 'day' : 'days'} in yard` : ''}</span>
+          <span class="meta">${p.length ? p.map((x) => `<span class="badge b-out">${x}</span>`).join('') : '<span class="badge b-ok">Nothing pending in Bay Work</span>'}</span>
+          ${odd ? '<span class="sub" style="color:var(--warning-foreground)">Ready To Go, but work is pending</span>' : ''}</div>`;
+      }).join('') || '<div class="empty">Empty</div>'}</div></div>`;
+    }).join('')}</div>
+    <div class="why"><b>Qué muestra.</b><ul>
+      <li>Las columnas son los estados del Kanban de Ninox (campo <span class="mono">mechanic_status</span>). La app ya los puede leer de la copia de Ninox en Supabase (ver ninox-hoy.md).</li>
+      <li>Cada tarjeta suma lo que la pizarra dice que falta. En ámbar: Ready To Go con trabajo pendiente.</li>
+      <li>Los camiones cortados en la captura (968, 857, 879) tienen datos incompletos.</li></ul></div>
+    <div class="ask"><b>Preguntas para el manager</b><ol>
+      <li>¿Quién mueve un camión de columna en Ninox, y cuándo?</li>
+      <li>"Heavy Work No ETA": ¿qué significa exactamente? ¿Espera piezas, taller externo, decisión del dueño?</li>
+      <li>¿"Checked In" es cuando llega y entregan las llaves?</li></ol></div>`;
+}
+
+/* ---------- Arrivals ---------- */
+function renderArrivals() {
+  const r = S.returns;
+  $('#s-arrivals').innerHTML = `
+    <div class="app-head"><h1>Arrivals</h1><span class="muted">Bay Work → Return Schedule (expected back) · miles from last PM today</span></div>
+    <div class="card card-pad">${r.map((x, i) => {
+      const k = pmKind(x.miles);
+      return `<div class="row"><span class="num" style="font-size:20px;font-weight:700;min-width:48px">${x.t}</span>
+        <span class="grow"><b>${esc(x.day)}</b>${x.day === 'Oct 26' ? ' <span class="badge b-warn">Today</span>' : ''}<div class="sub">Will need: <span class="badge ${k.cls}">${esc(k.label)}</span>${k.kind === 'ff' && x.miles > PM_MILES - 5000 ? ' <span class="sub">· close to 40,000: it may cross before it arrives</span>' : ''}</div></span>
+        ${x.checkedIn ? '<span class="ninox nx-checked">Checked In · keys at the office</span>' : `<button class="btn sm primary" type="button" data-checkin="${i}"><i data-lucide="key-round"></i>Check in</button>`}</div>`;
+    }).join('')}</div>
+    <div class="why"><b>Qué hace "Check in".</b><ul>
+      <li>Marca que el camión llegó y que las llaves están en la oficina: es el "Checked In" de Ninox.</li>
+      <li>Con eso, el camión aparece en la pizarra con su PM o Fuel filter según las millas (regla de 40,000), más lo que el manager agregue.</li>
+      <li>Las millas son las de hoy. Al llegar serán más, porque sigue manejando hasta su fecha.</li></ul></div>
+    <div class="ask"><b>Preguntas para el manager</b><ol>
+      <li>¿Esta lista (Return Schedule) es la de los camiones que vuelven por fin de contrato?</li>
+      <li>¿Quién hace el Check in y qué revisa en ese momento?</li>
+      <li>¿Las millas desde el último PM que ves aquí son confiables?</li></ol></div>`;
+}
+
+/* ---------- Mechanics now ---------- */
+function renderMechanics() {
+  $('#s-mechanics').innerHTML = `
+    <div class="app-head"><h1>Mechanics now</h1><span class="muted">Ninox → Mechanics Work</span></div>
+    <div class="mcols">${MECHS.map((m) => {
+      const mine = S.mech.filter((x) => x.who === m.key && !S.done.includes(`${x.t}-repairs`));
+      return `<div class="col"><div class="col-head"><h2 class="group-title">${esc(m.name)}</h2><span class="count">${m.note ? esc(m.note) : ''}</span></div><div class="col-body">${mine.map((x) => `<div class="jcard"><span class="top"><span class="num">${x.t}</span><span class="spacer" style="flex:1"></span>${nxBadge(x.t)}</span>
+        <span class="meta"><span class="badge ${x.working ? 'b-info' : 'b-out'}">${x.working ? 'Working' : 'Assigned, not working'}</span>${x.since ? `<span>${esc(x.since)}</span>` : ''}</span>
+        <button class="btn sm" type="button" data-finish="${x.t}"><i data-lucide="check"></i>Complete</button></div>`).join('') || '<div class="empty">Nothing right now</div>'}</div></div>`;
+    }).join('')}</div>
+    <div class="why"><b>Qué se ve.</b><ul>
+      <li>Alejandro 1 aparece trabajando el 845 y el 879 a la vez, y los dos dicen Ready To Go en el Kanban.</li>
+      <li>Anthony tiene el 834 (Heavy Work No ETA, 35 días) asignado, pero no trabajando.</li>
+      <li>En la versión resumida esto sale solo cuando el mecánico toma y completa desde su teléfono. Nadie lo escribe a mano.</li></ul></div>
+    <div class="ask"><b>Preguntas para el manager</b><ol>
+      <li>¿Qué especialidad tiene cada uno (Alejandro 1, Alejandro 2, John, Anthony, Elliot)? ¿Quién hace Alignment?</li>
+      <li>¿Alejandro 1 de verdad está en dos camiones? ¿O quedó abierto en Ninox?</li>
+      <li>¿Quién actualiza hoy esta pantalla de Ninox?</li></ol></div>`;
+}
+
+/* ---------- Detailing tablet (no names; several trucks at once) ---------- */
+function renderDetailing() {
+  const T = S.T;
+  const list = Object.keys(T).map(Number).filter((t) => T[t].detail && !S.done.includes(`${t}-detail`));
+  const prog = list.filter((t) => S.detailing[t] === 'progress');
+  const avail = list.filter((t) => S.detailing[t] !== 'progress');
+  const tile = (t, inprog) => `<div class="mcard"><div style="display:flex;align-items:center;gap:8px"><span class="num">${t}</span><span class="spacer" style="flex:1"></span>${nxBadge(t)}</div>
+    ${inprog ? `<button class="btn primary block" type="button" data-dfinish="${t}"><i data-lucide="check"></i>Finish</button>` : `<button class="btn block" type="button" data-dstart="${t}"><i data-lucide="play"></i>Start</button>`}</div>`;
+  $('#s-detailing').innerHTML = `
+    <div class="app-head"><h1>Detailing</h1><span class="muted">Shared tablet · nobody signs in with their name</span></div>
+    <div class="phones"><div class="phone" style="width:720px">
+      <div class="phone-bar"><span class="name">Detailing</span><span class="muted">tablet</span></div>
+      <h2 class="group-title" style="margin:8px 0">In progress · ${prog.length}</h2><div class="card-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">${prog.map((t) => tile(t, true)).join('') || '<div class="empty">Nothing started</div>'}</div>
+      <h2 class="group-title" style="margin:8px 0">To do · ${avail.length}</h2><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">${avail.map((t) => tile(t, false)).join('')}</div>
+    </div>
+    <div class="why" style="margin-top:0;max-width:420px"><b>Decidido por el dueño (26-oct).</b><ul>
+      <li>No escriben ni eligen su nombre. Solo: qué camión empezaron y cuándo terminaron.</li>
+      <li>Pueden tener varios camiones en curso a la vez.</li>
+      <li>Cualquiera termina lo que empezó otro.</li>
+      <li>Consecuencia: las horas de Detailing quedan a nombre de "Detailing", no de una persona. Para costos sirve igual (horas × tarifa).</li>
+      <li>Cambio en la app: hoy cada persona tiene un solo reloj y solo el dueño completa. Para Detailing hay que permitir varios a la vez en una cuenta de equipo.</li></ul></div></div>`;
+}
+
+/* ---------- Data that does not add up ---------- */
+const ISSUES = [
+  ['845', 'Ready To Go in the Kanban, but it is in the PM and Alignment lists, and Alejandro 1 shows working on it (1 day 10:19).', 'Kanban · Bay Work · Mechanics Work'],
+  ['879', 'Ready To Go in the Kanban, but Alejandro 1 shows working on it (1 day 10:18).', 'Kanban · Mechanics Work'],
+  ['818', 'Ready To Go, but it is in the PM list (17,426 mi → fuel filter).', 'Kanban · Bay Work'],
+  ['830', 'Last PM odometer 540 while the odometer is 544,418, so "miles from last PM" reads 543,878. The last PM odometer is almost surely mistyped.', 'Bay Shop 830'],
+  ['830', 'Ninox says "Oil change every 30,000 miles". The owner said 40,000. Which one is the rule?', 'Bay Shop 830'],
+  ['941', '199,919 miles from the last PM. A data error or a truck that never got a PM?', 'Bay Work'],
+  ['905', 'It is in the PM list (in the yard) and also in Return Schedule for Nov 26 (on the road).', 'Bay Work'],
+  ['834', 'Heavy Work No ETA for 35 days, assigned to Anthony but not being worked.', 'Kanban · Mechanics Work'],
+  ['832', 'Heavy Work No ETA for 47 days: the longest in the yard.', 'Kanban'],
+];
+function renderIssues() {
+  $('#s-issues').innerHTML = `
+    <div class="app-head"><h1>Data that does not add up</h1><span class="muted">${ISSUES.length} found in today's screenshots</span></div>
+    <div class="card card-pad">${ISSUES.map(([t, text, src]) => `<div class="issue"><span class="num" style="font-size:20px;font-weight:700;min-width:48px">${t}</span><span class="grow">${esc(text)}<div class="src">${esc(src)}</div></span></div>`).join('')}</div>
+    <div class="why"><b>Por qué importa.</b><ul>
+      <li>La regla del PM solo se puede automatizar si el "último PM" es confiable. Con el 830 y el 941 la app decidiría mal.</li>
+      <li>En la versión resumida, un camión no queda Ready To Go mientras tenga trabajo abierto: se calcula, no se escribe a mano.</li>
+      <li>Estos casos son buenos para mostrarle al manager por qué cambiar.</li></ul></div>
+    <div class="ask"><b>Preguntas para el manager</b><ol><li>¿Cuál de estos es real y cuál es un dato viejo en Ninox?</li><li>¿Quién corrige los datos del último PM cuando están mal?</li></ol></div>`;
+}
+
+/* ---------- PM rule ---------- */
+function renderPm() {
+  const rows = Object.keys(S.T).map(Number).filter((t) => S.T[t].pm).map((t) => ({ t, miles: S.T[t].miles, k: pmKind(S.T[t].miles) }));
+  const count = (k) => rows.filter((r) => r.k.kind === k).length;
+  $('#s-pm').innerHTML = `
+    <div class="app-head"><h1>PM or fuel filter</h1><span class="muted">Rule: ${fmt(PM_MILES)} mi or more since the last PM → PM; less → fuel filter only</span></div>
+    <div class="kpis" style="margin-bottom:16px">${[['pm', 'PM (oil + filters)'], ['ff', 'Fuel filter only'], ['check', 'Check the last PM']].map(([k, l]) => `<div class="card kpi"><div class="v">${count(k)}</div><div class="l">${l}</div></div>`).join('')}</div>
+    <div class="card card-pad">${rows.map((r) => `<div class="row"><b style="min-width:48px">${r.t}</b><span class="grow sub">${fmt(r.miles)} mi since last PM</span><span class="badge ${r.k.cls}">${esc(r.k.label)}</span></div>`).join('')}</div>
+    <div class="why"><b>De dónde sale cada dato.</b><ul>
+      <li><b>Millas de hoy:</b> Samsara, cada hora, ya conectado en la app.</li>
+      <li><b>Millas del último PM:</b> hoy viven en Ninox (Bay Shop → PM Information: Last PM Odometer y Last PM Date). La copia de Ninox que la app puede leer <b>no</b> las trae. Ver ninox-hoy.md.</li>
+      <li>Cada PM que se cierre en la app guarda su millaje. Desde ahí, la regla queda automática para ese camión.</li>
+      <li>Más de ${fmt(SUSPECT_MILES)} mi se marca "Check": se lee como dato malo, no como PM. Ese límite es un supuesto mío.</li></ul></div>
+    <div class="ask"><b>Preguntas para el manager</b><ol><li>¿40,000 o 30,000 (lo que dice Ninox)?</li><li>¿El fuel filter se cambia siempre que no toca PM, o solo si lo pide el camión?</li><li>¿El Air Dryer Filter va con el PM o aparte?</li></ol></div>`;
+}
+
+const SCREENS = [['board', 'Board today', renderBoard], ['kanban', 'By truck (Ninox Kanban)', renderKanban], ['arrivals', 'Arrivals & Check in', renderArrivals],
+  ['mechanics', 'Mechanics now', renderMechanics], ['detailing', 'Detailing tablet', renderDetailing], ['pm', 'PM or fuel filter', renderPm], ['issues', `Doesn't add up · ${ISSUES.length}`, renderIssues]];
+function render() {
+  $('#tabs').innerHTML = SCREENS.map(([k, l]) => `<button type="button" class="tab" data-go="${k}" aria-pressed="${k === S.screen}">${esc(l)}</button>`).join('');
+  SCREENS.forEach(([k, , fn]) => { const el = $('#s-' + k); el.hidden = k !== S.screen; if (k === S.screen) fn(); });
+  if (window.lucide) lucide.createIcons();
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  if (d.go) { S.screen = d.go; try { history.replaceState(null, '', '#' + d.go); } catch (err) {} render(); window.scrollTo(0, 0); return; }
+  if (d.checkin !== undefined) { const x = S.returns[+d.checkin]; x.checkedIn = true; S.T[x.t] = Object.assign(S.T[x.t] || { n: x.t }, { nx: 'checked', days: 0, group: null, pm: true, miles: x.miles }); toast(`${x.t} checked in. It is on the board with ${pmKind(x.miles).kind === 'pm' ? 'PM' : 'Fuel filter'}.`); return render(); }
+  if (d.finish) { S.done.push(`${d.finish}-repairs`); toast(`Truck ${d.finish}: mechanic work done.`); return render(); }
+  if (d.dstart) { S.detailing[d.dstart] = 'progress'; toast(`Detailing started on ${d.dstart}.`); return render(); }
+  if (d.dfinish) { delete S.detailing[d.dfinish]; S.done.push(`${d.dfinish}-detail`); toast(`Detailing done on ${d.dfinish}.`); return render(); }
+  if (b.id === 'reset') { S = seed(); toast('Back to the screenshots of today.'); return render(); }
+  if (b.id === 'theme') { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; }
+});
+document.addEventListener('input', (e) => { if (e.target.id === 'q') { S.q = e.target.value.replace(/\D/g, ''); const pos = e.target.selectionStart; renderBoard(); const q = $('#q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (err) {} } });
+const h = location.hash.slice(1); if (SCREENS.some(([k]) => k === h)) S.screen = h;
+render();
+</script>
