@@ -23,7 +23,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 - ¿OK para crear el Epic y los issues en Linear?
 - ¿Cuándo es cada conversación?
 
-## Shop Manager (~40 min)
+## Shop Manager (~45 min)
 
 **Primero, sin mostrar nada:** Cuéntame cómo fue ayer, desde que llegaste hasta que te fuiste. ¿Qué es lo que más tiempo te quita?
 
@@ -81,19 +81,29 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 **PM o Fuel filter** — _Pantalla "PM or fuel filter"._
 
-22. ★ ¿Con cuántas millas desde el último PM toca PM (aceite y filtros): 40,000 o 30,000? Ninox dice 30,000 en el 830. [P57]
+22. ¿Así es la regla: menos de 30,000 millas solo Fuel filter; entre 30,000 y 40,000 es un aviso y tú decides; con 40,000 o más, PM? [P57]
 
-23. Si no toca PM, ¿siempre se cambia el Fuel filter? ¿El Air Dryer Filter va con el PM o aparte? [P57]
+23. ★ Entre 30,000 y 40,000, ¿qué miras para decidir si haces el PM? ¿Cuánto le falta para 40,000? ¿Cuánto tiempo va a estar en la ruta? ¿Cuántas millas hace por semana? [P57]
 
-24. ★ ¿Las millas desde el último PM de Ninox son confiables? El 830 dice que el último PM fue con 540 millas. ¿Quién corrige esos datos? [P58]
+24. ¿Quién decide en esa zona: tú, Daniel u otra persona? [P57]
 
-25. ¿Se puede sacar de Ninox una lista con el odómetro y la fecha del último PM de cada camión? [P58]
+25. Mira el 905 (35,260 millas): ¿le harías PM o solo Fuel filter? ¿Por qué? [P57]
+
+26. Si en esa zona decides no hacer el PM, ¿se cambia el Fuel filter? ¿Y debajo de 30,000, siempre? [P57]
+
+27. ¿Te serviría que la app te diga "le faltan 4,740 millas, unas X semanas de ruta" para decidir? [P57]
+
+28. ¿El Air Dryer Filter va con el PM o aparte? [P57]
+
+29. ★ ¿Las millas desde el último PM de Ninox son confiables? El 830 dice que el último PM fue con 540 millas. ¿Quién corrige esos datos? [P58]
+
+30. ¿Se puede sacar de Ninox una lista con el odómetro y la fecha del último PM de cada camión? [P58]
 
 **El día**
 
-26. ¿Planeas el trabajo en la mañana o la noche anterior?
+31. ¿Planeas el trabajo en la mañana o la noche anterior?
 
-27. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
+32. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
 
 ## Safety (~15 min · las dos personas si se puede)
 
@@ -121,13 +131,15 @@ _Muestra la pantalla Quality Check._
 
 2. ★ ¿Quién aprueba qué trabajos lleva cada tipo de visita (fin de contrato, de paso)? [C1]
 
-3. Cuando un trabajo que normalmente se hace no se hace, ¿necesitas saber quién lo decidió y por qué? [C3]
+3. El PM es obligatorio a las 40,000 millas, con aviso desde 30,000. ¿Ese intervalo lo pone el fabricante, el seguro o la empresa? ¿Se puede pasar de 40,000 si el camión está en la ruta? [P57]
+
+4. Cuando un trabajo que normalmente se hace no se hace, ¿necesitas saber quién lo decidió y por qué? [C3]
 
 _Muestra la pantalla Shop today._
 
-4. ¿Estos 7 números te dicen lo que necesitas? ¿Cuál sobra y cuál falta?
+5. ¿Estos 7 números te dicen lo que necesitas? ¿Cuál sobra y cuál falta?
 
-5. ★ Las horas de cada mecánico se cobran a Finanzas. ¿El tiempo debe contar desde que toma el trabajo, aunque vaya primero por las llaves? (En Detailing ya se decidió: las horas quedan a nombre de "Detailing", sin persona.) [P47]
+6. ★ Las horas de cada mecánico se cobran a Finanzas. ¿El tiempo debe contar desde que toma el trabajo, aunque vaya primero por las llaves? (En Detailing ya se decidió: las horas quedan a nombre de "Detailing", sin persona.) [P47]
 
 ## Mecánico general (~10 min)
 

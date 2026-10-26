@@ -226,7 +226,8 @@ select, .field { font: inherit; color: inherit; background: var(--background); b
 <script>
 /* Data transcribed from the owner's Ninox screenshots of 2026-10-26 (Kanban, Bay Work, Mechanics Work, Bay Shop 830).
    Columns cut off in a screenshot are marked unknown, never guessed. */
-const PM_MILES = 40000; // owner, 2026-10-26 (Ninox truck 830 says "Oil change every 30,000": to confirm)
+const PM_MILES = 40000; // owner, 2026-10-26: PM is due
+const WARN_MILES = 30000; // owner, 2026-10-26: the warning; from here the Manager decides by how close it is to 40,000
 const SUSPECT_MILES = 120000; // supuesto: more than 3x the interval reads as a data error, not a PM
 const NX = {
   checked: ['Checked In', 'nx-checked'], wip: ['Work in Progress', 'nx-wip'], heavy: ['Heavy Work No ETA', 'nx-heavy'],
@@ -265,11 +266,12 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const fmt = (n) => n == null ? '—' : n.toLocaleString('en-US');
 function toast(m) { const el = $('#toast'); el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
 function nxBadge(t) { const [l, c] = NX[S.T[t]?.nx || 'unk']; return `<span class="ninox ${c}" title="Status in Ninox">${esc(l)}</span>`; }
-/* The owner's rule (2026-10-26): 40,000 mi or more since the last PM → PM (oil + filters); less → fuel filter only. */
+/* The owner's rule (2026-10-26): under 30,000 → fuel filter only; 30,000 to 40,000 → warning, the Manager decides by how close it is; 40,000 or more → PM (oil + filters). */
 function pmKind(miles) {
   if (miles == null) return { kind: 'unknown', label: 'Last PM unknown · check', cls: 'b-warn' };
   if (miles >= SUSPECT_MILES) return { kind: 'check', label: `Check last PM · ${fmt(miles)} mi`, cls: 'b-stop' };
   if (miles >= PM_MILES) return { kind: 'pm', label: `PM · ${fmt(miles)} mi`, cls: 'b-info' };
+  if (miles >= WARN_MILES) return { kind: 'decide', label: `Decide PM · ${fmt(miles)} mi · ${fmt(PM_MILES - miles)} to 40,000`, cls: 'b-warn' };
   return { kind: 'ff', label: `Fuel filter · ${fmt(miles)} mi`, cls: 'b-ok' };
 }
 function mechOn(t) { return S.mech.find((m) => m.t === t); }
@@ -284,7 +286,7 @@ function card(t, title, sub, badgeHtml, extra = '') {
 function renderBoard() {
   const T = S.T; const ids = Object.keys(T).map(Number).sort((a, b) => a - b);
   const pm = ids.filter((t) => T[t].pm).map((t) => { const k = pmKind(T[t].miles); return { t, k }; })
-    .sort((a, b) => ({ check: 0, pm: 1, ff: 2, unknown: 3 }[a.k.kind] - { check: 0, pm: 1, ff: 2, unknown: 3 }[b.k.kind]));
+    .sort((a, b) => ({ check: 0, pm: 1, decide: 2, ff: 3, unknown: 4 }[a.k.kind] - { check: 0, pm: 1, decide: 2, ff: 3, unknown: 4 }[b.k.kind]));
   const repairs = S.mech.filter((m) => !S.done.includes(`${m.t}-repairs`)).map((m) => ({ t: m.t, m }));
   if (T[830] && !repairs.some((r) => r.t === 830)) repairs.push({ t: 830, m: null });
   const align = ids.filter((t) => T[t].align && !S.done.includes(`${t}-align`));
@@ -297,7 +299,7 @@ function renderBoard() {
     <div class="app-head"><h1>Shop board · today</h1><span class="live"><i></i>Ninox 26-oct</span><span class="spacer"></span>
       <label class="search"><input id="q" inputmode="numeric" placeholder="Find truck" value="${esc(S.q)}" aria-label="Find a truck"></label></div>
     <div class="board board5">
-      ${col('PM / Fuel filter', pm.length, pm.map(({ t, k }) => card(t, k.kind === 'pm' ? 'PM (oil + filters)' : k.kind === 'ff' ? 'Fuel filter only' : 'Check the last PM', '', `<span class="badge ${k.cls}">${esc(k.label)}</span>`)).join(''), 'Bay Work → View (miles from last PM)')}
+      ${col('PM / Fuel filter', pm.length, pm.map(({ t, k }) => card(t, k.kind === 'pm' ? 'PM (oil + filters)' : k.kind === 'decide' ? 'PM or fuel filter? You decide' : k.kind === 'ff' ? 'Fuel filter only' : 'Check the last PM', '', `<span class="badge ${k.cls}">${esc(k.label)}</span>`)).join(''), 'Bay Work → View (miles from last PM)')}
       ${col('Repairs', repairs.length, repairs.map(({ t, m }) => card(t, m ? 'Mechanic work' : 'Mechanics Pending', m ? `${esc(MECHS.find((x) => x.key === m.who).name)}${m.since ? ' · ' + esc(m.since) : ''}` : 'Bay Shop phases', m ? `<span class="badge ${m.working ? 'b-info' : 'b-out'}">${m.working ? 'In progress' : 'Taken'}</span>` : '<span class="badge b-info">Available</span>')).join(''), 'Mechanics Work + Bay Shop 830')}
       ${col('Alignment', align.length, align.map((t) => card(t, 'Alignment / Tires', '', withX(t))).join(''), 'Bay Work → Alignment')}
       ${col('Detailing', detail.length, detail.map((t) => card(t, 'Detail', '', S.detailing[t] === 'progress' ? '<span class="badge b-info">In progress · tablet</span>' : withX(t))).join(''), 'Bay Work → Detail')}
@@ -307,14 +309,14 @@ function renderBoard() {
       <li>¿Las listas de Bay Work son lo que falta hacer (pendiente) o lo que ya se hizo? <span class="src">Aquí se leyeron como pendientes.</span></li>
       <li>¿Esto se parece a cómo piensas el día? ¿Qué columna falta?</li>
       <li>El 845 sale en PM, Alignment y Repairs, pero en el Kanban dice Ready To Go. ¿Cuál es la verdad?</li>
-      <li>¿El 830 lleva PM o solo Fuel filter? Las notas dicen "FF".</li></ol></div>`;
+      <li>¿El 830 lleva PM o solo Fuel filter? Las notas dicen "FF".</li><li>El 905 tiene 35,260 millas: está en la zona de aviso. ¿Le haces PM o fuel filter, y por qué?</li></ol></div>`;
 }
 
 /* ---------- Kanban by truck (same columns as Ninox) ---------- */
 function renderKanban() {
   const order = ['checked', 'wip', 'heavy', 'readyqc', 'qc', 'rtg'];
   const T = S.T;
-  const pending = (t) => [T[t].pm && !S.done.includes(`${t}-pm`) ? pmKind(T[t].miles).kind === 'pm' ? 'PM' : pmKind(T[t].miles).kind === 'ff' ? 'FF' : 'PM?' : null, mechOn(t) ? 'Repair' : null, T[t].align && !S.done.includes(`${t}-align`) ? 'Align' : null, T[t].detail && !S.done.includes(`${t}-detail`) ? 'Detail' : null].filter(Boolean);
+  const pending = (t) => [T[t].pm && !S.done.includes(`${t}-pm`) ? pmKind(T[t].miles).kind === 'pm' ? 'PM' : pmKind(T[t].miles).kind === 'ff' ? 'FF' : pmKind(T[t].miles).kind === 'decide' ? 'PM or FF?' : 'Check PM' : null, mechOn(t) ? 'Repair' : null, T[t].align && !S.done.includes(`${t}-align`) ? 'Align' : null, T[t].detail && !S.done.includes(`${t}-detail`) ? 'Detail' : null].filter(Boolean);
   $('#s-kanban').innerHTML = `
     <div class="app-head"><h1>By truck</h1><span class="muted">Same columns as Ninox's Kanban, plus what each truck still has pending</span></div>
     <div class="kan">${order.map((k) => {
@@ -345,7 +347,7 @@ function renderArrivals() {
     <div class="card card-pad">${r.map((x, i) => {
       const k = pmKind(x.miles);
       return `<div class="row"><span class="num" style="font-size:20px;font-weight:700;min-width:48px">${x.t}</span>
-        <span class="grow"><b>${esc(x.day)}</b>${x.day === 'Oct 26' ? ' <span class="badge b-warn">Today</span>' : ''}<div class="sub">Will need: <span class="badge ${k.cls}">${esc(k.label)}</span>${k.kind === 'ff' && x.miles > PM_MILES - 5000 ? ' <span class="sub">· close to 40,000: it may cross before it arrives</span>' : ''}</div></span>
+        <span class="grow"><b>${esc(x.day)}</b>${x.day === 'Oct 26' ? ' <span class="badge b-warn">Today</span>' : ''}<div class="sub">Will need: <span class="badge ${k.cls}">${esc(k.label)}</span>${k.kind === 'decide' ? ' <span class="sub">· it keeps driving until it arrives: it may cross 40,000</span>' : ''}</div></span>
         ${x.checkedIn ? '<span class="ninox nx-checked">Checked In · keys at the office</span>' : `<button class="btn sm primary" type="button" data-checkin="${i}"><i data-lucide="key-round"></i>Check in</button>`}</div>`;
     }).join('')}</div>
     <div class="why"><b>Qué hace "Check in".</b><ul>
@@ -407,7 +409,6 @@ const ISSUES = [
   ['879', 'Ready To Go in the Kanban, but Alejandro 1 shows working on it (1 day 10:18).', 'Kanban · Mechanics Work'],
   ['818', 'Ready To Go, but it is in the PM list (17,426 mi → fuel filter).', 'Kanban · Bay Work'],
   ['830', 'Last PM odometer 540 while the odometer is 544,418, so "miles from last PM" reads 543,878. The last PM odometer is almost surely mistyped.', 'Bay Shop 830'],
-  ['830', 'Ninox says "Oil change every 30,000 miles". The owner said 40,000. Which one is the rule?', 'Bay Shop 830'],
   ['941', '199,919 miles from the last PM. A data error or a truck that never got a PM?', 'Bay Work'],
   ['905', 'It is in the PM list (in the yard) and also in Return Schedule for Nov 26 (on the road).', 'Bay Work'],
   ['834', 'Heavy Work No ETA for 35 days, assigned to Anthony but not being worked.', 'Kanban · Mechanics Work'],
@@ -429,15 +430,16 @@ function renderPm() {
   const rows = Object.keys(S.T).map(Number).filter((t) => S.T[t].pm).map((t) => ({ t, miles: S.T[t].miles, k: pmKind(S.T[t].miles) }));
   const count = (k) => rows.filter((r) => r.k.kind === k).length;
   $('#s-pm').innerHTML = `
-    <div class="app-head"><h1>PM or fuel filter</h1><span class="muted">Rule: ${fmt(PM_MILES)} mi or more since the last PM → PM; less → fuel filter only</span></div>
-    <div class="kpis" style="margin-bottom:16px">${[['pm', 'PM (oil + filters)'], ['ff', 'Fuel filter only'], ['check', 'Check the last PM']].map(([k, l]) => `<div class="card kpi"><div class="v">${count(k)}</div><div class="l">${l}</div></div>`).join('')}</div>
+    <div class="app-head"><h1>PM or fuel filter</h1><span class="muted">Since the last PM: under ${fmt(WARN_MILES)} → fuel filter · ${fmt(WARN_MILES)}–${fmt(PM_MILES)} → you decide · ${fmt(PM_MILES)}+ → PM</span></div>
+    <div class="kpis" style="margin-bottom:16px">${[['pm', 'PM (oil + filters)'], ['decide', 'You decide (30–40k)'], ['ff', 'Fuel filter only'], ['check', 'Check the last PM']].map(([k, l]) => `<div class="card kpi"><div class="v">${count(k)}</div><div class="l">${l}</div></div>`).join('')}</div>
     <div class="card card-pad">${rows.map((r) => `<div class="row"><b style="min-width:48px">${r.t}</b><span class="grow sub">${fmt(r.miles)} mi since last PM</span><span class="badge ${r.k.cls}">${esc(r.k.label)}</span></div>`).join('')}</div>
     <div class="why"><b>De dónde sale cada dato.</b><ul>
       <li><b>Millas de hoy:</b> Samsara, cada hora, ya conectado en la app.</li>
       <li><b>Millas del último PM:</b> hoy viven en Ninox (Bay Shop → PM Information: Last PM Odometer y Last PM Date). La copia de Ninox que la app puede leer <b>no</b> las trae. Ver ninox-hoy.md.</li>
       <li>Cada PM que se cierre en la app guarda su millaje. Desde ahí, la regla queda automática para ese camión.</li>
+      <li>Entre ${fmt(WARN_MILES)} y ${fmt(PM_MILES)} es el aviso: la app no decide, muestra cuánto le falta para ${fmt(PM_MILES)} y el manager elige PM o fuel filter (dueño, 26-oct).</li>
       <li>Más de ${fmt(SUSPECT_MILES)} mi se marca "Check": se lee como dato malo, no como PM. Ese límite es un supuesto mío.</li></ul></div>
-    <div class="ask"><b>Preguntas para el manager</b><ol><li>¿40,000 o 30,000 (lo que dice Ninox)?</li><li>¿El fuel filter se cambia siempre que no toca PM, o solo si lo pide el camión?</li><li>¿El Air Dryer Filter va con el PM o aparte?</li></ol></div>`;
+    <div class="ask"><b>Preguntas para el manager</b><ol><li>Entre 30,000 y 40,000, ¿qué miras para decidir? ¿Cuánto le falta, cuánto va a estar en la ruta?</li><li>¿Quién decide en esa zona?</li><li>Si no haces el PM, ¿se cambia el fuel filter?</li><li>¿El Air Dryer Filter va con el PM o aparte?</li></ol></div>`;
 }
 
 const SCREENS = [['board', 'Board today', renderBoard], ['kanban', 'By truck (Ninox Kanban)', renderKanban], ['arrivals', 'Arrivals & Check in', renderArrivals],
@@ -450,7 +452,7 @@ function render() {
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
   if (d.go) { S.screen = d.go; try { history.replaceState(null, '', '#' + d.go); } catch (err) {} render(); window.scrollTo(0, 0); return; }
-  if (d.checkin !== undefined) { const x = S.returns[+d.checkin]; x.checkedIn = true; S.T[x.t] = Object.assign(S.T[x.t] || { n: x.t }, { nx: 'checked', days: 0, group: null, pm: true, miles: x.miles }); toast(`${x.t} checked in. It is on the board with ${pmKind(x.miles).kind === 'pm' ? 'PM' : 'Fuel filter'}.`); return render(); }
+  if (d.checkin !== undefined) { const x = S.returns[+d.checkin]; x.checkedIn = true; S.T[x.t] = Object.assign(S.T[x.t] || { n: x.t }, { nx: 'checked', days: 0, group: null, pm: true, miles: x.miles }); toast(`${x.t} checked in. It is on the board: ${pmKind(x.miles).kind === 'pm' ? 'PM' : pmKind(x.miles).kind === 'decide' ? 'decide PM or fuel filter' : 'fuel filter'}.`); return render(); }
   if (d.finish) { S.done.push(`${d.finish}-repairs`); toast(`Truck ${d.finish}: mechanic work done.`); return render(); }
   if (d.dstart) { S.detailing[d.dstart] = 'progress'; toast(`Detailing started on ${d.dstart}.`); return render(); }
   if (d.dfinish) { delete S.detailing[d.dfinish]; S.done.push(`${d.dfinish}-detail`); toast(`Detailing done on ${d.dfinish}.`); return render(); }

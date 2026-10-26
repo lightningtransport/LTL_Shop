@@ -98,7 +98,13 @@ capturas a mano, y lo que la captura corta no se inventa.
 
 ## 3. La regla PM / Fuel filter
 
-**La regla (dueño):** millas desde el último PM ≥ 40,000 → **PM**; menos → **Fuel filter**.
+**La regla (dueño, precisada el mismo día):**
+
+| Millas desde el último PM | Qué toca |
+|---|---|
+| Menos de 30,000 | **Fuel filter** solo |
+| 30,000 a 39,999 | **Aviso**: el manager decide PM o Fuel filter según lo cerca que esté de 40,000. La app no decide; muestra cuánto le falta |
+| 40,000 o más | **PM** (aceite y filtros) |
 
 **Qué hace falta para que sea automática:**
 1. **Millas de hoy:** Samsara ✅ (cada hora, D35).
@@ -118,15 +124,16 @@ capturas a mano, y lo que la captura corta no se inventa.
    - La app no puede decidir con esos datos. Propuesta ⚠️: más de 120,000 millas se marca **"Check
      the last PM"** y el manager decide.
    - El límite de 120,000 es mío; hay que validarlo.
-4. **Contradicción:** Ninox dice "Oil change every (miles) 30,000" en el 830, y el dueño dijo 40,000.
-   Hay que confirmarlo (P57).
+4. **El 30,000 de Ninox** ("Oil change every (miles) 30,000" en el 830) es el aviso, no el intervalo
+   (dueño, 26-oct). Falta saber qué mira el manager para decidir entre 30,000 y 40,000 (P57).
 
 **Cómo se ve:** en la pizarra, la columna PM dice "PM · 49,812 mi", "Fuel filter · 17,426 mi" o
 "Check the last PM". En Arrivals, al hacer Check in, el camión entra con lo que le toca.
 
 **Con los datos de hoy** (lista View de Bay Work, 13 camiones):
 - **PM:** 2 (863 y 968).
-- **Fuel filter:** 9.
+- **Decide (30,000–40,000):** 1 (905, 35,260).
+- **Fuel filter:** 8.
 - **Check the last PM:** 2 (830 y 941).
 
 ---
@@ -138,7 +145,7 @@ capturas a mano, y lo que la captura corta no se inventa.
 | 845 | Ready To Go en el Kanban, pero está en las listas de PM y Alignment, y Alejandro 1 aparece trabajándolo | Kanban · Bay Work · Mechanics Work |
 | 879 | Ready To Go, pero Alejandro 1 aparece trabajándolo | Kanban · Mechanics Work |
 | 818 | Ready To Go, pero está en la lista de PM | Kanban · Bay Work |
-| 830 | Último PM con odómetro 540; Ninox dice cada 30,000 | Bay Shop |
+| 830 | Último PM con odómetro 540 | Bay Shop |
 | 941 | 199,919 millas desde el último PM | Bay Work |
 | 905 | En la lista de PM (en la yard) y en Return Schedule para el 26 de noviembre (en la ruta) | Bay Work |
 | 834 | Heavy Work No ETA hace 35 días; asignado a Anthony, pero sin trabajar | Kanban · Mechanics Work |
@@ -164,7 +171,7 @@ toque.
 
 | # | Pregunta |
 |---|---|
-| P57 | ¿El intervalo del PM es 40,000 (dueño) o 30,000 (Ninox, "Oil change every")? ¿El Air Dryer Filter va con el PM? |
+| P57 | Entre 30,000 y 40,000, ¿qué mira el manager para decidir y quién decide? ¿El Fuel filter se cambia siempre que no hay PM? ¿El Air Dryer Filter va con el PM? |
 | P58 | ¿De dónde sale el millaje del último PM: pedirlo a la copia de Ninox (a), cargarlo una vez de un export (b) o que la app lo aprenda (c)? Recomendación: b + c |
 | — | Las listas de Bay Work, ¿son pendientes o hechas? (página de validación, pantalla Board) |
 | — | ¿Qué significa "Heavy Work No ETA" y quién mueve los estados del Kanban? |

@@ -166,4 +166,4 @@ Ya están en la [hoja de preguntas](preguntas-validacion.md):
 - P50–P52: la tablet de Detailing. Cerradas por el dueño el 26-oct (sin nombres, varios a la vez, cualquiera termina).
 - P44: ¿todo lo sin dueño va a la cola? Shop Manager 12.
 - Los motivos de bloqueo: mecánicos 3.
-- Las llaves: mecánico general 4, detailer 5, Shop Manager 27.
+- Las llaves: mecánico general 4, detailer 5, Shop Manager 32.

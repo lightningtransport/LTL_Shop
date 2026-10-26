@@ -21,3 +21,5 @@ estado: pasada a P50–P52 (cerradas), P57, P58 (propuesta rediseno-pizarra, nin
   - Hay que mostrar los mismos datos y opciones donde corresponda: el Check in, los estados del
     Kanban, el trabajo de los mecánicos.
   - Validar con el manager con la información del día.
+- **Precisión del dueño (mismo día):** 30,000 millas es el aviso; ahí se decide si se hace o no el PM
+  según lo cerca que esté de 40,000.
