@@ -429,7 +429,7 @@ entre paréntesis, optimista y pesimista.
 |---|---|---|---|---|
 | **RP-0** Validar el boceto con el Shop Manager y 2 mecánicos; ajustar | — | 1–2 | No | Sábado tarde |
 | **RP-1** Visita con lo que aplica + QC To decide / Not required | HU-RD2, RD3, RD12 | 10 (7–16) | No | Sábado noche |
-| **RP-2** Todo disponible + Take = empezar + pantalla del mecánico | HU-RD7, RD8, RD9 | 11 (8–17) | No | Domingo mañana |
+| **RP-2** Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | No | Domingo mañana |
 | **RP-3** Board como inicio del Manager + "Needs your decision" + menú More | HU-RD1, (RD6) | 10 (8–16) | No | Domingo tarde |
 | **RP-4** Camión: checklist de liberación + Release truck | HU-RD4 | 5 (4–8) | No | Lunes si sobra; si no, después |
 | **RP-5** Arrivals con `returns` y tipo propuesto | HU-RD5 | 5 (4–8) | No | Semana del 26 |
@@ -459,6 +459,29 @@ revisión del dueño. Recomiendo:
 | P49 | ¿Las columnas son PM · Repairs · Alignment · Detailing, con Inspection y QC a los lados? | Validar con el Shop Manager |
 
 ---
+
+## 9. Validación: mecánicos (dueño, 2026-10-26)
+
+Lo que dijo el dueño (nota [`2026-10-26-mecanicos-tablet-detailing`](../../notas/2026-10-26-mecanicos-tablet-detailing.md)),
+contrastado con el rediseño y con el código de hoy.
+
+| Lo que dijo | ¿Encaja con el rediseño? | Qué choca con el código de hoy | Cambio | Horas |
+|---|---|---|---|---|
+| **Los detailers usan una tablet** | Sí. Las pantallas de mecánico ya usan el ancho del iPad (D54, LTR-271). La tablet muestra la columna Detailing: Available arriba, In progress abajo | Una tablet compartida necesita una sesión que no expire a mitad del día y que no pida cambiar la contraseña a cada rato (D22) | Cuenta de tablet de Detailing; PWA instalada (ya existe) | 1–2 |
+| **No importa quién inicie** | Sí. El trabajo es del **equipo** Detailing, no de una persona. Ya existe la cola del equipo (D28) | **1.** Hoy solo el dueño del Job lo completa o lo bloquea (`work-orders.service.ts:1303`, `:613`). **2.** Un reloj por persona (D21): con una sola cuenta, empezar un segundo camión cierra el primero (P51). **3.** Saber quién lo hizo y sus horas (D18, D34) se pierde con una cuenta compartida (P50) | "Trabajo de equipo" solo para Detailing: cualquiera del equipo empieza, bloquea y completa. Con P50 = nombre con un toque, cada uno conserva sus horas | 5–7 |
+| **Dos detailers en el mismo camión** | Sí, sin el "ayudante" (D23): el trabajo es del equipo | Un camión a la vez (D57 §3) no frena a otro del mismo equipo en el mismo Job | Tratar al equipo como un solo dueño en `truckBusyFor` | incluido |
+| **El PM sigue igual** | Sí. Su pantalla no cambia (Waiting for PM → Start PM → millaje → partes → Finish). Start PM ya toma y empieza en un toque, el mismo modelo que "Take job" (P47). La columna PM de la pizarra lee esos Jobs | "Create PM service" en un camión sin visita hoy crea la WO con los 4 pasos obligatorios (`work-orders.service.ts`, `createOrJoinPm`). Con plantillas, nacería un camión con Alignment y Detailing que nadie pidió (P53) | Ese caso abre una visita "Other" solo con el PM y QC "To decide" | 2 |
+| **El PM y las llaves** | Al terminar el PM no se pregunta por las llaves, para que su pantalla quede igual | — | Ninguno. Si se quiere, se agrega después como una pregunta opcional en Finish | 0 |
+
+**Conclusión:** encaja. Hay que cambiar dos reglas para Detailing (dueño del Job y reloj por
+persona) y una para el PM (qué nace sin visita). Todo es API y pantalla, sin migración si P50 es
+"nombre con un toque" usando las personas que ya existen. Suma **8–11 h** a RP-2.
+
+**En el boceto:** "My work" con Daniel dice que el PM conserva su pantalla; "Detailing" es la tablet
+compartida y la pizarra dice "With Detailing" en el 918.
+
+**Pendiente:** el task flow de un día de mecánico (general, Detailing en tablet y PM), igual al del
+Manager.
 
 ## 8. Lo que no se toca
 

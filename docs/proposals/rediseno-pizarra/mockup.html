@@ -221,8 +221,8 @@ const COLS = [
 const PEOPLE = {
   anthony: { name: 'Anthony', ini: 'AN', trade: ['repairs'], role: 'General mechanic' },
   luis: { name: 'Luis', ini: 'LU', trade: ['alignment', 'repairs'], role: 'Alignment' },
-  daniel: { name: 'Daniel', ini: 'DA', trade: ['pm'], role: 'PM' },
-  mike: { name: 'Mike', ini: 'MI', trade: ['detailing'], role: 'Detailing' },
+  daniel: { name: 'Daniel', ini: 'DA', trade: ['pm'], role: 'PM · same screen as today' },
+  mike: { name: 'Detailing', ini: 'DT', trade: ['detailing'], role: 'Shared tablet' },
 };
 const BLOCK_REASONS = ['Waiting for parts', 'Waiting for approval', 'Waiting for the truck', 'Other'];
 
@@ -232,7 +232,7 @@ function seed() {
       901: { visit: 'End of contract', star: true, leaves: 'Leaves Tue', qc: 'required', keys: 'With Daniel', since: 'Fri' },
       705: { visit: 'Passing through', star: false, qc: 'not_required', qcWhy: 'Passing through · filter only', keys: 'Office', since: 'Today 8:10' },
       804: { visit: 'End of contract', star: true, qc: 'failed', qcNote: 'Air leak at rear chamber', keys: 'In truck', since: 'Wed' },
-      918: { visit: 'Other', star: false, qc: 'to_decide', keys: 'With Mike', since: 'Thu' },
+      918: { visit: 'Other', star: false, qc: 'to_decide', keys: 'Detailing tablet', since: 'Thu' },
       944: { visit: 'End of contract', star: false, qc: 'required', keys: 'Office', since: 'Today 7:40' },
     },
     jobs: [
@@ -372,7 +372,7 @@ function renderBoard() {
     <div class="why"><b>Por qué así (HU-RD1, HU-RD6).</b><ul>
       <li>Una tarjeta = un trabajo. El 901 sale en PM, Repairs, Alignment, Detailing y QC, como en la pizarra física.</li>
       <li>★ = prioridad High/Critical (el asterisco de la pizarra). Blocked va arriba y en ámbar con el motivo.</li>
-      <li>"With Mike": el camión 918 lo tiene otro mecánico (D57 §3, un camión a la vez). Se ve, pero no se puede tomar (P48).</li>
+      <li>"With Detailing": el camión 918 lo tiene el equipo de Detailing (D57 §3, un camión a la vez). Se ve, pero no se puede tomar (P48).</li>
       <li>"Needs your decision" reemplaza la cola del Dashboard: el Manager ve excepciones, no registros. Cada número filtra la pizarra.</li>
       <li>Lo terminado hoy queda tachado y plegado al pie de su columna. Buscar "901" resalta todas sus tarjetas.</li>
       <li>Toca una tarjeta para abrir el camión. "By truck" conserva el tablero de hoy.</li></ul></div>`;
@@ -495,6 +495,13 @@ function renderTruck() {
 /* ---------- Mechanic ---------- */
 function renderMech() {
   const me = S.mech; const p = PEOPLE[me];
+  if (me === 'daniel') {
+    $('#s-mech').innerHTML = `<div class="app-head"><h1>My work</h1><span class="spacer"></span><label class="muted" for="mpick">Signed in as</label><select id="mpick">${Object.keys(PEOPLE).map((k) => `<option value="${k}" ${k === me ? 'selected' : ''}>${PEOPLE[k].name} · ${PEOPLE[k].role}</option>`).join('')}</select></div>
+      <div class="card card-pad" style="max-width:640px"><h2 class="section-title">The PM mechanic keeps today's screen</h2>
+      <div class="sub">Waiting for PM (priority ★ first) → Start PM → mileage → parts → Finish. Start PM already takes and starts in one tap, the same model as "Take job". The PM column of the board reads these Jobs.</div></div>
+      <div class="why"><b>Validado con el dueño (2026-10-26).</b><ul><li>El PM no cambia (D2, D10, PM rediseñado en PR 262).</li><li>Abierto: si Daniel crea un PM en un camión sin visita, ¿qué tipo de visita nace? (P53)</li></ul></div>`;
+    return;
+  }
   const mine = S.jobs.filter((j) => j.who === me).sort((a, b) => (a.st === 'progress' ? -1 : 0) - (b.st === 'progress' ? -1 : 0));
   const avail = S.jobs.filter((j) => j.st === 'available' && p.trade.includes(j.col)).sort((a, b) => (S.trucks[b.t]?.star ? 1 : 0) - (S.trucks[a.t]?.star ? 1 : 0));
   const sheet = S.sheet;
@@ -529,7 +536,7 @@ function renderMech() {
       <li>Si dos tocan a la vez gana el primero (ya es así en el API). El otro ve "Someone just took it".</li>
       <li>Blocked son 4 opciones grandes, sin select. Solo el Manager resuelve (D17).</li>
       <li>Al completar: "¿dónde quedan las llaves?", un toque. Completar no devuelve las llaves solo.</li>
-      <li>Cambia de mecánico arriba: Luis ve Alignment y Repairs; el 918 dice "With Mike".</li></ul></div></div>`;
+      <li>Cambia de mecánico arriba: Luis ve Alignment y Repairs; el 918 dice "With Detailing". Detailing es una tablet compartida: cualquiera del equipo empieza, bloquea o completa (P50–P52).</li></ul></div></div>`;
 }
 
 /* ---------- Safety ---------- */

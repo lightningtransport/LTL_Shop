@@ -47,7 +47,7 @@ Las citas "OPEN_ISSUES §1x" de otros documentos apuntan ahí.
 ## Preguntas abiertas
 
 En [`DECISIONS.md`](DECISIONS.md): **P4** (`mechanic_status` de Ninox), **P14**
-(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics); P38 con D55. **P45–P49** (rediseño como la pizarra del taller, [propuesta](proposals/rediseno-pizarra/README.md) con boceto, 2026-10-24; sin decidir). **P39–P44** (D57: Detailing tras devolución de Safety, nombre de "Shop Work", override de dos áreas, camión tomado desde ayer, Tire Mounting y Rotation en Alignment, quién ve la cola del taller) para el dueño y el Shop Manager.
+(qué datos usa la API para terceros) y **P24, P26, P28, P31** (stock y llantas, D45, para Randy; P25, P27, P29 y P30 cerradas). P32–P36 se cerraron con **D47** (2026-10-18). **La demo** no se actualiza con D45 hasta que el dueño avise. P13 se cerró con D44; P37 con D49 (nuestra yard: Home Office y Lightning Transport and Logistics); P38 con D55. **P45–P53** (rediseño como la pizarra del taller, [propuesta](proposals/rediseno-pizarra/README.md) con boceto, 2026-10-24; sin decidir). **P39–P44** (D57: Detailing tras devolución de Safety, nombre de "Shop Work", override de dos áreas, camión tomado desde ayer, Tire Mounting y Rotation en Alignment, quién ve la cola del taller) para el dueño y el Shop Manager.
 
 ## Demo congelada (desde 2026-10-16)
 
