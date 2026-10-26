@@ -515,6 +515,7 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 | `task-flow-manager.md`, `task-flow-mecanico.md`, `task-flow-safety.md` | Un día de cada rol |
 | `revision-sugerencias.md` | Qué está comprobado, qué es supuesto y qué se corrigió |
 | `preguntas-validacion.md` | Hoja para el Shop Manager, Safety, Carlos y mecánicos |
+| `rp1-plan-tecnico.md` | RP-1 archivo por archivo: condiciones para empezar, migración, API, web, pruebas, horas |
 | `mockup.html` | Boceto navegable; publicado en privado en https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE |
 
 **Frentes que se pueden trabajar a la vez, sin pisarse:**
