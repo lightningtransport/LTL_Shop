@@ -437,7 +437,7 @@ entre paréntesis, optimista y pesimista.
 | **RP-7** Llaves | HU-RD11 | 7 (5–11) | **Sí** | Semana del 26 |
 | **RP-8** Textos finales ES/EN, glosario, docs de lo construido | — | 3 | No | En cada PR |
 
-**Para el lunes:** RP-0 a RP-3 son ~32 h probables. Eso no entra completo en un fin de semana con
+**Para el lunes:** RP-0 a RP-3 son ~41 h probables (32 h más las 8–11 h de §9). Eso no entra completo en un fin de semana con
 revisión del dueño. Recomiendo:
 - **seguro:** RP-0, RP-1 y RP-2; los tres ejemplos (901, 705, 804) funcionando de punta a punta y la
   pantalla nueva del mecánico;
