@@ -41,13 +41,13 @@ contadores que no están en cero**, para no volver a una lista larga.
 | `assign` | Casi desaparece (todo nace Available). Lo que nadie toma: contador **Not taken > 1 day** |
 | `external` | La tarjeta en su columna dice "At outside shop · Part out / Truck out", con Returned |
 | `qc` | Columna **QC** |
-| `close` + `return_to_service` | Contador **Ready to release** → Release truck. Si hace Close + Return to Service juntos o solo Close es P56 |
+| `close` + `return_to_service` | Contador **Ready to close** → Release truck. Si hace Close + Return to Service juntos o solo Close es P56 |
 | `cancel_work_order` (nada hecho, D55 R15) | Contador **Nothing done** → Cancel visit |
 | Llegadas sin WO (LTR-261) | Contador **Arrived without a visit** → Arrivals |
 | Sale pronto y no está listo | Badge "Leaves Tue" en las tarjetas + filtro |
 | Hallazgos de Safety (SQ-3) | Con Job sugerido: nacen Available (P54). Sin Job: contador **Safety findings** |
 | Pedidos de trabajo del mecánico (D8) | Contador **Work requests** → Add to visit / Mark handled |
-| Salió de la yard sin Return to Service (D52) | Contador **Ready to release**, con "Left the yard" |
+| Salió de la yard sin Return to Service (D52) | Contador **Ready to close**, con "Left the yard" |
 
 ---
 

@@ -44,7 +44,7 @@ se puede cancelar (D55 R9). Eso es parte de RP-1.
 | 8:00 | Encuentra un espejo flojo | Return | Escribe la nota, marca el hallazgo "Mirror loose" con el Job sugerido "Mirror" y devuelve | 4–5 |
 | 8:00 | **(nuevo)** El correctivo aparece solo | — | "901 · Mirror · Available" en la columna Repairs de la pizarra; un mecánico general lo toma | 0 |
 | 9:15 | El 804 vuelve (su correctivo de ayer está hecho) | To review → 804 | Take → revisa → **Approve** (con la hoja de confirmación, D-QC1) | 3 |
-| 9:16 | El 804 pasa a "Ready to release" en la pizarra del Manager | — | Nada | 0 |
+| 9:16 | El 804 pasa a "Ready to close" en la pizarra del Manager | — | Nada | 0 |
 | 10:30 | Mira qué viene | **Coming** (nuevo) | Ve el 927 y el 918 con su trabajo pendiente, para planear la tarde | 0 |
 | 11:45 | Tiene que salir | 927 tomado | **Let go**: vuelve a la lista para la otra persona (D-QC2) | 1 |
 | 1:40 | El 901 vuelve con el espejo arreglado | To review → 901 | Take → revisa solo lo que devolvió → Approve | 3 |
@@ -77,8 +77,8 @@ creación del correctivo.
 
 | Camión | Trabajos | QC | Resultado |
 |---|---|---|---|
-| **901** End of contract | PM, Alignment, Detailing, Repairs: Done | Required → Ready for Safety → Passed | Ready to release |
-| **705** Passing through | Fuel filter: Done | Not required · "Filter only" · Cristian | Ready to release, sin pasar por Safety |
+| **901** End of contract | PM, Alignment, Detailing, Repairs: Done | Required → Ready for Safety → Passed | Ready to close |
+| **705** Passing through | Fuel filter: Done | Not required · "Filter only" · Cristian | Ready to close, sin pasar por Safety |
 | **804** End of contract | PM y Alignment Done; Air leak (correctivo) Blocked · Waiting for parts | Failed · corrective work open | Not ready. Cuando el correctivo se completa, vuelve a To review |
 
 ---

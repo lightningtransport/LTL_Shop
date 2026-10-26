@@ -204,7 +204,7 @@ select, .field { font: inherit; color: inherit; background: var(--background); b
 const SCREENS = [
   ['board', 'Board', 'Manager'],
   ['arrivals', 'Arrivals', 'Manager'],
-  ['visit', 'Open visit', 'Manager'],
+  ['visit', 'New Work Order', 'Manager'],
   ['truck', 'Truck', 'Manager'],
   ['mech', 'My work', 'Mechanic'],
   ['qc', 'Quality Check', 'Safety'],
@@ -245,13 +245,14 @@ function seed() {
       { id: 7, t: 918, col: 'detailing', name: 'Detailing', st: 'progress', who: 'mike' },
       { id: 8, t: 918, col: 'alignment', name: 'Tires · LF, RF', st: 'available' },
       { id: 9, t: 944, col: 'inspection', name: 'Arrival inspection', st: 'available' },
-      { id: 10, t: 944, col: 'pm', name: 'PM B Service', st: 'available' },
+      { id: 10, t: 944, col: 'pm', name: 'PM B Service', st: 'available', old: true },
     ],
     done: [
       { t: 804, col: 'pm', name: 'PM A Service' }, { t: 804, col: 'alignment', name: 'Alignment' },
       { t: 612, col: 'detailing', name: 'Detailing' },
     ],
     notRequired: { 705: [['PM', 'Passing through'], ['Alignment', 'Passing through'], ['Detailing', 'Passing through']] },
+    requests: [{ t: 918, who: 'Mike', text: 'Driver mirror is cracked. Add a Job?' }],
     arrivals: [
       { t: 933, where: 'In yard since 10:12', expected: false },
     ],
@@ -281,7 +282,7 @@ function qcState(t) {
   if (tr.qc === 'failed') return openJobs(t).length ? 'failed' : 'ready';
   return openJobs(t).length ? 'required' : 'ready';
 }
-function readyToRelease(t) { const q = qcState(t); return openJobs(t).length === 0 && (q === 'not_required' || q === 'passed'); }
+function readyToRelease(t) { const q = qcState(t); return !S.trucks[t].closed && openJobs(t).length === 0 && (q === 'not_required' || q === 'passed'); }
 
 const ST = {
   available: ['Available', 'b-info', 'circle-dot'],
@@ -304,15 +305,20 @@ function av(p) { return p ? `<span class="avatar" title="${esc(PEOPLE[p].name)}"
 function decideCounts() {
   return [
     ['blocked', 'Blocked', S.jobs.filter((j) => j.st === 'blocked').length],
-    ['release', 'Ready to release', Object.keys(S.trucks).filter((t) => readyToRelease(+t)).length],
-    ['arrived', 'Arrived without a visit', S.arrivals.length],
+    ['release', 'Ready to close', Object.keys(S.trucks).filter((t) => readyToRelease(+t)).length],
+    ['arrived', 'Arrived without a Work Order', S.arrivals.length],
     ['qcdecide', 'QC to decide', Object.keys(S.trucks).filter((t) => S.trucks[t].qc === 'to_decide').length],
+    ['nottaken', 'Not taken > 1 day', S.jobs.filter((j) => j.st === 'available' && j.old).length],
+    ['requests', 'Work requests', S.requests.length],
+    ['paused', 'Paused', 0],
+    ['findings', 'Safety findings to decide', 0],
   ];
 }
 function cardMatches(j) {
   if (S.q && !String(j.t).includes(S.q)) return false;
   if (S.filter === 'blocked') return j.st === 'blocked';
-  if (S.filter === 'release' || S.filter === 'arrived') return false;
+  if (S.filter === 'release' || S.filter === 'arrived' || S.filter === 'requests') return false;
+  if (S.filter === 'nottaken') return j.st === 'available' && !!j.old;
   if (S.filter === 'qcdecide') return S.trucks[j.t] && S.trucks[j.t].qc === 'to_decide';
   return true;
 }
@@ -363,26 +369,30 @@ function renderBoard() {
       <button class="btn sm" type="button"><i data-lucide="maximize"></i>Full screen</button></div>
     <div class="decide" role="group" aria-label="Needs your decision">
       <span class="muted" style="align-self:center;font-size:13px;font-weight:600">Needs your decision</span>
-      ${decideCounts().map(([k, l, n]) => `<button type="button" class="chip ${n ? '' : 'zero'}" data-filter="${k}" aria-pressed="${S.filter === k}"><b>${n}</b>${l}</button>`).join('')}
+      ${decideCounts().filter(([k, , n]) => n || S.filter === k).map(([k, l, n]) => `<button type="button" class="chip ${n ? '' : 'zero'}" data-filter="${k}" aria-pressed="${S.filter === k}"><b>${n}</b>${l}</button>`).join('')}
       ${S.filter ? '<button type="button" class="ghost" data-filter="">Show all</button>' : ''}
     </div>
-    ${S.filter === 'release' ? releaseList() : ''}${S.filter === 'arrived' ? arrivedList() : ''}
+    ${S.filter === 'release' ? releaseList() : ''}${S.filter === 'arrived' ? arrivedList() : ''}${S.filter === 'requests' ? requestList() : ''}
     <nav class="jump" aria-label="Go to a column">${COLS.map((c) => `<a href="#col-${c.key}" data-jump="${c.key}">${c.name} <b>${c.key === 'qc' ? Object.keys(S.trucks).filter((t) => qcState(+t) !== 'not_required').length : S.jobs.filter((j) => j.col === c.key).length}</b></a>`).join('')}</nav>
     <div class="board">${cols}</div>
     <div class="why"><b>Por qué así (HU-RD1, HU-RD6).</b><ul>
       <li>Una tarjeta = un trabajo. El 901 sale en PM, Repairs, Alignment, Detailing y QC, como en la pizarra física.</li>
       <li>★ = prioridad High/Critical (el asterisco de la pizarra). Blocked va arriba y en ámbar con el motivo.</li>
       <li>"With Detailing": el camión 918 lo tiene el equipo de Detailing (D57 §3, un camión a la vez). Se ve, pero no se puede tomar (P48).</li>
-      <li>"Needs your decision" reemplaza la cola del Dashboard: el Manager ve excepciones, no registros. Cada número filtra la pizarra.</li>
+      <li>"Needs your decision" reemplaza la cola del Dashboard: el Manager ve excepciones, no registros. Solo salen los contadores que no están en cero (lista completa en ia-inventario.md §2). Cada número filtra la pizarra.</li>
+      <li>"Repairs" es un nombre por validar con el Shop Manager (P40).</li>
       <li>Lo terminado hoy queda tachado y plegado al pie de su columna. Buscar "901" resalta todas sus tarjetas.</li>
       <li>Toca una tarjeta para abrir el camión. "By truck" conserva el tablero de hoy.</li></ul></div>`;
 }
 function releaseList() {
   const ts = Object.keys(S.trucks).filter((t) => readyToRelease(+t));
-  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Ready to release</h2>${ts.length ? ts.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><button class="btn sm primary" type="button" data-truck="${t}">Open truck</button></div>`).join('') : '<div class="muted">None yet. Finish 705\'s fuel filter from My work to see one.</div>'}</div>`;
+  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Ready to close</h2>${ts.length ? ts.map((t) => `<div class="row"><b class="grow">Truck ${t}</b><button class="btn sm primary" type="button" data-truck="${t}">Open truck</button></div>`).join('') : '<div class="muted">None yet. Finish 705\'s fuel filter from My work to see one.</div>'}</div>`;
+}
+function requestList() {
+  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Work requests</h2>${S.requests.map((r, i) => `<div class="row"><b>Truck ${r.t}</b><span class="grow sub">${esc(r.who)}: "${esc(r.text)}"</span><button class="btn sm" type="button" data-req-done="${i}">Mark handled</button><button class="btn sm primary" type="button" data-req-add="${i}">Add to Work Order</button></div>`).join('') || '<div class="muted">None.</div>'}</div>`;
 }
 function arrivedList() {
-  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Arrived without a visit</h2>${S.arrivals.map((a) => `<div class="row"><b>Truck ${a.t}</b><span class="grow sub">${esc(a.where)} · not on the return list → Passing through?</span><button class="btn sm primary" type="button" data-open-visit="${a.t}">Open visit</button></div>`).join('') || '<div class="muted">None.</div>'}</div>`;
+  return `<div class="card card-pad" style="margin-bottom:16px"><h2 class="section-title">Arrived without a Work Order</h2>${S.arrivals.map((a) => `<div class="row"><b>Truck ${a.t}</b><span class="grow sub">${esc(a.where)} · not on the return list → Passing through?</span><button class="btn sm primary" type="button" data-open-visit="${a.t}">New Work Order</button></div>`).join('') || '<div class="muted">None.</div>'}</div>`;
 }
 
 /* ---------- Arrivals ---------- */
@@ -390,8 +400,8 @@ function renderArrivals() {
   $('#s-arrivals').innerHTML = `
     <div class="app-head"><h1>Arrivals</h1><span class="muted">This week · Ninox returns + Samsara yard</span></div>
     <div class="split"><div style="display:flex;flex-direction:column;gap:16px">
-      <div class="card card-pad"><h2 class="section-title">Arrived · needs a visit</h2>
-        ${S.arrivals.map((a) => `<div class="row"><span class="num" style="font-size:20px;font-weight:700">${a.t}</span><span class="grow"><span class="badge b-info"><i data-lucide="map-pin"></i>${esc(a.where)}</span><div class="sub">Not on the return list · proposed: <b>Passing through</b></div></span><button class="btn primary" type="button" data-open-visit="${a.t}"><i data-lucide="clipboard-plus"></i>Open visit</button></div>`).join('') || '<div class="muted">Nobody waiting.</div>'}
+      <div class="card card-pad"><h2 class="section-title">Arrived · needs a Work Order</h2>
+        ${S.arrivals.map((a) => `<div class="row"><span class="num" style="font-size:20px;font-weight:700">${a.t}</span><span class="grow"><span class="badge b-info"><i data-lucide="map-pin"></i>${esc(a.where)}</span><div class="sub">Not on the return list · proposed: <b>Passing through</b></div></span><button class="btn primary" type="button" data-open-visit="${a.t}"><i data-lucide="clipboard-plus"></i>New Work Order</button></div>`).join('') || '<div class="muted">Nobody waiting.</div>'}
       </div>
       <div class="card card-pad"><h2 class="section-title">Expected · end of contract</h2>
         ${S.expected.map((e) => `<div class="row"><span class="num" style="font-size:20px;font-weight:700">${e.t}</span><span class="grow"><b>${esc(e.day)}</b><div class="sub">${esc(e.who)}</div></span><span class="badge b-out">Expected</span><button class="btn sm" type="button" data-toast="Marked as not coming. It stays in the list as Cancelled.">Didn't come</button></div>`).join('')}
@@ -408,7 +418,7 @@ function renderArrivals() {
     </div>`;
 }
 
-/* ---------- Open visit ---------- */
+/* ---------- New Work Order (with Visit type) ---------- */
 const TEMPLATES = {
   'End of contract': { inspection: true, pm: true, alignment: true, detailing: true, qc: 'required' },
   'Passing through': { inspection: false, pm: false, alignment: false, detailing: false, qc: 'to_decide' },
@@ -429,7 +439,7 @@ function renderVisit() {
   const missing = Object.keys(STEP_NAMES).filter((k) => !d.steps[k] && TEMPLATES[d.type][k] && !d.reasons[k]);
   const qcBad = d.qc === 'not_required' && !d.qcWhy;
   $('#s-visit').innerHTML = `
-    <div class="app-head"><h1>Open visit · Truck ${d.t}</h1><span class="badge b-info"><i data-lucide="map-pin"></i>In yard since 10:12</span></div>
+    <div class="app-head"><h1>New Work Order · Truck ${d.t}</h1><span class="badge b-info"><i data-lucide="map-pin"></i>In yard since 10:12</span></div>
     <div class="split"><div class="card card-pad" style="display:flex;flex-direction:column;gap:18px">
       <div><h2 class="group-title" style="margin-bottom:8px">Visit type</h2>
         <div class="seg" role="group" aria-label="Visit type">${Object.keys(TEMPLATES).map((ty) => `<button type="button" data-type="${ty}" aria-pressed="${d.type === ty}">${ty}</button>`).join('')}</div>
@@ -441,16 +451,16 @@ function renderVisit() {
       <div><h2 class="group-title" style="margin-bottom:8px">Quality Check</h2>
         <div class="seg" role="group" aria-label="Quality Check">${[['to_decide', 'Decide later'], ['required', 'Required'], ['not_required', 'Not required']].map(([k, l]) => `<button type="button" data-qc="${k}" aria-pressed="${d.qc === k}">${l}</button>`).join('')}</div>
         ${d.qc === 'not_required' ? `<input class="field" id="qcwhy" style="margin-top:8px;width:100%" placeholder="Why? (required)" value="${esc(d.qcWhy)}" aria-label="Why QC is not required">` : ''}
-        <div class="sub muted" style="margin-top:6px">${d.qc === 'to_decide' ? 'The truck cannot be released until someone decides.' : d.qc === 'required' ? 'Safety gets it when everything else is done.' : 'Only the Manager can set this. Saved with your name and the time.'}</div></div>
+        <div class="sub muted" style="margin-top:6px">${d.qc === 'to_decide' ? 'The Work Order cannot be closed until someone decides.' : d.qc === 'required' ? 'Safety gets it when everything else is done.' : 'Only the Manager can set this. Saved with your name and the time.'}</div></div>
       <label class="check"><input type="checkbox" id="vstar" ${d.star ? 'checked' : ''}><span>★ Priority</span></label>
-      <div><button class="btn primary block" type="button" id="openvisit" ${missing.length || qcBad ? 'disabled' : ''}>Open visit</button>
+      <div><button class="btn primary block" type="button" id="openvisit" ${missing.length || qcBad ? 'disabled' : ''}>Open Work Order</button>
         ${missing.length ? `<div class="sub" style="color:var(--destructive-text);margin-top:6px">Say why ${missing.map((k) => STEP_NAMES[k]).join(', ')} ${missing.length > 1 ? 'are' : 'is'} not required.</div>` : ''}
         ${qcBad ? '<div class="sub" style="color:var(--destructive-text);margin-top:6px">Say why QC is not required.</div>' : ''}</div>
     </div>
     <div class="why" style="margin-top:0"><b>Por qué así (HU-RD2, HU-RD3).</b><ul>
-      <li>Reemplaza New Work Order. El tipo de visita marca los trabajos con una plantilla; el Manager quita o agrega.</li>
+      <li>Es New Work Order con un campo nuevo, <b>Visit type</b>. Se queda el nombre Work Order (P45, revisado el 26-oct). El tipo marca los trabajos con una plantilla; el Manager quita o agrega.</li>
       <li>Lo que la plantilla no trae queda "Not required · Passing through · quién" sin escribir nada. Solo pide motivo cuando el Manager se aparta de la plantilla (quita algo que trae). Nada desaparece (prompt §4) y no se agrega trabajo administrativo (prompt §9).</li>
-      <li>QC tiene su propio estado. "Decide later" no deja liberar el camión; "Not required" pide motivo (cambia D55 R9, P46).</li>
+      <li>QC tiene su propio estado. "Decide later" no deja cerrar la Work Order; "Not required" pide motivo (cambia D55 R9, P46).</li>
       <li>Los trabajos nacen Available en su columna: nadie los asigna (HU-RD9). "Assign to…" queda en el menú de la tarjeta.</li>
       <li>Prueba: cambia a End of contract y destilda Alignment.</li></ul></div></div>`;
 }
@@ -474,12 +484,12 @@ function renderTruck() {
   const left = openJobs(t).length; const ok = readyToRelease(t);
   $('#s-truck').innerHTML = `
     <div class="app-head"><h1>Truck ${t}</h1>${tr.star ? '<span class="star" role="img" aria-label="High priority">★</span>' : ''}${pick}
-      <span class="badge ${ok ? 'b-ok' : 'b-out'}">${ok ? '<i data-lucide="check"></i>Ready to release' : `Not ready · ${left ? left + ' left' : 'QC'}`}</span>
+      <span class="badge ${ok || tr.closed ? 'b-ok' : 'b-out'}">${tr.closed ? '<i data-lucide="check"></i>Ready to Go' : ok ? '<i data-lucide="check"></i>Ready to close' : `Not ready · ${left ? left + ' left' : 'QC'}`}</span>
       <span class="badge b-out">${esc(tr.visit)}</span></div>
     <div class="split"><div class="card card-pad"><h2 class="section-title">Can it leave?</h2>
       <div class="rows">${rows.map(([a, b, c]) => `<div class="row"><span class="grow">${esc(a)}</span>${b}<span>${c}</span></div>`).join('')}</div>
-      <button class="btn primary block" style="margin-top:14px" type="button" id="release" ${ok ? '' : 'disabled'}><i data-lucide="log-out"></i>Release truck</button>
-      ${ok ? '' : '<div class="sub muted" style="margin-top:6px">Turns on when every row is Done or Not required and QC is Passed or Not required.</div>'}
+      ${tr.closed ? `<div class="sub" style="margin-top:14px"><span class="badge b-ok"><i data-lucide="check"></i>Ready to Go · waiting to leave</span> Work Order closed. Return to Service when the driver takes it.</div><button class="btn primary block" style="margin-top:10px" type="button" id="rts"><i data-lucide="log-out"></i>Return to Service</button>` : `<button class="btn primary block" style="margin-top:14px" type="button" id="release" ${ok ? '' : 'disabled'}><i data-lucide="flag"></i>Close Work Order</button>`}
+      ${ok || tr.closed ? '' : '<div class="sub muted" style="margin-top:6px">Turns on when every row is Done or Not required and QC is Passed or Not required.</div>'}
     </div>
     <div style="display:flex;flex-direction:column;gap:16px">
       <div class="card card-pad"><h2 class="section-title">Keys</h2><div class="row"><i data-lucide="key-round"></i><b class="grow">${esc(tr.keys)}</b><span class="sub">last said at 9:40</span></div></div>
@@ -487,7 +497,7 @@ function renderTruck() {
     </div></div>
     <div class="why"><b>Por qué así (HU-RD4, HU-RD11).</b><ul>
       <li>Una pregunta: ¿puede salir? Una fila por requisito con Done · Pending · Blocked · Not required, y el QC con su propio estado.</li>
-      <li>"Release truck" hace Close + Return to Service con una confirmación. Hoy son dos pasos en dos lugares.</li>
+      <li>"Close Work Order" cierra cuando todo está en verde. Return to Service sigue aparte, cuando el camión se va (D1, D52; P56 sin decidir, esta es la opción segura).</li>
       <li>Prueba: elige 705, completa su filtro en My work y vuelve aquí.</li>
       <li>Llaves: lo último que alguien dijo, con hora (P1, necesita migración).</li></ul></div>`;
 }
@@ -566,7 +576,7 @@ function renderMgmt() {
   const done = S.done.length;
   const working = new Set(S.jobs.filter((j) => j.st === 'progress').map((j) => j.who)).size;
   const rel = Object.keys(S.trucks).filter((t) => readyToRelease(+t)).length;
-  const k = [[trucks, 'Trucks in the shop', 'Open visits'], [prog, 'Jobs in progress', 'A mechanic started it and has not finished'], [av_, 'Jobs available', 'Nobody has taken them'], [bl, 'Jobs blocked', 'Reported by the mechanic, not resolved'], [done, 'Jobs done today', 'Marked complete today'], [working, 'Mechanics working', 'With a Job in progress right now'], [rel, 'Ready to release', 'All work done, QC passed or not required']];
+  const k = [[trucks, 'Trucks in the shop', 'Open Work Orders'], [prog, 'Jobs in progress', 'A mechanic started it and has not finished'], [av_, 'Jobs available', 'Nobody has taken them'], [bl, 'Jobs blocked', 'Reported by the mechanic, not resolved'], [done, 'Jobs done today', 'Marked complete today'], [working, 'Mechanics working', 'With a Job in progress right now'], [rel, 'Ready to release', 'All work done, QC passed or not required']];
   $('#s-mgmt').innerHTML = `
     <div class="app-head"><h1>Shop today</h1><span class="live"><i></i>Live</span><span class="muted">Read only</span></div>
     <div class="kpis">${k.map(([v, l, c]) => `<div class="card kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="c">${c}</div></div>`).join('')}</div>
@@ -599,6 +609,8 @@ document.addEventListener('click', (e) => {
   if (d.truck) { S.truckView = +d.truck; return go('truck'); }
   if (d.openVisit) { S.visitDraft = draftFor(+d.openVisit, 'Passing through'); return go('visit'); }
   if (d.toast) return toast(d.toast);
+  if (d.reqDone !== undefined) { S.requests.splice(+d.reqDone, 1); S.filter = null; toast('Marked handled.'); return render(); }
+  if (d.reqAdd !== undefined) { const r = S.requests.splice(+d.reqAdd, 1)[0]; S.jobs.push({ id: S.nextId++, t: r.t, col: 'repairs', name: 'Mirror · driver side', st: 'available', from: 'Requested by ' + r.who }); S.filter = null; toast(`Added to ${r.t}. Available in Repairs.`); return render(); }
   if (d.type) { const v = S.visitDraft; const keep = v.repairs; S.visitDraft = draftFor(v.t, d.type); S.visitDraft.repairs = keep; return render(); }
   if (d.qc) { S.visitDraft.qc = d.qc; return render(); }
   if (d.rm !== undefined) { S.visitDraft.repairs.splice(+d.rm, 1); return render(); }
@@ -610,7 +622,7 @@ document.addEventListener('click', (e) => {
     v.repairs.forEach((r) => S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: r, st: 'available' }));
     S.notRequired[t] = Object.keys(STEP_NAMES).filter((k) => !v.steps[k]).map((k) => [STEP_NAMES[k], v.reasons[k] || v.type]);
     S.arrivals = S.arrivals.filter((a) => a.t !== t); S.q = String(t); S.filter = null;
-    toast(`Visit open for ${t}. Its Jobs are Available on the board.`);
+    toast(`Work Order open for ${t}. Its Jobs are Available on the board.`);
     return go('board');
   }
   if (d.take) {
@@ -635,7 +647,8 @@ document.addEventListener('click', (e) => {
   if (d.cancel !== undefined) { S.sheet = null; return render(); }
   if (d.qcok) { S.trucks[+d.qcok].qc = 'passed'; toast(`Truck ${d.qcok} approved.`); return render(); }
   if (d.qcret) { const t = +d.qcret; S.trucks[t].qc = 'failed'; S.trucks[t].qcNote = 'Mirror loose'; S.jobs.push({ id: S.nextId++, t, col: 'repairs', name: 'Mirror · driver side', st: 'available', from: 'QC failed' }); toast(`Returned. A corrective Job is Available in Repairs.`); return render(); }
-  if (el.id === 'release') { const t = S.truckView; delete S.trucks[t]; S.jobs = S.jobs.filter((j) => j.t !== t); toast(`Truck ${t} released. Return to Service saved.`); return render(); }
+  if (el.id === 'release') { const t = S.truckView; S.trucks[t].closed = true; toast(`Work Order closed. Truck ${t} is Ready to Go.`); return render(); }
+  if (el.id === 'rts') { const t = S.truckView; delete S.trucks[t]; S.jobs = S.jobs.filter((j) => j.t !== t); toast(`Truck ${t}: Return to Service saved. It left the board.`); return render(); }
   if (el.id === 'reset') { S = seed(); toast('Example data back to the start.'); return render(); }
   if (el.id === 'theme') { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; }
 });

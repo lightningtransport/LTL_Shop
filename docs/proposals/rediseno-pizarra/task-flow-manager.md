@@ -27,7 +27,7 @@ hace. El Manager planea, prioriza, decide excepciones y libera.
 | 12:15 | Llega la pieza del 804 | Board → tarjeta bloqueada | Resolve | 2 |
 | 1:30 | Safety devuelve el 901 (espejo flojo) | Board | Nada que hacer: el correctivo ya está Available en Repairs | 0 |
 | 2:30 | Un trabajo lleva más de un día sin que nadie lo tome | Board | Lo asigna a alguien | 3 |
-| 3:40 | El 705 queda listo | Board → "Ready to release" → Truck | Release truck | 3 |
+| 3:40 | El 705 queda listo | Board → "Ready to close" → Truck | Release truck | 3 |
 | 4:45 | Cierre del día | Board | Revisa lo que queda y las llaves | 0–2 |
 | 5:00 | El reloj de cada mecánico se cierra solo (D20) | — | Nada | 0 |
 
@@ -56,7 +56,7 @@ flowchart TD
   H --> I[Los mecánicos toman y completan<br/>desde su teléfono]
   I --> B
   B -->|QC to decide| J[Decide: Required o Not required] --> B
-  B -->|Ready to release| K[Truck: Can it leave?]
+  B -->|Ready to close| K[Truck: Can it leave?]
   K -->|todo verde| L[Release truck<br/>Close + Return to Service] --> B
   B -->|Not taken > 1 day| M[Assign to…] --> B
 ```
@@ -69,7 +69,7 @@ flowchart TD
 
 - **Pantalla:** Board (es el inicio; antes era el Dashboard).
 - **Qué ve primero:** la franja **Needs your decision**:
-  `1 Blocked · 0 Ready to release · 1 Arrived without a visit · 1 QC to decide`.
+  `1 Blocked · 0 Ready to close · 1 Arrived without a visit · 1 QC to decide`.
 - **Debajo,** la pizarra completa. El 901 aparece en PM (Daniel, in progress), Repairs, Alignment,
   Detailing y QC; el 918 en Detailing (Mike) y Alignment ("With Mike").
 - **Qué no tiene que hacer:** abrir camión por camión ni revisar quién empezó qué. Lo de ayer
@@ -171,7 +171,7 @@ flowchart TD
 ### 3:40 · El 705 está listo
 
 1. Anthony completó el filtro desde su teléfono y dijo **"Back at the office"** sobre las llaves.
-2. El contador **Ready to release** pasa a 1 → toca → **Truck 705 · Can it leave?**:
+2. El contador **Ready to close** pasa a 1 → toca → **Truck 705 · Can it leave?**:
    - Fuel filter · **Done**
    - PM · Alignment · Detailing · **Not required · Passing through · Cristian**
    - Quality Check · **Not required · Filter only · Cristian**

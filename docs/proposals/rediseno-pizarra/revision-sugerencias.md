@@ -68,7 +68,7 @@ propuesta se clasifica como:
 - **Migración:** el plan, el inventario y el task flow de Safety dicen "probable", no "sin migración".
 - **Inventario:** la pizarra entra en una ruta nueva, igual que dice R-8.
 - **Menú:** 15 entradas.
-- **Boceto:** todavía dice "Open visit" y "Release truck". Se corrige cuando el dueño cierre P45 y P56.
+- **Boceto (actualizado el 2026-10-26):** dice "New Work Order" con "Visit type" (P45), "Close Work Order" con Return to Service aparte (la opción segura de P56), y la franja "Needs your decision" muestra solo los contadores que no están en cero, como el inventario (incluye Not taken > 1 day y Work requests).
 
 ## 5. Lo que sigue firme
 
