@@ -8,7 +8,7 @@ pasa a `DECISIONS.md` (D58) y a `USER_FLOWS.md` solo cuando el dueño lo apruebe
 del PM y la conversación con el dueño del 2026-10-24. Base del código leída: `origin/main` `0e2f46a`.
 **Pruebas de hoy:** `test:real` sobre `main`, 209 pasan y 2 se saltan a propósito (A27, A28).
 Este rediseño parte de un motor que funciona.
-**Task flows:** [Manager](task-flow-manager.md) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
+**Task flows:** [Manager](task-flow-manager.md), [mecánicos](task-flow-mecanico.md) (general, Detailing en tablet, PM) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
 **Inventario (nada se pierde ni se rompe):** [`ia-inventario.md`](ia-inventario.md).
 **Revisión de las sugerencias (qué está comprobado y qué es supuesto):** [`revision-sugerencias.md`](revision-sugerencias.md).
 **Hoja de preguntas para validar (Shop Manager, Safety, Carlos, mecánicos):** [`preguntas-validacion.md`](preguntas-validacion.md).
@@ -512,7 +512,7 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 |---|---|
 | `README.md` | Síntesis, arquitectura, historias HU-RD1–HU-RD14, plan RP-0–RP-8 |
 | `ia-inventario.md` | Dónde queda cada pantalla y acción; R-1 a R-8 (lo que se rompería) |
-| `task-flow-manager.md`, `task-flow-safety.md` | Un día de cada rol |
+| `task-flow-manager.md`, `task-flow-mecanico.md`, `task-flow-safety.md` | Un día de cada rol |
 | `revision-sugerencias.md` | Qué está comprobado, qué es supuesto y qué se corrigió |
 | `preguntas-validacion.md` | Hoja para el Shop Manager, Safety, Carlos y mecánicos |
 | `mockup.html` | Boceto navegable; publicado en privado en https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE |
