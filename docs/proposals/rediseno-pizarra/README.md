@@ -519,6 +519,7 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 | `ninox-hoy.md` | Qué muestra Ninox, qué se puede obtener y de dónde; la regla PM / Fuel filter; lo que no cuadra |
 | `flujo-de-trabajo-coo.md`, `Flujo-de-trabajo-COO.pdf` | Para el COO: las reglas del taller que faltan definir (visitas, inspección, plantillas, PM / Fuel filter, quién hace qué, reparto, partes, Quality Check, salida, llaves, métricas). No es sobre pantallas |
 | `respuestas-coo-2026-10-26.md` | El correo de la COO con equipos y reglas, qué cambia en la app, conflictos y el borrador de las preguntas de vuelta |
+| `preguntas-pendientes.md`, `Preguntas-pendientes.pdf` | **Las preguntas de esta semana** (después del correo de la COO): correo de vuelta a la COO, Shop Manager y manager de partes y compras. Reemplaza a `preguntas-validacion.md` para las conversaciones |
 | `rp1-plan-tecnico.md` | RP-1 archivo por archivo: condiciones para empezar, migración, API, web, pruebas, horas |
 | `mockup.html` | Boceto navegable; publicado en privado en https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE |
 
