@@ -8,6 +8,7 @@ pasa a `DECISIONS.md` (D58) y a `USER_FLOWS.md` solo cuando el dueño lo apruebe
 del PM y la conversación con el dueño del 2026-10-24. Base del código leída: `origin/main` `0e2f46a`.
 **Pruebas de hoy:** `test:real` sobre `main`, 209 pasan y 2 se saltan a propósito (A27, A28).
 Este rediseño parte de un motor que funciona.
+**Task flow del Manager:** [`task-flow-manager.md`](task-flow-manager.md) (un día completo).
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
