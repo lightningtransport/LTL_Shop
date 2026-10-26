@@ -8,7 +8,7 @@ pasa a `DECISIONS.md` (D58) y a `USER_FLOWS.md` solo cuando el dueño lo apruebe
 del PM y la conversación con el dueño del 2026-10-24. Base del código leída: `origin/main` `0e2f46a`.
 **Pruebas de hoy:** `test:real` sobre `main`, 209 pasan y 2 se saltan a propósito (A27, A28).
 Este rediseño parte de un motor que funciona.
-**Task flow del Manager:** [`task-flow-manager.md`](task-flow-manager.md) (un día completo).
+**Task flows:** [Manager](task-flow-manager.md) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
@@ -428,7 +428,7 @@ entre paréntesis, optimista y pesimista.
 | Parte | Historias | Horas | Migración | Cuándo |
 |---|---|---|---|---|
 | **RP-0** Validar el boceto con el Shop Manager y 2 mecánicos; ajustar | — | 1–2 | No | Sábado tarde |
-| **RP-1** Visita con lo que aplica + QC To decide / Not required | HU-RD2, RD3, RD12 | 10 (7–16) | No | Sábado noche |
+| **RP-1** Visita con lo que aplica + QC To decide / Not required + correctivo que nace de la devolución de Safety + Coming en `/qc` | HU-RD2, RD3, RD12 | 15 (11–22) | No | Sábado noche |
 | **RP-2** Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | No | Domingo mañana |
 | **RP-3** Board como inicio del Manager + "Needs your decision" + menú More | HU-RD1, (RD6) | 10 (8–16) | No | Domingo tarde |
 | **RP-4** Camión: checklist de liberación + Release truck | HU-RD4 | 5 (4–8) | No | Lunes si sobra; si no, después |
@@ -437,7 +437,7 @@ entre paréntesis, optimista y pesimista.
 | **RP-7** Llaves | HU-RD11 | 7 (5–11) | **Sí** | Semana del 26 |
 | **RP-8** Textos finales ES/EN, glosario, docs de lo construido | — | 3 | No | En cada PR |
 
-**Para el lunes:** RP-0 a RP-3 son ~41 h probables (32 h más las 8–11 h de §9). Eso no entra completo en un fin de semana con
+**Para el lunes:** RP-0 a RP-3 son ~46 h probables (32 h, más 8–11 h de §9 y 5–7 h de Safety). Eso no entra completo en un fin de semana con
 revisión del dueño. Recomiendo:
 - **seguro:** RP-0, RP-1 y RP-2; los tres ejemplos (901, 705, 804) funcionando de punta a punta y la
   pantalla nueva del mecánico;
