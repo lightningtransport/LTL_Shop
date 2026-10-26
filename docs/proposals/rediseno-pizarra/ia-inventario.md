@@ -13,7 +13,7 @@ ninguna ruta.
 
 | Hoy | Dónde queda | Cambia |
 |---|---|---|
-| Dashboard `/admin` | **Board** (inicio). Su cola "Needs you" pasa a la franja "Needs your decision" (§2) | Pantalla nueva; el Dashboard de hoy queda en `/admin/dashboard` hasta que se apruebe la pizarra |
+| Dashboard `/admin` | **Board**, primero en una ruta nueva (`/admin/board`); el Dashboard de hoy sigue siendo el inicio hasta que el Shop Manager apruebe la pizarra (R-8). Su cola "Needs you" pasa a la franja "Needs your decision" (§2) | Pantalla nueva |
 | Yard Operations → Shop | Board → **By truck** (el Kanban de hoy, igual) | Solo el lugar |
 | Yard Operations → Dispatch | **Arrivals** (entrada propia) | Misma fuente y reglas (D50, D51) + `returns` (RP-5) |
 | Yard → Full screen (TV, D53) | Board → Full screen | La TV muestra la pizarra; "By truck" sigue disponible |
@@ -41,7 +41,7 @@ contadores que no están en cero**, para no volver a una lista larga.
 | `assign` | Casi desaparece (todo nace Available). Lo que nadie toma: contador **Not taken > 1 day** |
 | `external` | La tarjeta en su columna dice "At outside shop · Part out / Truck out", con Returned |
 | `qc` | Columna **QC** |
-| `close` + `return_to_service` | Contador **Ready to release** → Release truck (una sola acción) |
+| `close` + `return_to_service` | Contador **Ready to release** → Release truck. Si hace Close + Return to Service juntos o solo Close es P56 |
 | `cancel_work_order` (nada hecho, D55 R15) | Contador **Nothing done** → Cancel visit |
 | Llegadas sin WO (LTR-261) | Contador **Arrived without a visit** → Arrivals |
 | Sale pronto y no está listo | Badge "Leaves Tue" en las tarjetas + filtro |
@@ -114,7 +114,7 @@ Lo encontré revisando reglas que hoy dependen de los 4 pasos fijos. Cada uno qu
 - **Samsara:** sincronización, fallas como Jobs sugeridos (en Open visit / Add work), presencia en la yard.
 - **Inspección (D41):** la hoja, las llantas, Setup.
 - **Personas, catálogo, Custom Jobs, horarios.**
-- **El esquema de la base:** RP-1 a RP-3 no necesitan migración. Las llaves (RP-7) sí.
+- **El esquema de la base:** RP-1 probablemente necesita una migración pequeña y aditiva (tipo de visita y la decisión del QC, para no confundir "QC por decidir" con una WO vieja a la que le falta el QC). RP-2 la necesita si P50 es "nombre con un toque". Las llaves (RP-7) sí. Corregido el 2026-10-26: antes decía "sin migración".
 - **La demo local:** sigue congelada (OPEN_ISSUES); no se actualiza hasta que el dueño lo pida.
 
 ## 7. Lo que queda por decidir aquí

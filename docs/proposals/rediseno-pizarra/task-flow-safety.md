@@ -23,7 +23,7 @@ de los trabajos (prompt §8.1 E):
 | **Passed** | Safety (o el Manager como respaldo, D29) | Aprobado | En "Done" | Sí |
 | **Failed** | Safety | Devuelto con nota; trabajo correctivo abierto | En "Returned" | No |
 
-**Cómo se guarda sin migración:**
+**Cómo se guardaría** (corregido el 2026-10-26: probablemente con una columna nueva para la decisión del QC; ver [`revision-sugerencias.md`](revision-sugerencias.md)):
 - **To decide:** la visita todavía no tiene Job de QC.
 - **Required:** el Job de QC existe en `to_do`, como hoy.
 - **Not required:** el Job de QC queda cancelado con motivo.
@@ -68,7 +68,7 @@ necesita QC (eso es del Manager, P46). El mecánico nunca puede aprobar un QC (`
 | El Manager como respaldo | `/qc` (D29) | Igual; se llega desde la columna QC de la pizarra | Un enlace | 0.5 |
 | Gerencia | — | "Shop today" puede sumar "QC passed / returned today" | Una consulta | 1 (P1) |
 
-**Total para Safety:** 5–7 h, sin migración. RP-1 sube de 10 h a 15–17 h si se incluye la
+**Total para Safety:** 5–7 h, más la migración de RP-1. RP-1 sube de 10 h a 15–17 h si se incluye la
 creación del correctivo.
 
 ---

@@ -10,6 +10,7 @@ del PM y la conversación con el dueño del 2026-10-24. Base del código leída:
 Este rediseño parte de un motor que funciona.
 **Task flows:** [Manager](task-flow-manager.md) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
 **Inventario (nada se pierde ni se rompe):** [`ia-inventario.md`](ia-inventario.md).
+**Revisión de las sugerencias (qué está comprobado y qué es supuesto):** [`revision-sugerencias.md`](revision-sugerencias.md).
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
@@ -199,7 +200,7 @@ ajusta, está en [`ia-inventario.md`](ia-inventario.md).
 ### 3.2 Board (la pizarra)
 
 - **Columnas:** PM · Repairs · Alignment · Detailing. Inspection y QC van como columnas angostas a
-  los lados (pregunta 1). "Repairs" reemplaza a "Shop Work" (resuelve P40).
+  los lados (pregunta 1). "Repairs" es una propuesta para "Shop Work" (P40, sin validar).
 - **Tarjeta:**
   - número del camión (grande) y ★ si la prioridad es High o Critical;
   - el trabajo;
@@ -232,7 +233,7 @@ Plegado por defecto. Las rutas no cambian.
    required (motivo, quién) · Required**. El QC es una fila más, con estado propio (§4).
 2. **Trabajos de la visita**, agrupados como en la pizarra.
 3. **Llaves** (P1): Office · With Juan · In truck · Unknown.
-4. Botón principal: **Release truck** (Close + Return to Service) cuando todo está en verde.
+4. Botón principal: **Release truck** cuando todo está en verde. **Sin decidir (P56):** hoy Close y Return to Service son dos pasos a propósito (D1, D52: el camión puede estar listo y seguir en la yard). La opción segura es que Release haga solo Close y Return to Service siga como hoy.
 
 Lo demás (Costs, Faults, Tires, historial) sigue en sus pestañas.
 
@@ -264,8 +265,8 @@ quita o agrega → lo que quita pide motivo ("Not required · Passing through") 
 
 | Concepto | Hoy en pantalla | Propuesta | Por qué |
 |---|---|---|---|
-| La intervención del camión | Work Order (WO-026) | **Visit** (Visit 026; "Work Order" queda en More e historial) | El taller dice "visita"; el prompt dice "Visit Type" |
-| Área de reparaciones | Shop Work | **Repairs** | P40; "Shop Work" no dice qué es |
+| La intervención del camión | Work Order (WO-026) | **Work Order** (se queda) + campo nuevo **Visit type** | Corregido el 2026-10-26: no hay evidencia de que el taller diga "visita"; "Work Order" es el término estándar y el prompt pide mantenerlo (P45) |
+| Área de reparaciones | Shop Work | **¿Repairs?** (validar) | P40 sigue abierta; sin evidencia de cómo le dice el taller. Se valida con el Shop Manager |
 | Job sin dueño | Unassigned / Team queue / Available in the shop | **Available** | Una palabra para lo mismo |
 | Job con dueño sin empezar | Pending / Ready to start | **Taken · Juan** | Distingue de Available |
 | Job empezado | In progress | **In progress · Juan** | Igual |
@@ -432,8 +433,8 @@ entre paréntesis, optimista y pesimista.
 | Parte | Historias | Horas | Migración | Cuándo |
 |---|---|---|---|---|
 | **RP-0** Validar el boceto con el Shop Manager y 2 mecánicos; ajustar | — | 1–2 | No | Sábado tarde |
-| **RP-1** Visita con lo que aplica + QC To decide / Not required + correctivo que nace de la devolución de Safety + Coming en `/qc` | HU-RD2, RD3, RD12 | 15 (11–22) | No | Sábado noche |
-| **RP-2** Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | No | Domingo mañana |
+| **RP-1** Visita con lo que aplica + QC To decide / Not required + correctivo que nace de la devolución de Safety + Coming en `/qc` | HU-RD2, RD3, RD12 | 15 (11–22) | Probable (pequeña, aditiva → Release safety) | Sábado noche |
+| **RP-2** Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | Probable si P50 = nombre con un toque | Domingo mañana |
 | **RP-3** Board como inicio del Manager + "Needs your decision" + menú More | HU-RD1, (RD6) | 10 (8–16) | No | Domingo tarde |
 | **RP-4** Camión: checklist de liberación + Release truck | HU-RD4 | 5 (4–8) | No | Lunes si sobra; si no, después |
 | **RP-5** Arrivals con `returns` y tipo propuesto | HU-RD5 | 5 (4–8) | No | Semana del 26 |
@@ -459,7 +460,7 @@ revisión del dueño. Recomiendo:
 | P47 | ¿Take job empieza el tiempo? | Sí; un toque menos (pregunta 3 al Shop Manager) |
 | P48 | ¿La pizarra muestra el camión ocupado ("With Juan") o lo esconde? | Mostrarlo, sin poder tomarlo (no contradice D57 §3: nadie más trabaja ese camión) |
 | P44 | ¿Un trabajo sin mecánico va a la cola? | Sí, a la de su especialidad |
-| P40 | ¿"Shop Work" se llama "Repairs"? | Sí |
+| P40 | ¿"Shop Work" se llama "Repairs"? | Validar con el Shop Manager (no hay evidencia) |
 | P49 | ¿Las columnas son PM · Repairs · Alignment · Detailing, con Inspection y QC a los lados? | Validar con el Shop Manager |
 
 ---

@@ -176,7 +176,7 @@ flowchart TD
    - PM · Alignment · Detailing · **Not required · Passing through · Cristian**
    - Quality Check · **Not required · Filter only · Cristian**
    - Keys · **Office**
-3. **Release truck** → confirma → hace Close + Return to Service. **3 toques.**
+3. **Release truck** → confirma. **3 toques.** Si hace Close + Return to Service juntos, o solo Close y Return to Service queda para cuando sale, está sin decidir (P56).
 
 - El 705 sale de la pizarra.
 - *Hoy:* Close Work Order en una pantalla y Return to Service en otra.
