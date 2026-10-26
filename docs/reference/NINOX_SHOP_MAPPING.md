@@ -36,6 +36,13 @@ Declared-catalog TrucksDB fields (MappingTool) plus Monday-launch fallbacks
 
 Do not add other table or field IDs until a new live scan confirms them.
 
+## Live field names outside TrucksDB (2026-10-26)
+
+DriverPay `WD` and Returns `S`, as read live for LTR-262: truck number is
+`WD.TruckNumber_` (`Truck#` is the Ninox record id, not the number) and
+`S.Truck`; Returns keeps the date with free-text notes in `S.Return_Date_`.
+Detail and the Supabase-copy comparison: `NINOX_COPIA_SUPABASE.md`.
+
 ## Unresolved
 
 | Target | Status | Why it is not invented |

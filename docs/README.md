@@ -33,6 +33,7 @@ para entender por qué se decidió algo, nunca para saber cómo funciona hoy.
 | [`PERFORMANCE.md`](reference/PERFORMANCE.md) | Mediciones y metas de rendimiento. |
 | [`NINOX_SHOP_MAPPING.md`](reference/NINOX_SHOP_MAPPING.md) | IDs de Ninox verificados. |
 | [`NINOX_TRUCK_SEED.md`](reference/NINOX_TRUCK_SEED.md) | Carga única de camiones desde Ninox. |
+| [`NINOX_COPIA_SUPABASE.md`](reference/NINOX_COPIA_SUPABASE.md) | Ninox en vivo vs. la copia en Supabase que lee Dispatch (2026-10-26) y el pedido a Ninox. |
 | [`DEMO.md`](reference/DEMO.md) | Demo local con toda la app en uso: cómo armarla y arrancarla, el Panel de demo (D36), cuentas y qué muestra cada camión. |
 | [`YARD_DATA_BOUNDARY.md`](reference/YARD_DATA_BOUNDARY.md) | Tarjetas del Yard que vienen de agent-reporting. |
 | [`TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md`](reference/TRUCK_IDENTITY_AND_MILEAGE_CURRENT.md) | Identidad del camión y millaje. |
