@@ -1,14 +1,14 @@
 # Hoja de preguntas para validar la versión resumida de la app
 
 **Para imprimir.** Ellos nunca han usado la app: se valida el boceto, no la app de hoy.
-Boceto: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE (compartirlo antes con Share). Versión PDF: la que se imprime.
+1) Boceto: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE · 2) Página de hoy con datos de Ninox: https://claude.ai/artifact/A2ovHWUjopsnujphwDXohR (compartir las dos con Share). Versión PDF: la que se imprime.
 
 Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `DECISIONS.md` y al plan; no se leen en voz alta.
 
 ## Cómo usar esta hoja
 
 - Ellos nunca han usado la app. No se valida la app de hoy: se valida la versión resumida (el boceto).
-- Antes de empezar: comparte el boceto (botón Share) o llévalo abierto en tu teléfono o tablet.
+- Antes de empezar: comparte el boceto y la página de hoy (botón Share) o llévalos abiertos en tu teléfono o tablet.
 - Empieza siempre con la pregunta abierta, sin mostrar nada. Muestra la pantalla solo cuando la hoja lo dice.
 - Si alguien dice "así no trabajamos", esa es la respuesta útil. No defiendas el boceto.
 - Anota con sus palabras, aunque no calce con la pregunta. ★ = importante: no la saltes.
@@ -16,12 +16,14 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 ## Para ti (no es para ellos)
 
+- ¿Cargamos el último PM de cada camión desde un export de Ninox, y desde ahí lo lleva la app? (P58)
+- ¿Quién mantiene la copia de Ninox en Supabase, por si pedimos agregar campos?
 - ¿Se queda el nombre "Work Order"? (P45)
-- ¿"Cerrar" solo cierra la Work Order y "Return to Service" sigue aparte? (P56) — compara con la pregunta 16 del Shop Manager.
+- ¿"Cerrar" solo cierra la Work Order y "Return to Service" sigue aparte? (P56) — compara con la pregunta de la salida del camión del Shop Manager.
 - ¿OK para crear el Epic y los issues en Linear?
 - ¿Cuándo es cada conversación?
 
-## Shop Manager (~30 min)
+## Shop Manager (~40 min)
 
 **Primero, sin mostrar nada:** Cuéntame cómo fue ayer, desde que llegaste hasta que te fuiste. ¿Qué es lo que más tiempo te quita?
 
@@ -49,7 +51,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 10. ¿Hay otros tipos de visita además de fin de contrato y de paso?
 
-11. ¿Cómo sabes qué camión llega por fin de contrato? ¿Lo miras en Ninox? ¿En qué campo? [Ninox]
+11. ¿La lista Return Schedule de Bay Work es la de los camiones que vuelven por fin de contrato? ¿Hay otra forma de saberlo? [Ninox]
 
 **Los mecánicos**
 
@@ -59,7 +61,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 14. ¿Después de cuánto tiempo sin que nadie lo tome quieres que te avise? ¿Medio día? ¿Un día?
 
-15. Nombres por especialidad [equipos]: Generales ___ · Alignment ___ · Detailing ___ · PM ___ · Safety ___
+15. ¿Qué hace cada uno? (Alejandro 1, Alejandro 2, John, Anthony, Elliot, Daniel) [equipos]: Generales ___ · Alignment ___ · Detailing ___ · PM ___ · Safety ___
 
 **La salida del camión**
 
@@ -67,11 +69,31 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 17. Si el mecánico de PM empieza un PM en un camión que no tenías anotado, ¿ese camión lleva solo el PM o le agregas lo demás? [P53]
 
+**Con los datos de hoy** — _Abre la página de hoy (segundo link) y ve pantalla por pantalla._
+
+18. ★ Las listas de Bay Work (PM, Alignment, Detail), ¿son lo que falta hacer o lo que ya se hizo? [Bay Work]
+
+19. En el Kanban, ¿quién mueve un camión de columna y cuándo? ¿"Checked In" es cuando llega y entregan las llaves? [Kanban]
+
+20. ¿Qué significa exactamente "Heavy Work No ETA"? ¿Espera piezas, taller externo, una decisión? [Kanban]
+
+21. El 845 y el 879 dicen Ready To Go, pero Alejandro 1 aparece trabajándolos. ¿Cuál es la verdad? ¿Quién actualiza eso en Ninox? [datos]
+
+**PM o Fuel filter** — _Pantalla "PM or fuel filter"._
+
+22. ★ ¿Con cuántas millas desde el último PM toca PM (aceite y filtros): 40,000 o 30,000? Ninox dice 30,000 en el 830. [P57]
+
+23. Si no toca PM, ¿siempre se cambia el Fuel filter? ¿El Air Dryer Filter va con el PM o aparte? [P57]
+
+24. ★ ¿Las millas desde el último PM de Ninox son confiables? El 830 dice que el último PM fue con 540 millas. ¿Quién corrige esos datos? [P58]
+
+25. ¿Se puede sacar de Ninox una lista con el odómetro y la fecha del último PM de cada camión? [P58]
+
 **El día**
 
-18. ¿Planeas el trabajo en la mañana o la noche anterior?
+26. ¿Planeas el trabajo en la mañana o la noche anterior?
 
-19. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
+27. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
 
 ## Safety (~15 min · las dos personas si se puede)
 
@@ -105,7 +127,7 @@ _Muestra la pantalla Shop today._
 
 4. ¿Estos 7 números te dicen lo que necesitas? ¿Cuál sobra y cuál falta?
 
-5. ★ Las horas de cada mecánico se cobran a Finanzas. ¿El tiempo debe contar desde que toma el trabajo, aunque vaya primero por las llaves? En Detailing, ¿hay que saber qué persona trabajó o basta con 'Detailing'? [P47 · P50]
+5. ★ Las horas de cada mecánico se cobran a Finanzas. ¿El tiempo debe contar desde que toma el trabajo, aunque vaya primero por las llaves? (En Detailing ya se decidió: las horas quedan a nombre de "Detailing", sin persona.) [P47]
 
 ## Mecánico general (~10 min)
 
@@ -123,19 +145,21 @@ _Muestra la pantalla My work en un teléfono._
 
 5. ¿Usarías tu teléfono o prefieres una tablet del taller?
 
+6. Hoy, cuando terminas un camión, ¿quién lo anota en Ninox o en la pizarra?
+
 ## Detailer (~10 min)
 
 **Primero, sin mostrar nada:** ¿Cómo se reparten el trabajo entre ustedes?
 
-_Muestra la pantalla My work en la tablet._
+_Muestra "Detailing tablet" en la página de hoy. (Ya decidido: no ponen su nombre, varios camiones a la vez, cualquiera termina.)_
 
-1. ¿Entiendes qué está en curso y qué está libre?
+1. ¿Entiendes qué está en curso y qué falta?
 
-2. ¿Trabajan dos camiones al mismo tiempo, o uno a la vez? [P51]
+2. ¿Es así de simple como lo necesitan? ¿Qué le quitarían o le pondrían?
 
-3. ¿Uno puede terminar el lavado que empezó otro? [P52]
+3. ¿Dónde pondrían la tablet? ¿Hay señal de internet ahí?
 
-4. En una tablet compartida, ¿tocar su nombre al empezar les parece bien o es una molestia? [P50]
+4. ¿Qué los detiene más seguido? (agua, químicos, el camión no está, otro)
 
 5. Al terminar, ¿les molesta que les pregunte dónde quedaron las llaves? [llaves]
 
