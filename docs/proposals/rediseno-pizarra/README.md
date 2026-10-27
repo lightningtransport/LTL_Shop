@@ -1,6 +1,6 @@
 # Propuesta: la app como la pizarra del taller (rediseño de arquitectura de información)
 
-**Estado (2026-10-27): dirección aprobada (D58).** El proyecto original queda en pausa y se sigue con esta versión. Las reglas se cierran con la COO, el Shop Manager y el manager de partes ([`preguntas-pendientes.md`](preguntas-pendientes.md)); hasta entonces no se construye nada. Punto de retorno: tag `pausa-original-2026-10-27`.
+**Estado (2026-10-27): dirección aprobada (D58).** El proyecto original queda en pausa y se sigue con esta versión. Las reglas se cierran con la COO, el Shop Manager y el manager de partes ([`preguntas-pendientes.md`](preguntas-pendientes.md)); hasta entonces no se construye nada. Punto de retorno: la rama `pausa-original-2026-10-27` (`main` en `0059c4b`).
 **Antes (2026-10-24): propuesta, sin construir, sin decidir.** Solo documentación y un boceto
 (`mockup.html`). No cambia código de la app ni el comportamiento en producción. Lo que está aquí
 pasa a `DECISIONS.md` (D58) y a `USER_FLOWS.md` solo cuando el dueño lo apruebe.
