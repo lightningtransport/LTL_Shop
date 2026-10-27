@@ -1,6 +1,6 @@
 # Propuesta: áreas en paralelo, un camión a la vez, tread en el mínimo y card de Tires (D57)
 
-**Estado (2026-10-22): decidida por el dueño, sin construir.** El dueño trabajó el camión 911 en iPad el 2026-10-22, anotó lo que no entendió y después lo habló con el Shop Manager. Las respuestas de los dos están en §2 y son **D57** en [`DECISIONS.md`](../../DECISIONS.md). Las etapas AP-1 a AP-7 (§5) se construyen una por PR.
+**Estado (2026-10-23): construida y en producción** (`0e2f46a`). AP-1 a AP-7 en los PRs 427–432; esta propuesta queda como referencia de diseño. Cómo funciona hoy: [`SYSTEM.md`](../../SYSTEM.md) §5. Decidida por el dueño el 2026-10-22 después de trabajar el 911 en iPad y hablarlo con el Shop Manager (§2); es **D57** en [`DECISIONS.md`](../../DECISIONS.md).
 **Origen:** fotos del 911 en iPad (WO-026, Work Plan del camión y card de Tires) y la conversación con el Shop Manager.
 **Linear:** Epic LTR-299. Etapas: AP-1 LTR-300, AP-2 LTR-301, AP-3 LTR-302, AP-4 LTR-303, AP-5 LTR-304, AP-6 LTR-305, AP-7 LTR-306.
 **Fecha:** 2026-10-22 · **Rama:** `claude/truck-911-inspection-order-569a5d` (solo documentación).
