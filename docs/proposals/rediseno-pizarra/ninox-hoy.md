@@ -63,7 +63,7 @@ capturas a mano, y lo que la captura corta no se inventa.
 |---|---|---|
 | View: camión + millas desde el último PM | **(—)** ⚠️ | No está en el diccionario. Vive en Bay Shop → PM Information |
 | Alignment, Detail | **(—)** ⚠️ | Parecen camiones con ese trabajo **pendiente** (interpretación: el 830 dice "Alignment Done" y no está en la lista). Validar |
-| Return Schedule + millas desde el último PM | **(A)** `returns` y `driver_pay` (fecha) ✅ · millas **(—)** | Es la lista de llegadas. Hoy la app lee solo `driver_pay` (defecto del frente B) |
+| Return Schedule + millas desde el último PM | **(A)** `returns` y `driver_pay` (fecha) ✅ · millas **(—)** | Es la lista de llegadas. La app lee `driver_pay` a propósito (LTR-254). Lo que no coincide viene de la copia atrasada en Supabase (PR 435) |
 
 ### Mechanics Work
 

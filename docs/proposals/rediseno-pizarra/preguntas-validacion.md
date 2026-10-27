@@ -1,14 +1,16 @@
 # Hoja de preguntas para validar la versión resumida de la app
 
+> **Reemplazada (2026-10-26)** por [`preguntas-pendientes.md`](preguntas-pendientes.md), después del correo de la COO. Queda como historial.
+
 **Para imprimir.** Ellos nunca han usado la app: se valida el boceto, no la app de hoy.
-1) Boceto: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE · 2) Página de hoy con datos de Ninox: https://claude.ai/artifact/A2ovHWUjopsnujphwDXohR (compartir las dos con Share). Versión PDF: la que se imprime.
+**Un solo link:** https://claude.ai/artifact/A2ovHWUjopsnujphwDXohR (Ninox now con datos consultados + la app nueva; compartir con Share). Versión PDF: la que se imprime.
 
 Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `DECISIONS.md` y al plan; no se leen en voz alta.
 
 ## Cómo usar esta hoja
 
 - Ellos nunca han usado la app. No se valida la app de hoy: se valida la versión resumida (el boceto).
-- Antes de empezar: comparte el boceto y la página de hoy (botón Share) o llévalos abiertos en tu teléfono o tablet.
+- Antes de empezar: comparte el link (botón Share) o llévalo abierto en tu teléfono o tablet. Los datos de "Ninox now" son de Ninox, consultados hoy a las 10:03 a.m.; si quieres datos más nuevos, pídeme "actualiza".
 - Empieza siempre con la pregunta abierta, sin mostrar nada. Muestra la pantalla solo cuando la hoja lo dice.
 - Si alguien dice "así no trabajamos", esa es la respuesta útil. No defiendas el boceto.
 - Anota con sus palabras, aunque no calce con la pregunta. ★ = importante: no la saltes.
@@ -27,7 +29,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 **Primero, sin mostrar nada:** Cuéntame cómo fue ayer, desde que llegaste hasta que te fuiste. ¿Qué es lo que más tiempo te quita?
 
-**La pizarra** — _Muestra la pantalla Board._
+**La pizarra** — _En el link, pestaña Board (camiones de ejemplo)._
 
 1. ¿Esto se parece a tu pizarra? ¿Qué columnas tiene la tuya? ¿Falta o sobra alguna? [P49]
 
@@ -41,7 +43,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 6. ¿Los mecánicos deberían ver toda la pizarra o solo su especialidad?
 
-**Anotar el trabajo de un camión** — _Muestra la pantalla New Work Order._
+**Anotar el trabajo de un camión** — _En el link, pestaña New Work Order._
 
 7. ★ Un camión que vuelve por fin de contrato: ¿qué trabajos lleva SIEMPRE? ¿Cuáles solo a veces? [C1]
 
@@ -69,41 +71,43 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 17. Si el mecánico de PM empieza un PM en un camión que no tenías anotado, ¿ese camión lleva solo el PM o le agregas lo demás? [P53]
 
-**Con los datos de hoy** — _Abre la página de hoy (segundo link) y ve pantalla por pantalla._
+**Con los datos de hoy** — _Abre el link, pestaña "Ninox now": datos consultados en Ninox hoy a las 10:03 a.m._
 
 18. ★ Las listas de Bay Work (PM, Alignment, Detail), ¿son lo que falta hacer o lo que ya se hizo? [Bay Work]
 
-19. En el Kanban, ¿quién mueve un camión de columna y cuándo? ¿"Checked In" es cuando llega y entregan las llaves? [Kanban]
+19. ¿Este tablero de Ninox está al día ahora mismo? ¿Quién mueve un camión de columna y cuándo? ¿"Checked In" es cuando llega y entregan las llaves? [Kanban]
 
 20. ¿Qué significa exactamente "Heavy Work No ETA"? ¿Espera piezas, taller externo, una decisión? [Kanban]
 
-21. El 845 y el 879 dicen Ready To Go, pero Alejandro 1 aparece trabajándolos. ¿Cuál es la verdad? ¿Quién actualiza eso en Ninox? [datos]
+21. ★ Hay 7 camiones Ready To Go con 14 días o más en la yard (964 con 49, 879 con 35, 818 con 25). ¿Por qué no han salido? ¿Están listos de verdad? [datos]
+
+22. Hay 5 en Heavy Work No ETA con 20 días o más (832 con 47, 857 con 40, 834 con 35). ¿Qué esperan? ¿Quién los destraba? [datos]
 
 **PM o Fuel filter** — _Pantalla "PM or fuel filter"._
 
-22. ¿Así es la regla: menos de 30,000 millas solo Fuel filter; entre 30,000 y 40,000 es un aviso y tú decides; con 40,000 o más, PM? [P57]
+23. ¿Así es la regla: menos de 30,000 millas solo Fuel filter; entre 30,000 y 40,000 es un aviso y tú decides; con 40,000 o más, PM? [P57]
 
-23. ★ Entre 30,000 y 40,000, ¿qué miras para decidir si haces el PM? ¿Cuánto le falta para 40,000? ¿Cuánto tiempo va a estar en la ruta? ¿Cuántas millas hace por semana? [P57]
+24. ★ Entre 30,000 y 40,000, ¿qué miras para decidir si haces el PM? ¿Cuánto le falta para 40,000? ¿Cuánto tiempo va a estar en la ruta? ¿Cuántas millas hace por semana? [P57]
 
-24. ¿Quién decide en esa zona: tú, Daniel u otra persona? [P57]
+25. ¿Quién decide en esa zona: tú, Daniel u otra persona? [P57]
 
-25. Mira el 905 (35,260 millas): ¿le harías PM o solo Fuel filter? ¿Por qué? [P57]
+26. Piensa en un camión con 35,000 millas desde el último PM: ¿le harías PM o solo Fuel filter? ¿Por qué? [P57]
 
-26. Si en esa zona decides no hacer el PM, ¿se cambia el Fuel filter? ¿Y debajo de 30,000, siempre? [P57]
+27. Si en esa zona decides no hacer el PM, ¿se cambia el Fuel filter? ¿Y debajo de 30,000, siempre? [P57]
 
-27. ¿Te serviría que la app te diga "le faltan 4,740 millas, unas X semanas de ruta" para decidir? [P57]
+28. ¿Te serviría que la app te diga "le faltan 4,740 millas, unas X semanas de ruta" para decidir? [P57]
 
-28. ¿El Air Dryer Filter va con el PM o aparte? [P57]
+29. ¿El Air Dryer Filter va con el PM o aparte? [P57]
 
-29. ★ ¿Las millas desde el último PM de Ninox son confiables? El 830 dice que el último PM fue con 540 millas. ¿Quién corrige esos datos? [P58]
+30. ★ ¿Las millas desde el último PM de Ninox son confiables? En la pantalla Bay Shop del 830, el último PM dice 540 millas. ¿Quién corrige esos datos? [P58]
 
-30. ¿Se puede sacar de Ninox una lista con el odómetro y la fecha del último PM de cada camión? [P58]
+31. ¿Se puede crear en Ninox un link como el de "off duty" con camión, odómetro y fecha del último PM? Así la app lo consulta sola. [P58]
 
 **El día**
 
-31. ¿Planeas el trabajo en la mañana o la noche anterior?
+32. ¿Planeas el trabajo en la mañana o la noche anterior?
 
-32. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
+33. Las llaves: ¿dónde suelen quedar? ¿Cuándo se pierden? [llaves]
 
 ## Safety (~15 min · las dos personas si se puede)
 
@@ -113,7 +117,7 @@ Los códigos entre corchetes ([P46], [C1]…) son para pasar las respuestas a `D
 
 2. ★ ¿Quién puede decidir que un camión NO necesita revisión? ¿El Shop Manager solo, ustedes, o los dos? [P46]
 
-_Muestra la pantalla Quality Check._
+_En el link, pestaña Quality Check._
 
 3. Cuando devuelven un camión porque algo está mal, ¿quieren que el arreglo aparezca solo en la pizarra o que el Shop Manager lo revise primero? [P54]
 
@@ -135,7 +139,7 @@ _Muestra la pantalla Quality Check._
 
 4. Cuando un trabajo que normalmente se hace no se hace, ¿necesitas saber quién lo decidió y por qué? [C3]
 
-_Muestra la pantalla Shop today._
+_En el link, pestaña Shop today._
 
 5. ¿Estos 7 números te dicen lo que necesitas? ¿Cuál sobra y cuál falta?
 
@@ -145,7 +149,7 @@ _Muestra la pantalla Shop today._
 
 **Primero, sin mostrar nada:** ¿Cómo eliges qué trabajo hacer cuando llegas?
 
-_Muestra la pantalla My work en un teléfono._
+_En el link, pestaña My work (en un teléfono)._
 
 1. ¿Entiendes qué es tuyo y qué está libre para tomar?
 
@@ -163,7 +167,7 @@ _Muestra la pantalla My work en un teléfono._
 
 **Primero, sin mostrar nada:** ¿Cómo se reparten el trabajo entre ustedes?
 
-_Muestra "Detailing tablet" en la página de hoy. (Ya decidido: no ponen su nombre, varios camiones a la vez, cualquiera termina.)_
+_En el link, pestaña My work → Detailing. (Ya decidido: no ponen su nombre, varios camiones a la vez, cualquiera termina.)_
 
 1. ¿Entiendes qué está en curso y qué falta?
 

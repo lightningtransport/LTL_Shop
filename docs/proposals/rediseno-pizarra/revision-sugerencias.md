@@ -20,9 +20,9 @@ propuesta se clasifica como:
 | 7 | La cola de Safety ignora un QC cancelado | ✅ | `quality-check.service.ts:89` |
 | 8 | El Yard tiene una tarjeta por camión, en una sola fase | ✅ | `yard-operations.service.ts:788` |
 | 9 | `test:real` en `main`: 209 pasan, 2 se saltan a propósito | ✅ | Corrido el 2026-10-24 |
-| 10 | Incoming lee solo `driver_pay` y descarta toda fila con Termination | ✅ | `yard-data-boundary.service.ts:249`, `yard-data-boundary.ts:147` |
-| 11 | Por eso faltan camiones que vuelven (Fired, Early broke contract) | ⚠️ | Viene del diccionario de Lightning, pero no se miró con datos reales. Puede que esas filas no tengan Return Date |
-| 12 | Eso explica LTR-262 (Incoming no coincide con Ninox) | ⚠️ | Hipótesis |
+| 10 | Incoming lee solo `driver_pay` y descarta toda fila con Termination | ✅ | `yard-data-boundary.service.ts:251`, `yard-data-boundary.ts:147`. **Es a propósito** (LTR-254: `returns` trae toda la flota, filas sin fecha y fechas viejas), no un defecto |
+| 11 | Por eso faltan camiones que vuelven (Fired, Early broke contract) | ❌ | Comparado con Ninox el 26-oct (`docs/reference/NINOX_COPIA_SUPABASE.md`, PR 435): el Shop calcula bien; las diferencias vienen de la copia en Supabase |
+| 12 | Eso explica LTR-262 (Incoming no coincide con Ninox) | ❌ | La causa es que la copia en Supabase no actualiza las filas que cambian (PR 435). Pedido enviado a Ninox |
 | 13 | "Fin de contrato" es la Return Date del chofer | ⚠️ | Supuesto; preguntado al dueño, sin respuesta |
 | 14 | El menú del Manager tiene 19 entradas | ❌ | Son **15** (`admin-shell.tsx:20-53`). Corregido |
 | 15 | El inicio del mecánico tiene 8 secciones | ⚠️ | Son 8 **posibles**; cada una sale solo si tiene algo. Un mecánico ve normalmente 3 o 4 |

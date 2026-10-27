@@ -1,6 +1,7 @@
 # Propuesta: la app como la pizarra del taller (rediseño de arquitectura de información)
 
-**Estado (2026-10-24): propuesta, sin construir, sin decidir.** Solo documentación y un boceto
+**Estado (2026-10-27): dirección aprobada (D58).** El proyecto original queda en pausa y se sigue con esta versión. Las reglas se cierran con la COO, el Shop Manager y el manager de partes ([`preguntas-pendientes.md`](preguntas-pendientes.md)); hasta entonces no se construye nada. Punto de retorno: tag `pausa-original-2026-10-27`.
+**Antes (2026-10-24): propuesta, sin construir, sin decidir.** Solo documentación y un boceto
 (`mockup.html`). No cambia código de la app ni el comportamiento en producción. Lo que está aquí
 pasa a `DECISIONS.md` (D58) y a `USER_FLOWS.md` solo cuando el dueño lo apruebe.
 **Rama:** `claude/rediseno-pizarra` (worktree propio; `main` no se toca).
@@ -11,7 +12,7 @@ Este rediseño parte de un motor que funciona.
 **Task flows:** [Manager](task-flow-manager.md), [mecánicos](task-flow-mecanico.md) (general, Detailing en tablet, PM) y [Safety / QC](task-flow-safety.md), un día completo cada uno.
 **Inventario (nada se pierde ni se rompe):** [`ia-inventario.md`](ia-inventario.md).
 **Revisión de las sugerencias (qué está comprobado y qué es supuesto):** [`revision-sugerencias.md`](revision-sugerencias.md).
-**Hoja de preguntas para validar (Shop Manager, Safety, Carlos, mecánicos):** [`preguntas-validacion.md`](preguntas-validacion.md).
+**Preguntas de esta semana (COO, Shop Manager, manager de partes):** [`preguntas-pendientes.md`](preguntas-pendientes.md). La primera hoja, [`preguntas-validacion.md`](preguntas-validacion.md), queda como historial.
 **Boceto:** [`mockup.html`](mockup.html) (publicado en privado: https://claude.ai/artifact/RoLTBY4LTXWRy6r2moCLsE). Un archivo, sin código de la app, con datos de ejemplo
 (901, 705, 804, 918, 944).
 
@@ -105,8 +106,9 @@ que no aplica queda **visible** como "Not required · motivo · quién".
 - "Ninox contiene información que permite anticipar estas llegadas." (F1)
 - **Hoy:** la pestaña Dispatch ya lista Incoming desde `driver_pay`, y Samsara ya avisa
   "Arrived · Needs a Work Order". Pero:
-  - falta la segunda fuente, `returns`;
-  - se descartan las terminaciones anticipadas (`yard-data-boundary.ts:147`);
+  - la copia de Ninox en Supabase está atrasada: no actualiza las filas que cambian, y por eso
+    Incoming no coincide con Ninox (comparado el 26-oct, `docs/reference/NINOX_COPIA_SUPABASE.md`).
+    El cálculo del Shop está bien; leer solo `driver_pay` es a propósito (LTR-254);
   - la llegada vive en una pestaña de un menú que el Manager no abre para trabajar.
 
 **Implicación:** una pantalla **Llegadas** de primer nivel (Expected → Arrived → visita abierta),
@@ -502,9 +504,9 @@ Manager.
 
 ## 10. Trabajo en paralelo (para otros agentes)
 
-**Estado al 2026-10-26:** propuesta y boceto en la rama `claude/rediseno-pizarra` (solo `docs/`). El
-código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
-[`preguntas-validacion.md`](preguntas-validacion.md); **nada de RP-1 a RP-4 se construye antes**.
+**Estado al 2026-10-27:** propuesta y boceto en la rama `claude/rediseno-pizarra` (solo `docs/`). El
+código de la app no cambió. D58 aprueba la dirección. Las P abiertas (P45–P66) esperan las respuestas de
+[`preguntas-pendientes.md`](preguntas-pendientes.md); **nada de RP-1 a RP-4 se construye antes**.
 
 **Archivos de esta propuesta:**
 
@@ -514,8 +516,8 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 | `ia-inventario.md` | Dónde queda cada pantalla y acción; R-1 a R-8 (lo que se rompería) |
 | `task-flow-manager.md`, `task-flow-mecanico.md`, `task-flow-safety.md` | Un día de cada rol |
 | `revision-sugerencias.md` | Qué está comprobado, qué es supuesto y qué se corrigió |
-| `preguntas-validacion.md` | Hoja para el Shop Manager, Safety, Carlos y mecánicos |
-| `validacion-hoy.html` | Página para validar con el manager con los datos de Ninox del 26-oct (Board, Kanban, Arrivals con Check in, mecánicos, tablet de Detailing, PM / Fuel filter, lo que no cuadra) |
+| `preguntas-validacion.md` | Primera hoja (24–26 oct). **Reemplazada** por `preguntas-pendientes.md` |
+| `validacion/` → `validacion-hoy.html` | **Se genera, no está en git** (trae datos reales de Ninox): `validacion/actualizar-validacion.py` consulta Ninox (los dos links de Ninox van en variables de entorno; están en data-reporting-kit) y arma la página; publicada en privado en https://claude.ai/artifact/A2ovHWUjopsnujphwDXohR. Página para validar con el manager con los datos de Ninox del día (Board, Kanban, Arrivals con Check in, mecánicos, tablet de Detailing, PM / Fuel filter, lo que no cuadra) |
 | `ninox-hoy.md` | Qué muestra Ninox, qué se puede obtener y de dónde; la regla PM / Fuel filter; lo que no cuadra |
 | `flujo-de-trabajo-coo.md`, `Flujo-de-trabajo-COO.pdf` | Para el COO: las reglas del taller que faltan definir (visitas, inspección, plantillas, PM / Fuel filter, quién hace qué, reparto, partes, Quality Check, salida, llaves, métricas). No es sobre pantallas |
 | `respuestas-coo-2026-10-26.md` | El correo de la COO con equipos y reglas, qué cambia en la app, conflictos y el borrador de las preguntas de vuelta |
@@ -528,7 +530,7 @@ código de la app no cambió. Las decisiones P45–P56 esperan las respuestas de
 | Frente | Archivos | Depende de | Quién |
 |---|---|---|---|
 | **A. Propuesta y boceto:** task flow del mecánico, aplicar las respuestas de la hoja, ajustar el boceto | Solo `docs/proposals/rediseno-pizarra/*` y las P de `DECISIONS.md` | Las respuestas del taller | Una sola sesión a la vez (el boceto es un archivo) |
-| **B. Incoming completo (RP-5, defecto):** leer `returns` además de `driver_pay`; no descartar Fired / Early Broke Contract | `apps/api/src/admin/yard-data-boundary.ts`, `yard-data-boundary.service.ts` y sus pruebas | Nada del rediseño. Primero el issue en Linear | Otra sesión, rama propia desde `origin/main` |
+| ~~B. Incoming completo~~ | — | Ya no hace falta: el Shop calcula bien; la copia en Supabase está atrasada y el pedido a Ninox ya se envió (PR 435, LTR-262) | — |
 | ~~C. Diseño de la tablet de Detailing~~ | — | Ya no hace falta: el dueño decidió que no se identifican (P50–P52, 2026-10-26) | — |
 | **D. RP-1 a RP-4** | API, shared y web | P45–P56 decididas y D58 escrita | Después |
 

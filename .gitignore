@@ -29,3 +29,6 @@ supabase/.temp/
 
 # Obsidian (bóveda abierta en docs/)
 .obsidian/
+
+# Rediseño pizarra: página generada con datos reales de Ninox (no va a git)
+docs/proposals/rediseno-pizarra/validacion-hoy.html

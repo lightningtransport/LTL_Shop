@@ -1,6 +1,6 @@
 # Pedido a quien maneja Ninox
 
-**Fecha:** 2026-10-26 · **De:** el dueño de Lightning Shop · **Estado:** listo para enviar (actualizado con las respuestas del dueño del mismo día).
+**Fecha:** 2026-10-26 · **De:** el dueño de Lightning Shop · **Estado:** **enviado el 26-oct**. El mensaje que salió está en [`docs/reference/NINOX_COPIA_SUPABASE.md`](../../reference/NINOX_COPIA_SUPABASE.md) (PR 435). El punto 2 (acceso a `returns`) ya funcionaba con la llave actual. Falta la respuesta.
 
 ## Cómo vamos a trabajar con Ninox
 

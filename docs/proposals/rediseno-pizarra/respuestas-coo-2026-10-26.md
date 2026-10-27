@@ -34,7 +34,7 @@
 | 1b | **Body Shop** como especialidad | No existe como equipo ni columna. Habría que sumarlo como especialidad, con su cola y su columna en la pizarra | 🆕 ❓ |
 | 1c | **Trailer Mechanics** | **La app no maneja trailers**: solo camiones. Está anotado como pendiente con bloqueo (LTR-56) | ❓ |
 | 2 | **Los camiones de paso no se inspeccionan**; solo reciben el servicio por el que vienen | La plantilla "de paso" no trae inspección ni pasos fijos. Encaja con lo propuesto | ✏️ (RP-1) |
-| 3 | **Todo camión pasa por la bahía de Daniel para inspección** (aunque no lleve PM), si esa semana vienen **menos de 20 camiones** | Daniel puede inspeccionar con el permiso "Can inspect trucks" (D41) ✅. Lo nuevo: la inspección se le asigna a Daniel y depende del número de camiones que vuelven esa semana. Ese número sale de Arrivals, que hoy está incompleto (frente B) | ✏️ 🆕 ❓ |
+| 3 | **Todo camión pasa por la bahía de Daniel para inspección** (aunque no lleve PM), si esa semana vienen **menos de 20 camiones** | Daniel puede inspeccionar con el permiso "Can inspect trucks" (D41) ✅. Lo nuevo: la inspección se le asigna a Daniel y depende del número de camiones que vuelven esa semana. Ese número sale de Arrivals, que hoy no coincide con Ninox porque la copia en Supabase está atrasada (PR 435, pedido a Ninox enviado) | ✏️ 🆕 ❓ |
 | 4 | **Alignment y Detail en cada check in** | Plantilla "fin de contrato": Alignment y Detailing siempre | ✏️ (RP-1) |
 | 5 | **PM si tiene más de 30,000 millas desde el último PM; si no, Fuel filter en cada check in** | Cambia la regla que había dicho el dueño (aviso en 30,000, decidir hasta 40,000). Ver conflicto A | ✏️ ❓ |
 | 6 | **Anotar todo daño cosmético en la hoja de inspección**, para documentar daños nuevos | La hoja de 53 puntos no tiene una sección de daños cosméticos. Hay que agregarla (dónde y qué) y que cada inspección muestre los daños de la anterior, para saber cuál es nuevo. Las fotos están anotadas para más adelante (SQ-4) | 🆕 ❓ |
@@ -82,5 +82,5 @@
 - **Nuevo, sin parte asignada todavía:**
   - Body Shop como especialidad.
   - Daños cosméticos en la hoja de inspección.
-  - Contar los camiones que vuelven en la semana para la regla de los 20 (depende del frente B, Incoming completo).
+  - Contar los camiones que vuelven en la semana para la regla de los 20 (depende de que la copia de Ninox se actualice: PR 435, LTR-262).
 - **Fuera por ahora:** trailers, hasta que la COO responda la pregunta 8.
