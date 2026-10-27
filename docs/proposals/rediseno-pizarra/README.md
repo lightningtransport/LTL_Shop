@@ -430,20 +430,22 @@ fila en `test:real`.
 
 ## 6. Plan por partes
 
+**Linear:** proyecto "Pizarra (versión simple)". Reglas: LTR-307 (COO), LTR-308 (Shop Manager), LTR-309 (partes), LTR-310 (Ninox). Reglas nuevas de la COO: LTR-319 (notas), LTR-320 (daños cosméticos), LTR-321 (Body Shop), LTR-322 (inspección con menos de 20).
+
 Cada parte se puede mostrar sola y va en su PR, sin romper lo de hoy. Las horas son probables;
 entre paréntesis, optimista y pesimista.
 
 | Parte | Historias | Horas | Migración | Cuándo |
 |---|---|---|---|---|
-| **RP-0** Validar el boceto con el Shop Manager y 2 mecánicos; ajustar | — | 1–2 | No | Sábado tarde |
-| **RP-1** Visita con lo que aplica + QC To decide / Not required + correctivo que nace de la devolución de Safety + Coming en `/qc` | HU-RD2, RD3, RD12 | 15 (11–22) | Probable (pequeña, aditiva → Release safety) | Sábado noche |
-| **RP-2** Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | Probable si P50 = nombre con un toque | Domingo mañana |
-| **RP-3** Board como inicio del Manager + "Needs your decision" + menú More | HU-RD1, (RD6) | 10 (8–16) | No | Domingo tarde |
-| **RP-4** Camión: checklist de liberación + Release truck | HU-RD4 | 5 (4–8) | No | Lunes si sobra; si no, después |
-| **RP-5** Arrivals con `returns` y tipo propuesto | HU-RD5 | 5 (4–8) | No | Semana del 26 |
-| **RP-6** Shop today (Gerencia) | HU-RD13 | 4 (3–6) | No | Semana del 26 |
-| **RP-7** Llaves | HU-RD11 | 7 (5–11) | **Sí** | Semana del 26 |
-| **RP-8** Textos finales ES/EN, glosario, docs de lo construido | — | 3 | No | En cada PR |
+| **RP-0** (LTR-308) Validar el boceto con el Shop Manager y 2 mecánicos; ajustar | — | 1–2 | No | Sábado tarde |
+| **RP-1** (LTR-311) Visita con lo que aplica + QC To decide / Not required + correctivo que nace de la devolución de Safety + Coming en `/qc` | HU-RD2, RD3, RD12 | 15 (11–22) | Probable (pequeña, aditiva → Release safety) | Sábado noche |
+| **RP-2** (LTR-312) Todo disponible + Take = empezar + pantalla del mecánico + Detailing en tablet como equipo + PM sin visita (§9) | HU-RD7, RD8, RD9 | 20 (16–28) | Probable si P50 = nombre con un toque | Domingo mañana |
+| **RP-3** (LTR-313) Board como inicio del Manager + "Needs your decision" + menú More | HU-RD1, (RD6) | 10 (8–16) | No | Domingo tarde |
+| **RP-4** (LTR-314) Camión: checklist de liberación + Release truck | HU-RD4 | 5 (4–8) | No | Lunes si sobra; si no, después |
+| **RP-5** (LTR-315) Arrivals de primer nivel y tipo propuesto (sin `returns`: el Shop ya calcula bien, LTR-254; depende de la copia de Ninox, LTR-310) | HU-RD5 | 5 (4–8) | No | Semana del 26 |
+| **RP-6** (LTR-316) Shop today (Gerencia) | HU-RD13 | 4 (3–6) | No | Semana del 26 |
+| **RP-7** (LTR-317) Llaves | HU-RD11 | 7 (5–11) | **Sí** | Semana del 26 |
+| **RP-8** (LTR-318) Textos finales ES/EN, glosario, docs de lo construido | — | 3 | No | En cada PR |
 
 **Para el lunes:** RP-0 a RP-3 son ~46 h probables (32 h, más 8–11 h de §9 y 5–7 h de Safety). Eso no entra completo en un fin de semana con
 revisión del dueño. Recomiendo:
